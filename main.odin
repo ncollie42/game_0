@@ -40,25 +40,36 @@ main :: proc() {
 	ANIMATION.anims = rl.LoadModelAnimations(engineerPath, &ANIMATION.total)
 	assert(ANIMATION.total != 0, "No Anim")
 
+	pool: [dynamic]vec3
+
+	ability := newSpawnCubeAbilityPlayer(&pool, &player)
+
 	f: f32 = 0
 	for !rl.WindowShouldClose() {
 		rl.BeginDrawing()
 		defer rl.EndDrawing()
 		rl.ClearBackground(rl.RAYWHITE)
 
-		{ 	// Player Actions
+		{ 	// :: Player Actions
 			updatePlayer(&player, &camera)
+			if isKeyPressed(BLOCK) {
+				// doAction(ability.action)
+				startAction(ability.action, &player)
+			}
 		}
-		{ 	// Updates
+		{ 	// :: Updates
 
-			// TODO update Enemy
-			updateAnimation(minion.model, &minion.animation, ANIMATION)
+			// Update Enemy
+			// updateAnimation(minion.model, &minion.animation, ANIMATION)
 		}
 		{ 	// Draw
 			rl.BeginMode3D(camera)
 			defer rl.EndMode3D()
 			rl.DrawGrid(100, .25)
 
+			for ii in pool {
+				rl.DrawCube(ii, 1, 1, 1, rl.ORANGE)
+			}
 			// rl.DrawModel(player.model, player.spacial.pos, 1, rl.WHITE)
 			rl.DrawModelEx(
 				player.model,
@@ -70,10 +81,12 @@ main :: proc() {
 			)
 			rl.DrawModel(minion.model, minion.spacial.pos, 1, rl.WHITE)
 		}
-		{ 	// UI
+		{ 	// :: UI
 			// https://github.com/raysan5/raygui?tab=readme-ov-file
 			// https://github.com/raysan5/raygui/blob/master/src/raygui.h
 			// ~/Downloads/rguilayout_v4.0_linux_x64
+
+			rl.GuiSlider({72, 160, 120, 16}, "TimeScale", nil, &timeScale, .1, 3.0)
 			rl.DrawFPS(10, 10)
 			// TODO: Draw time scale UI < ------ >
 		}
@@ -81,8 +94,11 @@ main :: proc() {
 }
 
 // TODO:
-// 1. Create 2 dummy enemies on different animations ; can we share resources?
 // 2. Have player moving
 // 3. Enemy looking at player
 // 4. Do I have a state machine? or how do I handle that?
 // Get player Move, Attack_1, Dash... Do we use a enum for the given states?
+// 5. Fix movement; 
+// - Add velocity
+// - Dash does not rotate
+// 6. Try out IamGui

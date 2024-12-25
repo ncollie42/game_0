@@ -3,6 +3,9 @@ package main
 import "core:fmt"
 import "core:math"
 import rl "vendor:raylib"
+
+// https://bztsrc.gitlab.io/model3d/viewer/
+
 // vec2 type
 vec2 :: [2]f32
 // vec3 type
@@ -86,7 +89,7 @@ Direction_Vecs := [Direction]vec3 {
 
 // Animations
 
-ANIMATION_FRAME_RATE :: 60 // 60 feels good, but actually be 25 or 30
+ANIMATION_FRAME_RATE :: 120 // 60 feels good, but actually be 25 or 30
 
 // Stores all animations for the asset pack
 ANIMATION: Animations = {}
@@ -188,11 +191,15 @@ updateAnimation :: proc(model: rl.Model, animation: ^Animation, animations: Anim
 
 	// Will be set for a single frame until reset next turn.
 	animation.finished = false
-	if frame == anim.frameCount {
+	if frame >= anim.frameCount {
 		animation.finished = true
 	}
 
 	animation.frame = rl.Wrap(animation.frame, 0, f32(anim.frameCount))
+}
+
+getAnimationProgress :: proc(animation: Animation, animations: Animations) -> f32 {
+	return animation.frame / f32(animations.anims[animation.current].frameCount)
 }
 
 lookAtVec3 :: proc(from, at: vec3) -> f32 {
@@ -209,6 +216,14 @@ lookAtVec3 :: proc(from, at: vec3) -> f32 {
 lerpRAD :: proc(current, target, amount: f32) -> f32 {
 	diff := current - target
 	delta := rl.Wrap(diff, -rl.PI, rl.PI) * -1
-	rad := rl.Lerp(current, current + delta, amount * rl.GetFrameTime())
+	// rad := rl.Lerp(current, current + delta, amount * getDelta())
+	rad := rl.Lerp(current, current + delta, amount)
 	return rl.Wrap(rad, -rl.PI, rl.PI)
+}
+
+// Timer
+// make f16 -> convert rl.getframeTime to f16 runtime
+Timer :: struct {
+	time:     f32,
+	timeLeft: f32,
 }
