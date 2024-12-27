@@ -14,7 +14,7 @@ UsageLimit :: union {
 }
 
 // Closure for ability
-Ability :: struct {
+AbilityConfig :: struct {
 	usageLimit: UsageLimit,
 	cost:       int,
 	cd:         Timer,
@@ -28,6 +28,7 @@ Ability :: struct {
 Action :: union {
 	ActionSpawnCubeAtPlayer,
 	ActionSpawnCubeAtMouse,
+	ActionSpawnMeleAtPlayer,
 }
 
 doAction :: proc(action: Action) {
@@ -35,11 +36,12 @@ doAction :: proc(action: Action) {
 	case ActionSpawnCubeAtMouse:
 		spawnCubeAtMouse(a.pool, a.camera)
 	case ActionSpawnCubeAtPlayer:
-		spawnCubeAtPlayer(a.pool, a.player)
+	case ActionSpawnMeleAtPlayer:
+		spawnMeleInstanceAtPlayer(a.pool, a.player)
 	}
 }
 
-startAction :: proc(action: Action, player: ^Player) {
+startAction :: proc(action: Action, player: ^Player, camera: ^rl.Camera3D) {
 	switch a in action {
 	case ActionSpawnCubeAtMouse:
 		enterPlayerState(
@@ -50,6 +52,7 @@ startAction :: proc(action: Action, player: ^Player) {
 				animation = .H1_MELEE_ATTACK_SLICE_HORIZONTAL,
 				action = action,
 			},
+			camera,
 		)
 	case ActionSpawnCubeAtPlayer:
 		enterPlayerState(
@@ -60,6 +63,18 @@ startAction :: proc(action: Action, player: ^Player) {
 				animation = .H1_MELEE_ATTACK_STAB,
 				action = action,
 			},
+			camera,
+		)
+	case ActionSpawnMeleAtPlayer:
+		enterPlayerState(
+			player,
+			playerStateAttack1 {
+				trigger = .5,
+				hasTriggered = false,
+				animation = .H1_MELEE_ATTACK_CHOP,
+				action = action,
+			},
+			camera,
 		)
 	}
 }

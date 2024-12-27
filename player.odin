@@ -2,13 +2,15 @@ package main
 
 import "core:fmt"
 import "core:math"
+import "core:math/linalg"
 import rl "vendor:raylib"
 
 // Move to spacial file?
 Spacial :: struct {
-	rot: f32, // rotation / Orientation
-	pos: vec3, // position
-	dir: vec3, // what direction it's going towards  - using for projectiles ; not sure if we need; maybe change to velocity?
+	rot:     f32, // rotation / Orientation
+	pos:     vec3, // position
+	dir:     vec3, // what direction it's going towards  - using for projectiles ; not sure if we need; maybe change to velocity?
+	radious: f32, // For collision
 }
 
 Player :: struct {
@@ -17,6 +19,7 @@ Player :: struct {
 	animation:   Animation,
 	spacial:     Spacial,
 	state:       State,
+	// collision:   Collision,
 }
 
 MOVE_SPEED :: 5
@@ -28,32 +31,30 @@ initPlayer :: proc(path: cstring) -> Player {
 	assert(player.model.meshCount != 0, "No mesh")
 
 	player.spacial.dir = {0, 0, 1}
-	enterPlayerState(&player, playerStateBase{})
+	// enterPlayerState(&player, playerStateBase{})
 	return player
 }
 
+// Look at tribes of midguard player controller for now
 updatePlayer :: proc(player: ^Player, camera: ^rl.Camera3D) {
-	// TODO: make dash only move player in direction it's going
-	// TODO: Add velocity to movement
-	dir := getVector()
-	// player.spacial.pos += dir * getDelta() * MOVE_SPEED
-
+	// dir := getVector()
 	// target rotation is either indirection of movement or mouse location
-	target := player.spacial.pos + dir
-	if player.lookAtMouse {
-		target = mouseInWorld(camera)
-	}
+	// target := player.spacial.pos + dir
+	// if player.lookAtMouse { // if player.combatTimer > 0
+	// target := mouseInWorld(camera)
+	// }
 
 	// UPDATE for each State
 	switch &s in player.state {
 	case playerStateBase:
+		dir := getVector()
 		player.spacial.pos += dir * getDelta() * MOVE_SPEED
 
-		// Update rotation
+		// Update rotation while moving
 		if dir != {} {
+			target := player.spacial.pos + dir
 			r := lookAtVec3(target, player.spacial.pos)
 			player.spacial.rot = lerpRAD(player.spacial.rot, r, getDelta() * TURN_SPEED)
-			player.spacial.dir = dir
 		}
 
 		if dir != {} {
@@ -63,20 +64,21 @@ updatePlayer :: proc(player: ^Player, camera: ^rl.Camera3D) {
 		}
 
 		if isKeyPressed(DASH) {
-			enterPlayerState(player, playerStateDashing{})
+			enterPlayerState(player, playerStateDashing{}, camera)
 		}
 	case playerStateDashing:
-		player.spacial.pos += player.spacial.dir * getDelta() * MOVE_SPEED * 2
-		// Or use Mouse if dir == 0?
+		dir := getPlayerForwardPoint(player)
+
+		player.spacial.pos += dir * getDelta() * MOVE_SPEED * 2
 		if player.animation.finished {
-			enterPlayerState(player, playerStateBase{})
+			enterPlayerState(player, playerStateBase{}, camera)
 		}
 	case playerStateAttack1:
-		if isKeyPressed(DASH) {
-			enterPlayerState(player, playerStateDashing{})
+		if isKeyPressed(DASH) { 	// if ability is interruptable
+			enterPlayerState(player, playerStateDashing{}, camera)
 		}
 		if player.animation.finished {
-			enterPlayerState(player, playerStateBase{})
+			enterPlayerState(player, playerStateBase{}, camera)
 		}
 		// State update
 		progress := getAnimationProgress(player.animation, ANIMATION)
@@ -84,26 +86,48 @@ updatePlayer :: proc(player: ^Player, camera: ^rl.Camera3D) {
 			s.hasTriggered = true
 			doAction(s.action)
 		}
+	case:
+		// If not state is set from init, go straight to Base
+		enterPlayerState(player, playerStateBase{}, camera)
 	}
 
 	updateAnimation(player.model, &player.animation, ANIMATION)
 }
 
+getPlayerForwardPoint :: proc(player: ^Player) -> vec3 {
+	// Return a point between 0 1 [0,0]
+	mat := rl.MatrixRotateY(player.spacial.rot)
+	mat = mat * rl.MatrixTranslate(0, 0, 1)
+	point := rl.Vector3Transform({}, mat)
+	point = linalg.normalize(point)
+	return point
+}
+
 // New AbilityState into State -> Passed in 
 // OR Animation + ability info
-enterPlayerState :: proc(player: ^Player, state: State) {
-	fmt.println("Going into", state)
+enterPlayerState :: proc(player: ^Player, state: State, camera: ^rl.Camera3D) {
+	// fmt.println("Going into", state)
 	// Enter logic into state
 	player.state = state
 	player.animation.frame = 0
 	switch &s in player.state {
 	case playerStateBase:
+		// Look at movemment
 		player.animation.current = .IDLE
 	case playerStateDashing:
-		r := lookAtVec3(player.spacial.pos + player.spacial.dir, player.spacial.pos)
+		// Snap to player movement or forward dir if not moving
+		dir := getVector()
+		if dir == {} do dir = getPlayerForwardPoint(player)
+
+		r := lookAtVec3(player.spacial.pos + dir, player.spacial.pos)
 		player.spacial.rot = lerpRAD(player.spacial.rot, r, 1)
+
 		player.animation.current = .DODGE_FORWARD
 	case playerStateAttack1:
+		// Snap to mouse direction before aatack
+		r := lookAtVec3(mouseInWorld(camera), player.spacial.pos)
+		player.spacial.rot = lerpRAD(player.spacial.rot, r, 1)
+
 		player.animation.current = s.animation
 	}
 }
@@ -127,4 +151,17 @@ playerStateAttack1 :: struct {
 	// canCancel: bool, // Do we put this here?
 	// Location??
 	// Speed?
+}
+
+// Draw
+
+drawPlayer :: proc(player: Player) {
+	rl.DrawModelEx(
+		player.model,
+		player.spacial.pos,
+		UP,
+		rl.RAD2DEG * player.spacial.rot,
+		1,
+		rl.WHITE,
+	)
 }

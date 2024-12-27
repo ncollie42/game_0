@@ -1,5 +1,6 @@
 package main
 import "core:fmt"
+import "core:math/linalg"
 import rl "vendor:raylib"
 
 // ---- Closure :: Action
@@ -14,30 +15,48 @@ ActionSpawnCubeAtPlayer :: struct {
 	pool:   ^[dynamic]vec3,
 }
 
-newSpawnCubeAbilityMouse :: proc(pool: ^[dynamic]vec3, camera: ^rl.Camera3D) -> Ability {
-	ability: Ability
-	ability.cost = 1
-	ability.cd.time = 5
-	ability.usageLimit = Limited{2, 2}
+ActionSpawnMeleAtPlayer :: struct {
+	player: ^Player,
+	pool:   ^AbilityPool,
+}
+
+newSpawnCubeAbilityMouse :: proc(pool: ^[dynamic]vec3, camera: ^rl.Camera3D) -> AbilityConfig {
+	config: AbilityConfig
+	config.cost = 1
+	config.cd.time = 5
+	config.usageLimit = Limited{2, 2}
 	// ability.usageLimit = Infinate{}
-	ability.action = ActionSpawnCubeAtMouse {
+	config.action = ActionSpawnCubeAtMouse {
 		camera = camera,
 		pool   = pool,
 	}
-	return ability
+	return config
 }
 
-newSpawnCubeAbilityPlayer :: proc(pool: ^[dynamic]vec3, player: ^Player) -> Ability {
-	ability: Ability
-	ability.cost = 1
-	ability.cd.time = 5
-	ability.usageLimit = Limited{2, 2}
+newSpawnCubeAbilityPlayer :: proc(pool: ^[dynamic]vec3, player: ^Player) -> AbilityConfig {
+	config: AbilityConfig
+	config.cost = 1
+	config.cd.time = 5
+	config.usageLimit = Limited{2, 2}
 	// ability.usageLimit = Infinate{}
-	ability.action = ActionSpawnCubeAtPlayer {
+	config.action = ActionSpawnCubeAtPlayer {
 		player = player,
 		pool   = pool,
 	}
-	return ability
+	return config
+}
+
+newSpawnMeleAbilityPlayer :: proc(pool: ^AbilityPool, player: ^Player) -> AbilityConfig {
+	config: AbilityConfig
+	config.cost = 1
+	config.cd.time = 5
+	config.usageLimit = Limited{2, 2}
+	// ability.usageLimit = Infinate{}
+	config.action = ActionSpawnMeleAtPlayer {
+		player = player,
+		pool   = pool,
+	}
+	return config
 }
 
 // ---- Init
@@ -48,7 +67,13 @@ spawnCubeAtMouse :: proc(pool: ^[dynamic]vec3, camera: ^rl.Camera3D) {
 }
 
 spawnCubeAtPlayer :: proc(pool: ^[dynamic]vec3, player: ^Player) {
-	spawnCube(pool, player.spacial.pos + player.spacial.dir)
+	pos := player.spacial.pos
+	mat := rl.MatrixTranslate(pos.x, pos.y, pos.z)
+	mat = mat * rl.MatrixRotateY(player.spacial.rot)
+	mat = mat * rl.MatrixTranslate(0, 0, 1)
+	p := rl.Vector3Transform({}, mat)
+
+	spawnCube(pool, p)
 }
 
 spawnCube :: proc(pool: ^[dynamic]vec3, pos: vec3) {
@@ -62,5 +87,9 @@ spawnCube :: proc(pool: ^[dynamic]vec3, pos: vec3) {
 // ---- Closure :: Action
 // ---- Init
 // ---- Spawn
+// ---- Despawn
 // ---- Update
 // ---- Draw
+
+
+// Create a single version first, then create functions to update in mass

@@ -227,3 +227,126 @@ Timer :: struct {
 	time:     f32,
 	timeLeft: f32,
 }
+
+
+// -------------------------------------------
+// Odin version of update model animation, using to later try and blend between 2 animations
+updateModelAnimation :: proc(model: rl.Model, anim: rl.ModelAnimation, frame: i32) {
+	// Update bones
+	rl.UpdateModelAnimationBones(model, anim, frame)
+	// Update the mesh using the bones.
+	for m in 0 ..< model.meshCount {
+		mesh := model.meshes[m]
+		animVertex := vec3{}
+		animNormal := vec3{}
+		boneId: u8 = 0
+		boneCounter := 0
+		boneWeight: f32 = 0.0
+		updated := false
+		vValues := mesh.vertexCount * 3
+
+		// Skip if missing bone data, causes segfault without on some models
+		if mesh.boneWeights == nil || mesh.boneIds == nil do continue
+		for vCounter: i32 = 0; vCounter < vValues; vCounter += 3 {
+			mesh.animVertices[vCounter] = 0
+			mesh.animVertices[vCounter + 1] = 0
+			mesh.animVertices[vCounter + 2] = 0
+
+			if mesh.animNormals != nil {
+				mesh.animNormals[vCounter] = 0
+				mesh.animNormals[vCounter + 1] = 0
+				mesh.animNormals[vCounter + 2] = 0
+			}
+
+			// Iterates over 4 bones per vertex
+			for j in 0 ..< 4 {
+				boneWeight = mesh.boneWeights[boneCounter]
+				boneId = mesh.boneIds[boneCounter]
+				boneCounter += 1 // Should this be here or above the 2 lines?
+
+				// Early stop when no transformation will be applied
+				if boneWeight == 0 {
+					continue
+				}
+
+				animVertex = vec3 {
+					mesh.vertices[vCounter],
+					mesh.vertices[vCounter + 1],
+					mesh.vertices[vCounter + 2],
+				}
+				animVertex = rl.Vector3Transform(animVertex, model.meshes[m].boneMatrices[boneId])
+				mesh.animVertices[vCounter] += animVertex.x * boneWeight
+				mesh.animVertices[vCounter + 1] += animVertex.y * boneWeight
+				mesh.animVertices[vCounter + 2] += animVertex.z * boneWeight
+				updated = true
+
+				// Normals processing
+				// NOTE: We use meshes.base_normals (default normal) to calculate meshes.normals (animated normals)
+				if mesh.normals != nil && mesh.animNormals != nil {
+					animNormal = vec3 {
+						mesh.normals[vCounter],
+						mesh.normals[vCounter + 1],
+						mesh.normals[vCounter + 2],
+					}
+
+					// Matrix symbol is taken
+					matrixx := rl.MatrixTranspose(
+						rl.MatrixInvert(model.meshes[m].boneMatrices[boneId]),
+					)
+					animNormal = rl.Vector3Transform(animNormal, matrixx)
+
+					mesh.animNormals[vCounter] += animNormal.x * boneWeight
+					mesh.animNormals[vCounter + 1] += animNormal.y * boneWeight
+					mesh.animNormals[vCounter + 2] += animNormal.z * boneWeight
+				}
+			}
+		}
+
+		if updated {
+			// Update vertex position
+			rl.UpdateMeshBuffer(mesh, 0, mesh.animVertices, mesh.vertexCount * 3 * size_of(f32), 0)
+
+			// Update vertex normals
+			if mesh.normals != nil {
+				rl.UpdateMeshBuffer(
+					mesh,
+					2,
+					mesh.animNormals,
+					mesh.vertexCount * 3 * size_of(f32),
+					0,
+				)
+			}
+		}
+	}
+}
+
+// // Coppied from randy
+// animate_to_target_f32 :: proc(
+// 	value: ^f32,
+// 	target: f32,
+// 	delta_t: f32,
+// 	rate: f32 = 15.0,
+// 	good_enough: f32 = 0.001,
+// ) -> bool {
+// 	value^ += (target - value^) * (1.0 - math.pow_f32(2.0, -rate * delta_t))
+// 	if almost_equals(value^, target, good_enough) {
+// 		value^ = target
+// 		return true // reached
+// 	}
+// 	return false
+// }
+
+// animate_to_target_v2 :: proc(
+// 	value: ^Vector2,
+// 	target: Vector2,
+// 	delta_t: f32,
+// 	rate: f32 = 15.0,
+// 	good_enough: f32 = 0.001,
+// ) {
+// 	animate_to_target_f32(&value.x, target.x, delta_t, rate, good_enough)
+// 	animate_to_target_f32(&value.y, target.y, delta_t, rate, good_enough)
+// }
+
+// almost_equals :: proc(a: f32, b: f32, epsilon: f32 = 0.001) -> bool {
+// 	return abs(a - b) <= epsilon
+// }

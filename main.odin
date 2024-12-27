@@ -35,14 +35,16 @@ main :: proc() {
 	// assert(animations.total != 0, "No Anim")
 
 	player := initPlayer(engineerPath)
-	minion := initPlayer(minionPath)
 
 	ANIMATION.anims = rl.LoadModelAnimations(engineerPath, &ANIMATION.total)
 	assert(ANIMATION.total != 0, "No Anim")
 
-	pool: [dynamic]vec3
+	enemyPool := initEnemyDummies(minionPath)
+	spawnDummyEnemy(&enemyPool, {1, 0, 2})
 
-	ability := newSpawnCubeAbilityPlayer(&pool, &player)
+	melePool := initMeleInstances()
+
+	ability := newSpawnMeleAbilityPlayer(&melePool, &player)
 
 	f: f32 = 0
 	for !rl.WindowShouldClose() {
@@ -54,32 +56,26 @@ main :: proc() {
 			updatePlayer(&player, &camera)
 			if isKeyPressed(BLOCK) {
 				// doAction(ability.action)
-				startAction(ability.action, &player)
+				startAction(ability.action, &player, &camera)
+			}
+			if isKeyPressed(ACTION_0) {
+				startAction(ability.action, &player, &camera)
 			}
 		}
 		{ 	// :: Updates
+			updateEnemyHitCollisions(&melePool, &enemyPool)
 
-			// Update Enemy
-			// updateAnimation(minion.model, &minion.animation, ANIMATION)
+			updateEnemyDummies(&enemyPool, player)
 		}
 		{ 	// Draw
 			rl.BeginMode3D(camera)
 			defer rl.EndMode3D()
 			rl.DrawGrid(100, .25)
 
-			for ii in pool {
-				rl.DrawCube(ii, 1, 1, 1, rl.ORANGE)
-			}
-			// rl.DrawModel(player.model, player.spacial.pos, 1, rl.WHITE)
-			rl.DrawModelEx(
-				player.model,
-				player.spacial.pos,
-				UP,
-				rl.RAD2DEG * player.spacial.rot,
-				1,
-				rl.WHITE,
-			)
-			rl.DrawModel(minion.model, minion.spacial.pos, 1, rl.WHITE)
+			drawMeleInstances(&melePool)
+			drawPlayer(player)
+			drawEnemies(&enemyPool)
+			rl.DrawSphere(mouseInWorld(&camera), .25, rl.ORANGE)
 		}
 		{ 	// :: UI
 			// https://github.com/raysan5/raygui?tab=readme-ov-file
@@ -87,6 +83,7 @@ main :: proc() {
 			// ~/Downloads/rguilayout_v4.0_linux_x64
 
 			rl.GuiSlider({72, 160, 120, 16}, "TimeScale", nil, &timeScale, .1, 3.0)
+			rl.GuiLabel({10, 30, 200, 20}, fmt.ctprint(player.spacial.rot))
 			rl.DrawFPS(10, 10)
 			// TODO: Draw time scale UI < ------ >
 		}
@@ -94,11 +91,18 @@ main :: proc() {
 }
 
 // TODO:
-// 2. Have player moving
-// 3. Enemy looking at player
-// 4. Do I have a state machine? or how do I handle that?
-// Get player Move, Attack_1, Dash... Do we use a enum for the given states?
-// 5. Fix movement; 
-// - Add velocity
-// - Dash does not rotate
-// 6. Try out IamGui
+// 0. Damage Dummy
+// 1. Enemy looking at player
+// 2. Prevent casting animation while areadying doing animation.
+// 6. Try out IamGui or other Clay?
+
+
+// How many pools will I need to have, for sure 1 for player 1 for enemy and same for abilities. At least 4.
+//   I might also make different kinds of ability pools or enemy pools if I don't group them together.
+// player := initPlyaer
+// enemies1 := InitEnemies1 // Type 1
+// enemies2 := InitEnemies2 // Type 2
+// abilitesPlayer := InitAbilities   // Type 1 for Player
+// abilitesPlayer2 := InitAbilities2 // Type 2 for player
+// abilitesPlayer3 := InitAbilities3 // Type 3 for player
+// abilitesEnemies := InitAbilities  // Type 1 for Enemy
