@@ -91,7 +91,7 @@ updatePlayerState :: proc(player: ^Player, camera: ^rl.Camera3D) {
 		// }
 		// State update
 		progress := 1 - (s.timer.left / s.timer.max)
-		fmt.println(progress, s.trigger, s.hasTriggered)
+		// fmt.println(progress, s.trigger, s.hasTriggered)
 		// progress := getAnimationProgress(player.animation, ANIMATION)
 		if progress >= s.trigger && !s.hasTriggered {
 			s.hasTriggered = true

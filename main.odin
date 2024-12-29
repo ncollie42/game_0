@@ -28,13 +28,7 @@ main :: proc() {
 		fovy       = 60,
 		projection = .PERSPECTIVE,
 	}
-
-	// model := rl.LoadModel(modelPath)
-	// assert(model.meshCount != 0, "No mesh")
-
-	// animations := Animations{}
-	// animations.anims = rl.LoadModelAnimations(modelPath, &animations.total)
-	// assert(animations.total != 0, "No Anim")
+	hitStop := HitStop{}
 
 	player := initPlayer(engineerPath)
 
@@ -76,8 +70,9 @@ main :: proc() {
 		{ 	// :: Updates
 			updateAnimation(player.model, &player.animation, ANIMATION)
 
-			updateEnemyHitCollisions(&melePool, &enemyPool)
+			updateEnemyHitCollisions(&melePool, &enemyPool, &hitStop)
 			updateEnemyDummies(&enemyPool, player)
+			updateHitStop(&hitStop)
 		}
 		{ 	// Draw
 			rl.BeginMode3D(camera)
@@ -98,7 +93,7 @@ main :: proc() {
 			// https://github.com/raysan5/raygui/blob/master/src/raygui.h
 			// ~/Downloads/rguilayout_v4.0_linux_x64
 
-			rl.GuiSlider({72, 160, 120, 16}, "TimeScale", nil, &timeScale, .1, 3.0)
+			rl.GuiSlider({72, 160, 120, 16}, "TimeScale", nil, &timeScale, .001, 3.0)
 			rl.GuiLabel({10, 30, 200, 20}, fmt.ctprint(player.spacial.rot))
 			rl.DrawFPS(10, 10)
 			// TODO: Draw time scale UI < ------ >
@@ -108,11 +103,13 @@ main :: proc() {
 
 // TODO:
 // 1.DamageDummy
-// -[x]HitFlash
+// -[x]HitFlash :: player white, enemy red
 // -[]HitReaction
-// -[]HitStop
-// -[]KnockBack
+// -[x]HitStop :: with curve; in and out
+// -[]KnockBack 
 // -[]Sound
+// -[]Screen shake
+// -[]Enemy Shake
 // -[]Partcle
 // 2. AI
 // -[]Follow player {straight line}

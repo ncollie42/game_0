@@ -18,7 +18,60 @@ UP :: vec3{0, 1, 0}
 // Delta
 timeScale: f32 = 1.0
 
+HitStop :: struct {
+	enable: bool,
+	time:   f32,
+	state:  enum {
+		waiting,
+		fadeIn,
+		hold,
+		fadeOut,
+	},
+}
+
+updateHitStop :: proc(h: ^HitStop) {
+	// Only use for player attacks
+	// 115 MS, 7 frames, ~.038 per phase.
+	stateDuration: f32 = .04
+
+	fmt.println(h.state, timeScale, h.time)
+	switch h.state {
+	case .waiting:
+		if h.enable {
+			h.state = .fadeIn
+			h.time = 0
+			h.enable = false
+		}
+	case .fadeIn:
+		h.time += rl.GetFrameTime()
+		amount := rl.Remap(h.time, 0, stateDuration, 0, 1)
+		timeScale = rl.Lerp(1, .1, amount)
+		if amount >= 1.0 {
+			h.state = .hold
+			h.time = stateDuration
+		}
+	case .hold:
+		h.time -= rl.GetFrameTime()
+		if h.time <= 0 {
+			h.state = .fadeOut
+			h.time = 0
+		}
+	case .fadeOut:
+		h.time += rl.GetFrameTime()
+		amount := rl.Remap(h.time, 0, stateDuration, 0, 1)
+		timeScale = rl.Lerp(.1, 1, amount)
+		if amount >= 1.0 {
+			h.state = .waiting
+			h.time = 1
+			timeScale = 1.0
+		}
+	case:
+		h.state = .waiting
+	}
+}
+
 getDelta :: proc() -> f32 {
+	// Used for timeScale is used for hitstop, dont use this delta for env visuals IE: particles.
 	return rl.GetFrameTime() * timeScale
 }
 
@@ -322,6 +375,7 @@ updateModelAnimation :: proc(model: rl.Model, anim: rl.ModelAnimation, frame: i3
 }
 
 // Coppied from randy
+// Easing funcs: https://easings.net/
 animateToTargetf32 :: proc(
 	value: ^f32,
 	target: f32,
