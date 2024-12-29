@@ -48,7 +48,8 @@ spawnMeleInstanceAtPlayer :: proc(pool: ^AbilityPool, player: ^Player) {
 
 	append(pool, newMeleInstance(p))
 }
-// ---- Remove
+
+// ---- despawn 
 removeAbility :: proc(pool: ^AbilityPool, activeIndex: int) {
 	// Swap and remove last
 	pool[activeIndex] = pop(pool)
@@ -63,7 +64,7 @@ updateEnemyHitCollisions :: proc(pool: ^AbilityPool, enemies: ^EnemyDummyPool) {
 			hit := checkCollision(obj, enemy)
 			if !hit do continue
 			// on hit
-			hurt(&enemy, 1)
+			hurtEnemy(&enemy, 1)
 		}
 		removeAbility(pool, index)
 	}
@@ -80,9 +81,4 @@ drawMeleInstances :: proc(pool: ^AbilityPool) {
 // Move to it's own folder?
 checkCollision :: proc(a: Spacial, b: Spacial) -> bool {
 	return rl.CheckCollisionSpheres(a.pos, a.radious, b.pos, b.radious)
-}
-
-hurt :: proc(hp: ^Health, amount: f32) {
-	hp.current -= amount
-	fmt.println("Ouch!")
 }

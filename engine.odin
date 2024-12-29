@@ -89,7 +89,7 @@ Direction_Vecs := [Direction]vec3 {
 
 // Animations
 
-ANIMATION_FRAME_RATE :: 120 // 60 feels good, but actually be 25 or 30
+ANIMATION_FRAME_RATE :: 90 // 60 feels good, but actually be 25 or 30
 
 // Stores all animations for the asset pack
 ANIMATION: Animations = {}
@@ -170,6 +170,7 @@ Animation :: struct {
 	finished: bool, // Signal :: Animation just finished
 	current:  ANIMATION_NAME, //current anim
 	frame:    f32, //active animation frame
+	speed:    f32,
 }
 
 // We can share this struct for models using the same animations {Adventueres | skeletons}
@@ -186,7 +187,7 @@ updateAnimation :: proc(model: rl.Model, animation: ^Animation, animations: Anim
 
 	rl.UpdateModelAnimation(model, anim, frame)
 
-	animation.frame += getDelta() * ANIMATION_FRAME_RATE
+	animation.frame += getDelta() * ANIMATION_FRAME_RATE * animation.speed
 	frame = i32(math.floor(animation.frame))
 
 	// Will be set for a single frame until reset next turn.
@@ -224,8 +225,8 @@ lerpRAD :: proc(current, target, amount: f32) -> f32 {
 // Timer
 // make f16 -> convert rl.getframeTime to f16 runtime
 Timer :: struct {
-	time:     f32,
-	timeLeft: f32,
+	max:  f32, //MAX
+	left: f32, //Left
 }
 
 
@@ -320,21 +321,25 @@ updateModelAnimation :: proc(model: rl.Model, anim: rl.ModelAnimation, frame: i3
 	}
 }
 
-// // Coppied from randy
-// animate_to_target_f32 :: proc(
-// 	value: ^f32,
-// 	target: f32,
-// 	delta_t: f32,
-// 	rate: f32 = 15.0,
-// 	good_enough: f32 = 0.001,
-// ) -> bool {
-// 	value^ += (target - value^) * (1.0 - math.pow_f32(2.0, -rate * delta_t))
-// 	if almost_equals(value^, target, good_enough) {
-// 		value^ = target
-// 		return true // reached
-// 	}
-// 	return false
-// }
+// Coppied from randy
+animateToTargetf32 :: proc(
+	value: ^f32,
+	target: f32,
+	delta_t: f32,
+	rate: f32 = 15.0,
+	good_enough: f32 = 0.001,
+) -> bool {
+	value^ += (target - value^) * (1.0 - math.pow_f32(2.0, -rate * delta_t))
+	if almostEquals(value^, target, good_enough) {
+		value^ = target
+		return true // reached
+	}
+	return false
+}
+
+almostEquals :: proc(a: f32, b: f32, epsilon: f32 = 0.001) -> bool {
+	return abs(a - b) <= epsilon
+}
 
 // animate_to_target_v2 :: proc(
 // 	value: ^Vector2,
@@ -345,8 +350,4 @@ updateModelAnimation :: proc(model: rl.Model, anim: rl.ModelAnimation, frame: i3
 // ) {
 // 	animate_to_target_f32(&value.x, target.x, delta_t, rate, good_enough)
 // 	animate_to_target_f32(&value.y, target.y, delta_t, rate, good_enough)
-// }
-
-// almost_equals :: proc(a: f32, b: f32, epsilon: f32 = 0.001) -> bool {
-// 	return abs(a - b) <= epsilon
 // }

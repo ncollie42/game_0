@@ -19,6 +19,7 @@ AbilityConfig :: struct {
 	cost:       int,
 	cd:         Timer,
 	action:     Action,
+	state:      State, //State Transion for player
 	// UI
 	// Level
 }
@@ -36,46 +37,9 @@ doAction :: proc(action: Action) {
 	case ActionSpawnCubeAtMouse:
 		spawnCubeAtMouse(a.pool, a.camera)
 	case ActionSpawnCubeAtPlayer:
+		spawnCubeAtPlayer(a.pool, a.player)
 	case ActionSpawnMeleAtPlayer:
 		spawnMeleInstanceAtPlayer(a.pool, a.player)
-	}
-}
-
-startAction :: proc(action: Action, player: ^Player, camera: ^rl.Camera3D) {
-	switch a in action {
-	case ActionSpawnCubeAtMouse:
-		enterPlayerState(
-			player,
-			playerStateAttack1 {
-				trigger = .3,
-				hasTriggered = false,
-				animation = .H1_MELEE_ATTACK_SLICE_HORIZONTAL,
-				action = action,
-			},
-			camera,
-		)
-	case ActionSpawnCubeAtPlayer:
-		enterPlayerState(
-			player,
-			playerStateAttack1 {
-				trigger = .3,
-				hasTriggered = false,
-				animation = .H1_MELEE_ATTACK_STAB,
-				action = action,
-			},
-			camera,
-		)
-	case ActionSpawnMeleAtPlayer:
-		enterPlayerState(
-			player,
-			playerStateAttack1 {
-				trigger = .5,
-				hasTriggered = false,
-				animation = .H1_MELEE_ATTACK_CHOP,
-				action = action,
-			},
-			camera,
-		)
 	}
 }
 

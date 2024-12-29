@@ -6,7 +6,9 @@ import rl "vendor:raylib"
 
 engineerPath: cstring = "/home/nico/gameDev/resources/KayKit_Adventurers/m3d/Engineer.m3d"
 druidPath: cstring = "/home/nico/gameDev/resources/KayKit_Adventurers/m3d/Druid.m3d"
+
 minionPath: cstring = "/home/nico/gameDev/resources/KayKit_Skeletons/m3d/Skeleton_Minion.m3d"
+
 SCREEN_W :: 1920 / 2
 SCREEN_H :: 1080 / 2
 
@@ -45,6 +47,9 @@ main :: proc() {
 	melePool := initMeleInstances()
 
 	ability := newSpawnMeleAbilityPlayer(&melePool, &player)
+	p := [dynamic]vec3{}
+	ability2 := newSpawnCubeAbilityPlayer(&p, &player)
+	dash := newPlayerDashAbility(&player, &camera)
 
 	f: f32 = 0
 	for !rl.WindowShouldClose() {
@@ -53,18 +58,25 @@ main :: proc() {
 		rl.ClearBackground(rl.RAYWHITE)
 
 		{ 	// :: Player Actions
-			updatePlayer(&player, &camera)
-			if isKeyPressed(BLOCK) {
-				// doAction(ability.action)
-				startAction(ability.action, &player, &camera)
+			{
+				// SM :: Input
+				playerInputDash(&player, dash, &camera)
+				// TODO: Put into func; swap with 'Hand' logic stuff
+				if isKeyPressed(BLOCK) {
+					// doAction(ability.action)
+					enterPlayerState(&player, ability.state, &camera)
+				}
+				if isKeyPressed(ACTION_0) {
+					enterPlayerState(&player, ability2.state, &camera)
+				}
 			}
-			if isKeyPressed(ACTION_0) {
-				startAction(ability.action, &player, &camera)
-			}
+			// SM :: Update
+			updatePlayerState(&player, &camera)
 		}
 		{ 	// :: Updates
-			updateEnemyHitCollisions(&melePool, &enemyPool)
+			updateAnimation(player.model, &player.animation, ANIMATION)
 
+			updateEnemyHitCollisions(&melePool, &enemyPool)
 			updateEnemyDummies(&enemyPool, player)
 		}
 		{ 	// Draw
@@ -76,6 +88,10 @@ main :: proc() {
 			drawPlayer(player)
 			drawEnemies(&enemyPool)
 			rl.DrawSphere(mouseInWorld(&camera), .25, rl.ORANGE)
+
+			for x in p {
+				rl.DrawSphere(x, .3, rl.BLACK)
+			}
 		}
 		{ 	// :: UI
 			// https://github.com/raysan5/raygui?tab=readme-ov-file
@@ -91,10 +107,20 @@ main :: proc() {
 }
 
 // TODO:
-// 0. Damage Dummy
-// 1. Enemy looking at player
-// 2. Prevent casting animation while areadying doing animation.
-// 6. Try out IamGui or other Clay?
+// 1.DamageDummy
+// -[x]HitFlash
+// -[]HitReaction
+// -[]HitStop
+// -[]KnockBack
+// -[]Sound
+// -[]Partcle
+// 2. AI
+// -[]Follow player {straight line}
+// -[]States
+// - Idle, running, attack, dead, hurt
+// 3. Player Die
+// -[]Health Bar'
+// -[]Game over screen with Clay
 
 
 // How many pools will I need to have, for sure 1 for player 1 for enemy and same for abilities. At least 4.

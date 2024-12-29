@@ -21,41 +21,74 @@ ActionSpawnMeleAtPlayer :: struct {
 }
 
 newSpawnCubeAbilityMouse :: proc(pool: ^[dynamic]vec3, camera: ^rl.Camera3D) -> AbilityConfig {
-	config: AbilityConfig
-	config.cost = 1
-	config.cd.time = 5
-	config.usageLimit = Limited{2, 2}
-	// ability.usageLimit = Infinate{}
-	config.action = ActionSpawnCubeAtMouse {
+	action := ActionSpawnCubeAtMouse {
 		camera = camera,
 		pool   = pool,
+	}
+
+	config: AbilityConfig
+	config.cost = 1
+	config.cd.max = 5
+	config.usageLimit = Limited{2, 2}
+	// ability.usageLimit = Infinate{}
+	config.state = playerStateAttack1 {
+		timer = Timer{max = .6},
+		trigger = .4,
+		animation = .UNARMED_MELEE_ATTACK_PUNCH_A,
+		speed = 1,
+		action = action,
 	}
 	return config
 }
 
 newSpawnCubeAbilityPlayer :: proc(pool: ^[dynamic]vec3, player: ^Player) -> AbilityConfig {
-	config: AbilityConfig
-	config.cost = 1
-	config.cd.time = 5
-	config.usageLimit = Limited{2, 2}
-	// ability.usageLimit = Infinate{}
-	config.action = ActionSpawnCubeAtPlayer {
+	action := ActionSpawnCubeAtPlayer {
 		player = player,
 		pool   = pool,
+	}
+
+	config: AbilityConfig
+	config.cost = 1
+	config.cd.max = 5
+	config.usageLimit = Limited{2, 2}
+	// ability.usageLimit = Infinate{}
+	config.state = playerStateAttack1 {
+		timer = Timer{max = .6},
+		trigger = .4,
+		animation = .UNARMED_MELEE_ATTACK_PUNCH_A,
+		speed = 1,
+		action = action,
 	}
 	return config
 }
 
+newPlayerDashAbility :: proc(player: ^Player, camera: ^rl.Camera3D) -> State {
+	// No action needed
+
+	// For now not using AbilityConfig; might have it's own config later.
+	return playerStateDashing{timer = Timer{max = .25}, animation = .DODGE_FORWARD, speed = 1}
+}
+
 newSpawnMeleAbilityPlayer :: proc(pool: ^AbilityPool, player: ^Player) -> AbilityConfig {
-	config: AbilityConfig
-	config.cost = 1
-	config.cd.time = 5
-	config.usageLimit = Limited{2, 2}
-	// ability.usageLimit = Infinate{}
-	config.action = ActionSpawnMeleAtPlayer {
+	action := ActionSpawnMeleAtPlayer {
 		player = player,
 		pool   = pool,
 	}
+
+	config: AbilityConfig
+	config.cost = 1
+	config.cd.max = 5
+	config.usageLimit = Limited{2, 2}
+	// ability.usageLimit = Infinate{}
+	config.state = playerStateAttack1 {
+		cancellable = true,
+		timer = Timer{max = .6},
+		trigger = .5,
+		animation = .UNARMED_MELEE_ATTACK_KICK,
+		speed = 1,
+		action = action,
+	}
+
 	return config
 }
 
