@@ -19,16 +19,7 @@ main :: proc() {
 	rl.InitWindow(SCREEN_W, SCREEN_H, "Game")
 	defer rl.CloseWindow()
 
-	POS := vec3{0, 0, 0}
-
-	camera := rl.Camera3D {
-		position   = {0, 6, -5},
-		target     = {},
-		up         = {0, 1, 0},
-		fovy       = 60,
-		projection = .PERSPECTIVE,
-	}
-	hitStop := HitStop{}
+	camera := newCamera()
 
 	player := initPlayer(engineerPath)
 
@@ -49,8 +40,7 @@ main :: proc() {
 	for !rl.WindowShouldClose() {
 		rl.BeginDrawing()
 		defer rl.EndDrawing()
-		rl.ClearBackground(rl.RAYWHITE)
-
+		rl.ClearBackground({123, 121, 126, 255})
 		{ 	// :: Player Actions
 			{
 				// SM :: Input
@@ -70,9 +60,11 @@ main :: proc() {
 		{ 	// :: Updates
 			updateAnimation(player.model, &player.animation, ANIMATION)
 
-			updateEnemyHitCollisions(&melePool, &enemyPool, &hitStop)
+			updateEnemyHitCollisions(&melePool, &enemyPool)
 			updateEnemyDummies(&enemyPool, player)
-			updateHitStop(&hitStop)
+			updateHitStop()
+			updateCameraPos(&camera, player)
+			updateCameraShake(&camera)
 		}
 		{ 	// Draw
 			rl.BeginMode3D(camera)
@@ -82,11 +74,11 @@ main :: proc() {
 			drawMeleInstances(&melePool)
 			drawPlayer(player)
 			drawEnemies(&enemyPool)
-			rl.DrawSphere(mouseInWorld(&camera), .25, rl.ORANGE)
 
 			for x in p {
 				rl.DrawSphere(x, .3, rl.BLACK)
 			}
+			drawCamera(&camera)
 		}
 		{ 	// :: UI
 			// https://github.com/raysan5/raygui?tab=readme-ov-file
@@ -94,31 +86,43 @@ main :: proc() {
 			// ~/Downloads/rguilayout_v4.0_linux_x64
 
 			rl.GuiSlider({72, 160, 120, 16}, "TimeScale", nil, &timeScale, .001, 3.0)
-			rl.GuiLabel({10, 30, 200, 20}, fmt.ctprint(player.spacial.rot))
 			rl.DrawFPS(10, 10)
 			// TODO: Draw time scale UI < ------ >
 		}
 	}
 }
 
+
+// Juice :: https://www.youtube.com/watch?v=3Omb5exWpd4
 // TODO:
 // 1.DamageDummy
 // -[x]HitFlash :: player white, enemy red
-// -[]HitReaction
+// -[x]HitReaction
 // -[x]HitStop :: with curve; in and out
-// -[]KnockBack 
-// -[]Sound
-// -[]Screen shake
-// -[]Enemy Shake
-// -[]Partcle
+// -[x]KnockBack 
+// 1.5 Camera
+// -[x]Camera Follow
+// -[x]Screen shake :: different levels 1 2 3 ; hit to player should be less than to enemy
+// UI
+// -[] CLAY
+// SOUND
+// -[]Hurt
+// -[]swing
+// -[]hit
 // 2. AI
 // -[]Follow player {straight line}
-// -[]States
-// - Idle, running, attack, dead, hurt
+// - States
+// -[x]Idle,
+// -[x]pushback
+// -[]running
+// -[]attack
+// -[]dead
+// -[]hurt
 // 3. Player Die
 // -[]Health Bar'
 // -[]Game over screen with Clay
-
+// 1.9
+// -[]Partcle
 
 // How many pools will I need to have, for sure 1 for player 1 for enemy and same for abilities. At least 4.
 //   I might also make different kinds of ability pools or enemy pools if I don't group them together.

@@ -57,7 +57,7 @@ removeAbility :: proc(pool: ^AbilityPool, activeIndex: int) {
 
 // ---- Update
 
-updateEnemyHitCollisions :: proc(pool: ^AbilityPool, enemies: ^EnemyDummyPool, h: ^HitStop) {
+updateEnemyHitCollisions :: proc(pool: ^AbilityPool, enemies: ^EnemyDummyPool) {
 	// Check collision
 	for &obj, index in pool {
 		for &enemy in enemies.active {
@@ -65,7 +65,8 @@ updateEnemyHitCollisions :: proc(pool: ^AbilityPool, enemies: ^EnemyDummyPool, h
 			if !hit do continue
 			// on hit
 			hurtEnemy(&enemy, 1)
-			h.enable = true
+			startHitStop()
+			addTrauma(.large)
 		}
 		removeAbility(pool, index)
 	}

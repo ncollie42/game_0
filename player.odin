@@ -6,20 +6,12 @@ import "core:math/linalg"
 import "core:reflect"
 import rl "vendor:raylib"
 
-// Move to spacial file?
-Spacial :: struct {
-	rot:     f32, // rotation / Orientation
-	pos:     vec3, // position
-	dir:     vec3, // what direction it's going towards  - using for projectiles ; not sure if we need; maybe change to velocity?
-	radious: f32, // For collision
-}
-
 Player :: struct {
-	lookAtMouse: bool,
-	model:       rl.Model,
-	animation:   Animation,
-	spacial:     Spacial,
-	state:       State,
+	lookAtMouse:   bool,
+	model:         rl.Model,
+	animation:     Animation,
+	using spacial: Spacial,
+	state:         State,
 	// collision:   Collision,
 }
 
@@ -45,7 +37,6 @@ updatePlayerState :: proc(player: ^Player, camera: ^rl.Camera3D) {
 	// target := mouseInWorld(camera)
 	// }
 
-	// UPDATE for each State
 	switch &s in player.state {
 	case playerStateBase:
 		dir := getVector()
@@ -66,7 +57,7 @@ updatePlayerState :: proc(player: ^Player, camera: ^rl.Camera3D) {
 
 	case playerStateDashing:
 		s.timer.left -= getDelta()
-		dir := getPlayerForwardPoint(player)
+		dir := getForwardPoint(player)
 
 		player.spacial.pos += dir * getDelta() * MOVE_SPEED * 2
 
@@ -91,7 +82,6 @@ updatePlayerState :: proc(player: ^Player, camera: ^rl.Camera3D) {
 		// }
 		// State update
 		progress := 1 - (s.timer.left / s.timer.max)
-		// fmt.println(progress, s.trigger, s.hasTriggered)
 		// progress := getAnimationProgress(player.animation, ANIMATION)
 		if progress >= s.trigger && !s.hasTriggered {
 			s.hasTriggered = true
@@ -115,15 +105,6 @@ playerInputDash :: proc(player: ^Player, state: State, camera: ^rl.Camera3D) {
 
 }
 
-getPlayerForwardPoint :: proc(player: ^Player) -> vec3 {
-	// Return a point between 0 1 [0,0]
-	mat := rl.MatrixRotateY(player.spacial.rot)
-	mat = mat * rl.MatrixTranslate(0, 0, 1)
-	point := rl.Vector3Transform({}, mat)
-	point = linalg.normalize(point)
-	return point
-}
-
 // New AbilityState into State -> Passed in 
 // OR Animation + ability info
 enterPlayerState :: proc(player: ^Player, state: State, camera: ^rl.Camera3D) {
@@ -145,7 +126,7 @@ enterPlayerState :: proc(player: ^Player, state: State, camera: ^rl.Camera3D) {
 		// Snap to player movement or forward dir if not moving
 		dir := getVector()
 		s.timer.left = s.timer.max
-		if dir == {} do dir = getPlayerForwardPoint(player)
+		if dir == {} do dir = getForwardPoint(player)
 
 		r := lookAtVec3(player.spacial.pos + dir, player.spacial.pos)
 		player.spacial.rot = lerpRAD(player.spacial.rot, r, 1)
@@ -179,8 +160,8 @@ playerStateBase :: struct {}
 
 playerStateDashing :: struct {
 	// TODO: maybe add Actions or other fields
-	timer:     Timer,
-	animation: ANIMATION_NAME,
+	timer:     Timer, // TODO: change to duration : f32
+	animation: ANIMATION_NAME, // TODO group these 2
 	speed:     f32,
 }
 

@@ -5,6 +5,7 @@ import "core:math"
 import rl "vendor:raylib"
 
 // https://bztsrc.gitlab.io/model3d/viewer/
+// Linear Algebra : https://www.youtube.com/watch?v=fNk_zzaMoSs&list=PLZHQObOWTQDPD3MizzM2xVFitgF8hE_ab&index=4
 
 // vec2 type
 vec2 :: [2]f32
@@ -18,7 +19,7 @@ UP :: vec3{0, 1, 0}
 // Delta
 timeScale: f32 = 1.0
 
-HitStop :: struct {
+hitStop := struct {
 	enable: bool,
 	time:   f32,
 	state:  enum {
@@ -27,46 +28,51 @@ HitStop :: struct {
 		hold,
 		fadeOut,
 	},
+}{}
+
+startHitStop :: proc() {
+	hitStop.enable = true
 }
 
-updateHitStop :: proc(h: ^HitStop) {
+updateHitStop :: proc() {
 	// Only use for player attacks
-	// 115 MS, 7 frames, ~.038 per phase.
-	stateDuration: f32 = .04
+	// 115 MS, 7 frames, ~.11666 tottal
+	// stateDuration: f32 = .04
+	inOut: f32 = .03
+	holdTime: f32 = .06
 
-	fmt.println(h.state, timeScale, h.time)
-	switch h.state {
+	switch hitStop.state {
 	case .waiting:
-		if h.enable {
-			h.state = .fadeIn
-			h.time = 0
-			h.enable = false
+		if hitStop.enable {
+			hitStop.state = .fadeIn
+			hitStop.time = 0
+			hitStop.enable = false
 		}
 	case .fadeIn:
-		h.time += rl.GetFrameTime()
-		amount := rl.Remap(h.time, 0, stateDuration, 0, 1)
+		hitStop.time += rl.GetFrameTime()
+		amount := rl.Remap(hitStop.time, 0, inOut, 0, 1)
 		timeScale = rl.Lerp(1, .1, amount)
 		if amount >= 1.0 {
-			h.state = .hold
-			h.time = stateDuration
+			hitStop.state = .hold
+			hitStop.time = holdTime
 		}
 	case .hold:
-		h.time -= rl.GetFrameTime()
-		if h.time <= 0 {
-			h.state = .fadeOut
-			h.time = 0
+		hitStop.time -= rl.GetFrameTime()
+		if hitStop.time <= 0 {
+			hitStop.state = .fadeOut
+			hitStop.time = 0
 		}
 	case .fadeOut:
-		h.time += rl.GetFrameTime()
-		amount := rl.Remap(h.time, 0, stateDuration, 0, 1)
+		hitStop.time += rl.GetFrameTime()
+		amount := rl.Remap(hitStop.time, 0, inOut, 0, 1)
 		timeScale = rl.Lerp(.1, 1, amount)
 		if amount >= 1.0 {
-			h.state = .waiting
-			h.time = 1
+			hitStop.state = .waiting
+			hitStop.time = 1
 			timeScale = 1.0
 		}
 	case:
-		h.state = .waiting
+		hitStop.state = .waiting
 	}
 }
 

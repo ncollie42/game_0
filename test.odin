@@ -83,7 +83,7 @@ newSpawnMeleAbilityPlayer :: proc(pool: ^AbilityPool, player: ^Player) -> Abilit
 	config.state = playerStateAttack1 {
 		cancellable = true,
 		timer = Timer{max = .6},
-		trigger = .5,
+		trigger = .4,
 		animation = .UNARMED_MELEE_ATTACK_KICK,
 		speed = 1,
 		action = action,
