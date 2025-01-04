@@ -1,7 +1,9 @@
 package main
 
+import clay "../../clay-odin"
 import "core:fmt"
 import "core:math"
+import "core:reflect"
 import rl "vendor:raylib"
 
 engineerPath: cstring = "/home/nico/gameDev/resources/KayKit_Adventurers/m3d/Engineer.m3d"
@@ -14,11 +16,13 @@ SCREEN_H :: 1080 / 2
 
 main :: proc() {
 	rl.SetTraceLogLevel(.ERROR)
+	// rl.SetConfigFlags({.WINDOW_HIGHDPI, .MSAA_4X_HINT})
 	rl.SetConfigFlags({.VSYNC_HINT})
 
 	rl.InitWindow(SCREEN_W, SCREEN_H, "Game")
 	defer rl.CloseWindow()
 
+	initClay()
 	camera := newCamera()
 
 	player := initPlayer(engineerPath)
@@ -28,6 +32,7 @@ main :: proc() {
 
 	enemyPool := initEnemyDummies(minionPath)
 	spawnDummyEnemy(&enemyPool, {1, 0, 2})
+	spawnDummyEnemy(&enemyPool, {2, 0, 3})
 
 	melePool := initMeleInstances()
 
@@ -52,6 +57,9 @@ main :: proc() {
 				}
 				if isKeyPressed(ACTION_0) {
 					enterPlayerState(&player, ability2.state, &camera)
+				}
+				if rl.IsKeyPressed(.ONE) {
+					rl.ToggleBorderlessWindowed() // Less hassle
 				}
 			}
 			// SM :: Update
@@ -81,17 +89,88 @@ main :: proc() {
 			drawCamera(&camera)
 		}
 		{ 	// :: UI
-			// https://github.com/raysan5/raygui?tab=readme-ov-file
-			// https://github.com/raysan5/raygui/blob/master/src/raygui.h
-			// ~/Downloads/rguilayout_v4.0_linux_x64
+			clayFrameSetup()
+			clay.BeginLayout()
+			defer {
+				layout := clay.EndLayout()
+				clayRaylibRender(&layout)
+			}
 
-			rl.GuiSlider({72, 160, 120, 16}, "TimeScale", nil, &timeScale, .001, 3.0)
-			rl.DrawFPS(10, 10)
-			// TODO: Draw time scale UI < ------ >
+			// Start UI
+			if clay.UI(clay.ID("root"), clay.Layout(layoutRoot)) {
+				if clay.UI(
+					clay.ID("top"),
+					clay.Layout(
+						{sizing = {height = clay.SizingPercent(.2), width = clay.SizingGrow({})}},
+					),
+					clay.Rectangle(testPannel),
+				) {}
+				if clay.UI(
+					clay.ID("center"),
+					clay.Layout({sizing = expand}),
+					// clay.Rectangle(testPannel),
+				) {
+					// if debug... show
+					if clay.UI(
+						clay.ID("DEBUG"),
+						clay.Layout(layoutDebug),
+						clay.Rectangle(debugPannel),
+					) {
+						uiText("DEBUG", .large)
+						devider()
+						uiText(fmt.tprintf("%d FPS", rl.GetFPS()), .mid)
+						for enemy in enemyPool.active {
+							state := reflect.union_variant_type_info(enemy.state)
+							uiText(fmt.tprint(state), .mid)
+							debugEnemyHPBar(enemy.health)
+						}
+					}
+				}
+				if clay.UI(
+					clay.ID("bottom"),
+					clay.Layout(
+						{
+							sizing = {
+								height = clay.SizingPercent(.2),
+								width = clay.SizingGrow({}),
+							},
+							childGap = childGap,
+						},
+					),
+				) {
+					if clay.UI(
+						clay.ID("HP_XP"),
+						clay.Layout(
+							{
+								sizing = expand,
+								layoutDirection = .TOP_TO_BOTTOM,
+								childGap = childGap,
+							},
+						),
+						clay.Rectangle(testPannel),
+					) {
+						playerHPBar(.8)
+						// playerHPBar(.8)
+					}
+					if clay.UI(
+						clay.ID("Abilities"),
+						clay.Layout({sizing = expand}),
+						clay.Rectangle(testPannel),
+					) {
+
+					}
+					if clay.UI(
+						clay.ID("??"),
+						clay.Layout({sizing = expand}),
+						clay.Rectangle(testPannel),
+					) {
+
+					}
+				}
+			}
 		}
 	}
 }
-
 
 // Juice :: https://www.youtube.com/watch?v=3Omb5exWpd4
 // TODO:

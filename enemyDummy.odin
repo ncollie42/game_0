@@ -39,6 +39,10 @@ EnemyHurt :: struct {
 // ---- Closure :: Action
 // ---- Init
 initEnemyDummies :: proc(path: cstring) -> EnemyDummyPool {
+	// It looks like we can share the same shader for all enemies
+	// shader := rl.LoadShader(nil, "shaders/grayScale.fs")
+	shader := rl.LoadShader(nil, "shaders/flash.fs")
+
 	pool := EnemyDummyPool {
 		active = make([dynamic]Enemy, 0, 10),
 		free   = make([dynamic]Enemy, 10, 10),
@@ -48,6 +52,7 @@ initEnemyDummies :: proc(path: cstring) -> EnemyDummyPool {
 		// Note: is loadModel slow? can I load once and dup memory for every model after?
 		enemy.model = rl.LoadModel(path)
 		assert(enemy.model.meshCount != 0, "No mesh")
+		enemy.model.materials[1].shader = shader
 		enemy.health.max = 10
 	}
 	return pool
@@ -121,23 +126,23 @@ drawEnemies :: proc(enemies: ^EnemyDummyPool) {
 }
 
 drawEnemy :: proc(enemy: Enemy) {
-	// rl.DrawModelEx(enemy.model, enemy.spacial.pos, UP, rl.RAD2DEG * enemy.spacial.rot, 1, rl.BLANK)
-	// Get around for hitflash untill we add in a shader? This makes it transperent for a bit and it's a little weird
-	rl.DrawModelEx(
-		enemy.model,
-		enemy.spacial.pos,
-		UP,
-		rl.RAD2DEG * enemy.spacial.rot,
-		1,
-		{255, 255, 255, u8(enemy.hitFlashLerp)},
-		// {0, 0, 0, u8(enemy.hitFlash)},
-	)
+	{ 	// Apply hit flash
+		// Is it slow to getShaderLocation every time, do we want to move this somewhere else?
+		shader := enemy.model.materials[1].shader
+		flashIndex := rl.GetShaderLocation(shader, "flash")
+
+		data := enemy.hitFlash
+		rl.SetShaderValue(shader, flashIndex, &data, .FLOAT)
+	}
+
+	rl.DrawModelEx(enemy.model, enemy.spacial.pos, UP, rl.RAD2DEG * enemy.spacial.rot, 1, rl.WHITE)
 }
 
 // Update Funcs
 hurtEnemy :: proc(enemy: ^Enemy, amount: f32) {
 	hurt(enemy, amount)
-	enemy.health.hitFlashLerp = 0 // Move into generic hurt?
+	enemy.health.hitFlash = 1 // Move into generic hurt?
+
 	// TODO: Add this into ability? Pass in from hurt?
 	// state := EnemyHurt {
 	// 	duration  = .5,

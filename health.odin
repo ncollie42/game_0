@@ -5,18 +5,17 @@ import rl "vendor:raylib"
 
 
 Health :: struct {
-	max:          f32,
-	current:      f32,
-	showing:      f32,
-	hitFlashLerp: f32, // between 0 and 255
+	max:      f32,
+	current:  f32,
+	showing:  f32,
+	hitFlash: f32, // [0,1] 
 }
 
 
 updateHealth :: proc(hp: ^Health) {
 	hp.showing = rl.Lerp(hp.showing, hp.current, .1)
 
-	// animateToTargetf32(&hp.hitFlashLerp, 255, getDelta())
-	hp.hitFlashLerp = rl.Lerp(hp.hitFlashLerp, 255, getDelta() * 2)
+	hp.hitFlash = rl.Clamp(hp.hitFlash - getDelta() * 3, 0, 1)
 
 	if hp.showing <= 0 {
 		// Game Over if player
