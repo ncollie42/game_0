@@ -53,10 +53,10 @@ newSpawnCubeAbilityPlayer :: proc(pool: ^[dynamic]vec3, player: ^Player) -> Abil
 	config.usageLimit = Limited{2, 2}
 	// ability.usageLimit = Infinate{}
 	config.state = playerStateAttack1 {
-		timer = Timer{max = .6},
+		timer = Timer{max = .3},
 		trigger = .4,
 		animation = .UNARMED_MELEE_ATTACK_PUNCH_A,
-		speed = 1,
+		speed = 2.2,
 		action = action,
 	}
 	return config
@@ -80,12 +80,19 @@ newSpawnMeleAbilityPlayer :: proc(pool: ^AbilityPool, player: ^Player) -> Abilit
 	config.cd.max = 5
 	config.usageLimit = Limited{2, 2}
 	// ability.usageLimit = Infinate{}
+	// config.state = playerStateAttack1 {
+	// 	cancellable = true,
+	// 	timer = Timer{max = .6},
+	// 	trigger = .4,
+	// 	animation = .UNARMED_MELEE_ATTACK_KICK,
+	// 	speed = 1,
+	// 	action = action,
+	// }
 	config.state = playerStateAttack1 {
-		cancellable = true,
-		timer = Timer{max = .6},
+		timer = Timer{max = .4},
 		trigger = .4,
-		animation = .UNARMED_MELEE_ATTACK_KICK,
-		speed = 1,
+		animation = .UNARMED_MELEE_ATTACK_PUNCH_B,
+		speed = 2,
 		action = action,
 	}
 

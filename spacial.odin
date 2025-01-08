@@ -6,27 +6,40 @@ import "core:math/linalg"
 import "core:reflect"
 import rl "vendor:raylib"
 
+box :: rl.BoundingBox
+sphere :: f32 // radious
+// bounds ::union{box, sphere}
 Spacial :: struct {
-	rot:     f32, // rotation / Orientation
+	rot:     f32, // rotation / Orientation in Radians
 	pos:     vec3, // position
-	dir:     vec3, // what direction it's going towards  - using for projectiles ; not sure if we need; maybe change to velocity?
-	radious: f32, // For collision
+	shape:   union {
+		// For collision
+		box,
+		sphere,
+	},
+	radious: f32, // For collision - TODO: remove
 }
 
 getBackwardPoint :: proc(obj: ^Spacial) -> vec3 {
 	// Return a point between 0 1 [0,0]
 	mat := rl.MatrixRotateY(obj.rot)
-	mat = mat * rl.MatrixTranslate(0, 0, -1)
-	point := rl.Vector3Transform({}, mat)
-	point = linalg.normalize(point)
+	point := rl.Vector3Transform({0, 0, -1}, mat)
+	point = normalize(point)
 	return point
 }
 
 getForwardPoint :: proc(obj: ^Spacial) -> vec3 {
 	// Return a point between 0 1 [0,0]
 	mat := rl.MatrixRotateY(obj.rot)
-	mat = mat * rl.MatrixTranslate(0, 0, 1)
-	point := rl.Vector3Transform({}, mat)
-	point = linalg.normalize(point)
+	point := rl.Vector3Transform({0, 0, 1}, mat)
+	point = normalize(point)
+	return point
+}
+
+directionFromRotation :: proc(rotation: f32) -> vec3 {
+	// Return a point between 0 1 [0,0]
+	mat := rl.MatrixRotateY(rotation)
+	point := rl.Vector3Transform({0, 0, 1}, mat)
+	point = normalize(point)
 	return point
 }

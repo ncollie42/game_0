@@ -15,7 +15,7 @@ Health :: struct {
 updateHealth :: proc(hp: ^Health) {
 	hp.showing = rl.Lerp(hp.showing, hp.current, .1)
 
-	hp.hitFlash = rl.Clamp(hp.hitFlash - getDelta() * 3, 0, 1)
+	hp.hitFlash = rl.Clamp(hp.hitFlash - getDelta() * 4, 0, 1)
 
 	if hp.showing <= 0 {
 		// Game Over if player

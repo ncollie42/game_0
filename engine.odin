@@ -2,6 +2,7 @@ package main
 
 import "core:fmt"
 import "core:math"
+import "core:math/linalg"
 import rl "vendor:raylib"
 
 // https://bztsrc.gitlab.io/model3d/viewer/
@@ -17,7 +18,7 @@ vec4 :: [4]f32
 UP :: vec3{0, 1, 0}
 
 // Delta
-timeScale: f32 = 1.0
+timeScale: f32 = 1
 
 hitStop := struct {
 	enable: bool,
@@ -35,6 +36,12 @@ startHitStop :: proc() {
 }
 
 updateHitStop :: proc() {
+	if rl.IsKeyPressed(.PAGE_DOWN) {
+		timeScale -= .25
+	}
+	if rl.IsKeyPressed(.PAGE_UP) {
+		timeScale += .25
+	}
 	// Only use for player attacks
 	// 115 MS, 7 frames, ~.11666 tottal
 	// stateDuration: f32 = .04
@@ -411,3 +418,10 @@ almostEquals :: proc(a: f32, b: f32, epsilon: f32 = 0.001) -> bool {
 // 	animate_to_target_f32(&value.x, target.x, delta_t, rate, good_enough)
 // 	animate_to_target_f32(&value.y, target.y, delta_t, rate, good_enough)
 // }
+
+normalize :: proc(vec: vec3) -> vec3 {
+	// You can't normalize an empty vector 
+	if vec == {} {return {}}
+
+	return linalg.normalize(vec)
+}

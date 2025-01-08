@@ -111,7 +111,7 @@ clayFrameSetup :: proc() {
 
 	clay.SetLayoutDimensions({cast(f32)rl.GetScreenWidth(), cast(f32)rl.GetScreenHeight()})
 
-	if (rl.IsKeyPressed(.TAB)) {
+	if (rl.IsKeyPressed(.MINUS)) {
 		debugModeEnabled = !debugModeEnabled
 		clay.SetDebugModeEnabled(debugModeEnabled)
 	}

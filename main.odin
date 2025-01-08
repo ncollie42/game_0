@@ -31,8 +31,12 @@ main :: proc() {
 	assert(ANIMATION.total != 0, "No Anim")
 
 	enemyPool := initEnemyDummies(minionPath)
-	spawnDummyEnemy(&enemyPool, {1, 0, 2})
-	spawnDummyEnemy(&enemyPool, {2, 0, 3})
+
+	env := initEnv()
+
+	for ii in 0 ..< 2 {
+		spawnDummyEnemy(&enemyPool, {-3, 0, f32(ii) * .1})
+	}
 
 	melePool := initMeleInstances()
 
@@ -40,6 +44,11 @@ main :: proc() {
 	p := [dynamic]vec3{}
 	ability2 := newSpawnCubeAbilityPlayer(&p, &player)
 	dash := newPlayerDashAbility(&player, &camera)
+
+	UI := struct {
+		debug:   bool,
+		hideAll: bool,
+	}{}
 
 	f: f32 = 0
 	for !rl.WindowShouldClose() {
@@ -69,7 +78,8 @@ main :: proc() {
 			updateAnimation(player.model, &player.animation, ANIMATION)
 
 			updateEnemyHitCollisions(&melePool, &enemyPool)
-			updateEnemyDummies(&enemyPool, player)
+			updateEnemyDummies(&enemyPool, player, &env)
+			applyBoundaryForces(&enemyPool, &env)
 			updateHitStop()
 			updateCameraPos(&camera, player)
 			updateCameraShake(&camera)
@@ -82,6 +92,7 @@ main :: proc() {
 			drawMeleInstances(&melePool)
 			drawPlayer(player)
 			drawEnemies(&enemyPool)
+			drawEnv(&env)
 
 			for x in p {
 				rl.DrawSphere(x, .3, rl.BLACK)
@@ -95,7 +106,12 @@ main :: proc() {
 				layout := clay.EndLayout()
 				clayRaylibRender(&layout)
 			}
-
+			rl.DrawFPS(10, 10)
+			UI.hideAll = true
+			if rl.IsKeyReleased(.TAB) {
+				UI.debug = !UI.debug
+			}
+			if UI.hideAll do continue
 			// Start UI
 			if clay.UI(clay.ID("root"), clay.Layout(layoutRoot)) {
 				if clay.UI(
@@ -110,19 +126,20 @@ main :: proc() {
 					clay.Layout({sizing = expand}),
 					// clay.Rectangle(testPannel),
 				) {
-					// if debug... show
-					if clay.UI(
-						clay.ID("DEBUG"),
-						clay.Layout(layoutDebug),
-						clay.Rectangle(debugPannel),
-					) {
-						uiText("DEBUG", .large)
-						devider()
-						uiText(fmt.tprintf("%d FPS", rl.GetFPS()), .mid)
-						for enemy in enemyPool.active {
-							state := reflect.union_variant_type_info(enemy.state)
-							uiText(fmt.tprint(state), .mid)
-							debugEnemyHPBar(enemy.health)
+					if UI.debug {
+						if clay.UI(
+							clay.ID("DEBUG"),
+							clay.Layout(layoutDebug),
+							clay.Rectangle(debugPannel),
+						) {
+							uiText("DEBUG", .large)
+							devider()
+							uiText(fmt.tprintf("%d FPS", rl.GetFPS()), .mid)
+							for enemy in enemyPool.active {
+								state := reflect.union_variant_type_info(enemy.state)
+								uiText(fmt.tprint(state), .mid)
+								debugEnemyHPBar(enemy.health)
+							}
 						}
 					}
 				}
@@ -183,7 +200,7 @@ main :: proc() {
 // -[x]Camera Follow
 // -[x]Screen shake :: different levels 1 2 3 ; hit to player should be less than to enemy
 // UI
-// -[] CLAY
+// -[x] CLAY
 // SOUND
 // -[]Hurt
 // -[]swing

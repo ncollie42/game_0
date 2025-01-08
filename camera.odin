@@ -11,6 +11,7 @@ import rl "vendor:raylib"
 // https://www.youtube.com/watch?v=2JXR7IASSog
 
 camDist: vec3 = {0, 6, -5}
+// camDist: vec3 = {0, 12, -10}
 CAMERA_SPEED :: 5
 
 screenShake := struct {
@@ -98,7 +99,7 @@ addTrauma :: proc(amount: enum {
 }
 
 zoomOut :: proc(camera: ^rl.Camera3D) {
-	rl.CameraMoveToTarget(camera, 3)
+	rl.CameraMoveToTarget(camera, 1)
 }
 
 updateCameraPos :: proc(camera: ^rl.Camera3D, player: Player) {
@@ -107,6 +108,10 @@ updateCameraPos :: proc(camera: ^rl.Camera3D, player: Player) {
 	// Move 10% closer every frame
 	camera.position += (targetPos - camera.position) * .1
 	camera.target = camera.position - camDist
+
+	if rl.IsKeyDown(.T) {
+		zoomOut(camera)
+	}
 }
 
 drawCamera :: proc(camera: ^rl.Camera3D) {

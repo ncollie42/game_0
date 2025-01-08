@@ -23,7 +23,6 @@ initPlayer :: proc(path: cstring) -> Player {
 	player.model = rl.LoadModel(path)
 	assert(player.model.meshCount != 0, "No mesh")
 
-	player.spacial.dir = {0, 0, 1}
 	// enterPlayerState(&player, playerStateBase{})
 	return player
 }
@@ -160,16 +159,16 @@ playerStateBase :: struct {}
 
 playerStateDashing :: struct {
 	// TODO: maybe add Actions or other fields
-	timer:     Timer, // TODO: change to duration : f32
+	timer:     Timer,
 	animation: ANIMATION_NAME, // TODO group these 2
 	speed:     f32,
 }
 
 // Can only be set from player_input checks with other abilitys and not in update
 playerStateAttack1 :: struct {
-	cancellable:  bool,
 	// Can cancel
-	// Durration of state
+	cancellable:  bool,
+	// Need timer to know how deep into the state we are
 	timer:        Timer,
 	// Animation Data
 	animation:    ANIMATION_NAME,
