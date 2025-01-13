@@ -10,9 +10,9 @@ ActionSpawnCubeAtMouse :: struct {
 	pool:   ^[dynamic]vec3,
 }
 
-ActionSpawnCubeAtPlayer :: struct {
-	player: ^Player,
-	pool:   ^[dynamic]vec3,
+ActionSpawnCubeAtLocation :: struct {
+	location: ^Spacial,
+	pool:     ^[dynamic]vec3,
 }
 
 ActionSpawnMeleAtPlayer :: struct {
@@ -41,10 +41,11 @@ newSpawnCubeAbilityMouse :: proc(pool: ^[dynamic]vec3, camera: ^rl.Camera3D) -> 
 	return config
 }
 
-newSpawnCubeAbilityPlayer :: proc(pool: ^[dynamic]vec3, player: ^Player) -> AbilityConfig {
-	action := ActionSpawnCubeAtPlayer {
-		player = player,
-		pool   = pool,
+// newSpawnCubeAbilityPlayer :: proc(pool: ^[dynamic]vec3, player: ^Player) -> AbilityConfig {
+newSpawnCubeAbilityLocation :: proc(pool: ^[dynamic]vec3, loc: ^Spacial) -> AbilityConfig {
+	action := ActionSpawnCubeAtLocation {
+		location = loc,
+		pool     = pool,
 	}
 
 	config: AbilityConfig
@@ -106,7 +107,17 @@ spawnCubeAtMouse :: proc(pool: ^[dynamic]vec3, camera: ^rl.Camera3D) {
 	spawnCube(pool, target)
 }
 
-spawnCubeAtPlayer :: proc(pool: ^[dynamic]vec3, player: ^Player) {
+spawnCubeAtLocation :: proc(pool: ^[dynamic]vec3, loc: ^Spacial) {
+	pos := loc.pos
+	mat := rl.MatrixTranslate(pos.x, pos.y, pos.z)
+	mat = mat * rl.MatrixRotateY(loc.rot)
+	mat = mat * rl.MatrixTranslate(0, 0, 1)
+	p := rl.Vector3Transform({}, mat)
+
+	spawnCube(pool, p)
+}
+
+spawnMeleAtPlayer :: proc(pool: ^[dynamic]vec3, player: ^Player) {
 	pos := player.spacial.pos
 	mat := rl.MatrixTranslate(pos.x, pos.y, pos.z)
 	mat = mat * rl.MatrixRotateY(player.spacial.rot)

@@ -249,6 +249,7 @@ findClearPath :: proc(boid: ^Enemy, objs: ^[dynamic]EnvObj) -> vec3 {
 		right_ray := makeRay(boid, angle)
 		left_ray := makeRay(boid, -angle)
 
+		// TODO: use noice to pick LEFT or RIGHT
 		if hitEnv(dist, right_ray, objs) || hitEnv(dist, left_ray, objs) {
 			forward_is_clear = false
 			break

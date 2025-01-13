@@ -65,7 +65,7 @@ debugPannel := clay.RectangleElementConfig {
 }
 
 testPannel := clay.RectangleElementConfig {
-	color = {90, 90, 90, 180},
+	// color = {90, 90, 90, 180},
 }
 
 
@@ -147,7 +147,8 @@ devider :: proc() {
 }
 
 // Progress bar
-playerHPBar :: proc(amount: f32) {
+playerHPBar :: proc(hp: Health) {
+	amount := hp.showing / hp.max
 	// Do we make it percent based or fixed size? width = clay.SizingFixed(250)
 	if clay.UI(
 		clay.Layout({sizing = {width = clay.SizingPercent(.8), height = clay.SizingFixed(40)}}),
@@ -156,7 +157,7 @@ playerHPBar :: proc(amount: f32) {
 
 		// Text
 		if clay.UI(clay.Floating({offset = {-20, -8}, attachment = {parent = .CENTER_CENTER}})) {
-			uiText("50/100", .mid)
+			uiText(fmt.tprintf("%.0f/%.0f", hp.current, hp.max), .mid)
 		}
 
 		// Fill

@@ -10,6 +10,7 @@ Enemy :: struct {
 	using spacial:     Spacial,
 	using health:      Health,
 	state:             EnemyState,
+	attackCD:          Timer, // CD for attacking
 	// boid TODO: remove later on or move out
 	range:             f32, // seprationRadius
 	inRangeSeperation: bool,
@@ -30,10 +31,18 @@ EnemyDummyPool :: struct {
 EnemyState :: union {
 	EnemyStateBase,
 	EnemyPushback,
+	EnemyAttack1,
 	EnemyHurt,
 }
 
 EnemyStateBase :: struct {}
+EnemyAttack1 :: struct {
+	animation:    ANIMATION_NAME,
+	animSpeed:    f32,
+	duration:     f32, // Duration of state, player uses a timer, trying this instead.
+	trigger:      f32, // different than player to see how this works, trigger is time not [0,1]
+	hasTriggered: bool,
+}
 EnemyPushback :: struct {
 	duration:  f32,
 	animation: ANIMATION_NAME,
@@ -48,14 +57,14 @@ EnemyHurt :: struct {
 // ----------------------------- New System
 // ---- Closure :: Action
 // ---- Init
-enemyPoolSize := 50
+enemyPoolSize := 100
 initEnemyDummies :: proc(path: cstring) -> EnemyDummyPool {
 	// It looks like we can share the same shader for all enemies
 	// shader := rl.LoadShader(nil, "shaders/grayScale.fs")
 	shader := rl.LoadShader(nil, "shaders/flash.fs")
 
 	pool := EnemyDummyPool {
-		active = make([dynamic]Enemy, 0, enemyPoolSize),
+		active = make([dynamic]Enemy, 0, 0),
 		free   = make([dynamic]Enemy, enemyPoolSize, enemyPoolSize),
 	}
 
@@ -64,8 +73,14 @@ initEnemyDummies :: proc(path: cstring) -> EnemyDummyPool {
 		enemy.model = rl.LoadModel(path)
 		assert(enemy.model.meshCount != 0, "No mesh")
 		enemy.model.materials[1].shader = shader
-		enemy.health.max = 10
+		enemy.health = Health {
+			max     = 10,
+			current = 10,
+		}
 		enemy.range = 1.75
+		enemy.attackCD = Timer {
+			max = 2.0,
+		}
 	}
 	return pool
 }
@@ -85,6 +100,14 @@ spawnDummyEnemy :: proc(pool: ^EnemyDummyPool, pos: vec3) {
 
 // ---- Despawn
 
+despawnAllEnemies :: proc(pool: ^EnemyDummyPool) {
+	for enemy, ii in pool.active {
+		append(&pool.free, enemy)
+	}
+	clear(&pool.active)
+}
+
+
 despawnEnemy :: proc(pool: ^EnemyDummyPool, index: int) {
 	// Swap and remove last
 	append(&pool.free, pool.active[index])
@@ -92,9 +115,14 @@ despawnEnemy :: proc(pool: ^EnemyDummyPool, index: int) {
 }
 
 // ---- Update
-updateEnemyDummies :: proc(enemies: ^EnemyDummyPool, player: Player, objs: ^[dynamic]EnvObj) {
+updateEnemyDummies :: proc(
+	enemies: ^EnemyDummyPool,
+	player: Player,
+	objs: ^[dynamic]EnvObj,
+	pool: ^AbilityPool,
+) {
 	for &enemy, index in enemies.active {
-		updateDummy(&enemy, player, enemies, objs)
+		updateDummy(&enemy, player, enemies, objs, pool)
 
 		updateHealth(&enemy)
 		if enemy.health.current <= 0 {
@@ -122,7 +150,7 @@ updateDummyMovement :: proc(
 			seperationForce += boidSeperation2(enemy, enemies)
 		}
 		{ 	// player
-			seperationForce += boidSeperation(enemy, player) // Might want to  make it its own force? 
+			seperationForce += boidSeperation(enemy, player) * 1.5 // Might want to  make it its own force? // Change to straffing using noise if in range of player?
 		}
 		// enemy.seperationDir = seperationForce
 	}
@@ -168,30 +196,66 @@ updateDummy :: proc(
 	player: Player,
 	enemies: ^EnemyDummyPool,
 	objs: ^[dynamic]EnvObj,
+	pool: ^AbilityPool,
 ) {
+	enemy.attackCD.left -= getDelta()
+
 	switch &s in enemy.state {
 	case EnemyStateBase:
-		updateDummyMovement(enemy, player, enemies, objs) // Boids
+		// TODO: Add extra states? Going to location ; fighting ; upclose to something ; ext
+		// When next to player, it's weird 
+		if linalg.distance(enemy.pos, player.pos) > 2 {
+			updateDummyMovement(enemy, player, enemies, objs) // Boids
+			enemy.animation.current = .WALKING_B
+		} else {
+			target := normalize(player.pos - enemy.pos) // toward player -> Target
+			r := lookAtVec3(target, {})
+			enemy.spacial.rot = lerpRAD(enemy.spacial.rot, r, getDelta() * ENEMY_TURN_SPEED)
+			enemy.animation.current = .H2_MELEE_IDLE
+		}
 
+		if linalg.distance(enemy.pos, player.pos) < 2 && enemy.attackCD.left <= 0 {
+			enemy.attackCD.left = enemy.attackCD.max // Start timer again
+			enterEnemyState(
+				enemy,
+				EnemyAttack1 {
+					duration = 1,
+					trigger = .3,
+					animation = .H2_MELEE_ATTACK_CHOP,
+					animSpeed = 1,
+				},
+			)
+		}
 	// if in range of player attack? Idle animation and running animation
+	case EnemyAttack1:
+		s.duration -= getDelta()
+		if s.duration <= 0 {
+			enterEnemyState(enemy, EnemyStateBase{})
+			return
+		}
+
+		if s.hasTriggered do return
+
+		if s.duration <= s.trigger {
+			s.hasTriggered = true
+			spawnInstanceFrontOfLocation(pool, enemy)
+		}
 	case EnemyPushback:
 		dir := getBackwardPoint(enemy)
 		enemy.spacial.pos += dir * getDelta() * PUSH_BACK_SPEED
 
 		s.duration -= getDelta()
 		if s.duration <= 0 {
-			enemy.state = EnemyStateBase{}
-			enemy.animation.current = .IDLE
+			enterEnemyState(enemy, EnemyStateBase{})
 		}
 	case EnemyHurt:
 		s.duration -= getDelta()
+		// Use enter enemy state
 		if s.duration <= 0 {
-			enemy.state = EnemyStateBase{}
-			enemy.animation.current = .IDLE
+			enterEnemyState(enemy, EnemyStateBase{})
 		}
 	case:
-		enemy.state = EnemyStateBase{}
-		enemy.animation.current = .IDLE
+		enterEnemyState(enemy, EnemyStateBase{})
 	}
 }
 
@@ -308,14 +372,8 @@ boidCohesion :: proc(boid: ^Enemy, enemies: ^EnemyDummyPool) -> vec3 {
 }
 
 drawEnemy :: proc(enemy: Enemy) {
-	{ 	// Apply hit flash
-		// Is it slow to getShaderLocation every time, do we want to move this somewhere else?
-		shader := enemy.model.materials[1].shader
-		flashIndex := rl.GetShaderLocation(shader, "flash")
-
-		data := enemy.hitFlash
-		rl.SetShaderValue(shader, flashIndex, &data, .FLOAT)
-	}
+	// Apply hit flash
+	drawHitFlash(enemy.model, enemy.health)
 
 	rl.DrawModelEx(enemy.model, enemy.spacial.pos, UP, rl.RAD2DEG * enemy.spacial.rot, 1, rl.WHITE)
 
@@ -355,27 +413,6 @@ drawEnemy :: proc(enemy: Enemy) {
 }
 
 // Update Funcs
-hurtEnemy :: proc(enemy: ^Enemy, amount: f32) {
-	hurt(enemy, amount)
-	enemy.health.hitFlash = 1 // Move into generic hurt?
-
-	// TODO: Add this into ability? Pass in from hurt?
-	// state := EnemyHurt {
-	// 	duration  = .5,
-	// 	animation = .HIT_A,
-	// 	animSpeed     = 1.0,
-	// }
-	state := EnemyPushback {
-		duration  = .35,
-		animation = .DODGE_BACKWARD,
-		animSpeed = 1,
-	}
-	enterEnemyState(enemy, state)
-	// enterEnemyState
-	// Sound
-	// Push back
-	// Particle
-}
 
 
 // ------ Eneter State
@@ -385,7 +422,11 @@ enterEnemyState :: proc(enemy: ^Enemy, state: EnemyState) {
 	switch &s in enemy.state {
 	case EnemyStateBase:
 		enemy.animation.speed = 1.0
-		enemy.animation.current = .IDLE
+		enemy.animation.current = .WALKING_B
+	case EnemyAttack1:
+		// Face player
+		enemy.animation.speed = s.animSpeed
+		enemy.animation.current = s.animation
 	case EnemyPushback:
 		// TODO: update facing direction
 		enemy.animation.speed = s.animSpeed
@@ -395,4 +436,5 @@ enterEnemyState :: proc(enemy: ^Enemy, state: EnemyState) {
 		enemy.animation.speed = s.animSpeed
 		enemy.animation.current = s.animation
 	}
+	//TODO: default case
 }

@@ -3,7 +3,6 @@ package main
 import clay "../../clay-odin"
 import "core:fmt"
 import "core:math"
-import "core:reflect"
 import rl "vendor:raylib"
 
 engineerPath: cstring = "/home/nico/gameDev/resources/KayKit_Adventurers/m3d/Engineer.m3d"
@@ -14,8 +13,16 @@ minionPath: cstring = "/home/nico/gameDev/resources/KayKit_Skeletons/m3d/Skeleto
 SCREEN_W :: 1920 / 2
 SCREEN_H :: 1080 / 2
 
+// PIXEL_LOOK
+P_W :: SCREEN_W
+P_H :: SCREEN_H
+// P_W :: 1920 / 5
+// P_H :: 1080 / 5
+
+
 main :: proc() {
 	rl.SetTraceLogLevel(.ERROR)
+	// rl.SetConfigFlags({.WINDOW_RESIZABLE})
 	// rl.SetConfigFlags({.WINDOW_HIGHDPI, .MSAA_4X_HINT})
 	rl.SetConfigFlags({.VSYNC_HINT})
 
@@ -23,202 +30,72 @@ main :: proc() {
 	defer rl.CloseWindow()
 
 	initClay()
-	camera := newCamera()
 
-	player := initPlayer(engineerPath)
+	initAudio()
+	defer rl.CloseAudioDevice()
 
-	ANIMATION.anims = rl.LoadModelAnimations(engineerPath, &ANIMATION.total)
-	assert(ANIMATION.total != 0, "No Anim")
+	game := initGame()
 
-	enemyPool := initEnemyDummies(minionPath)
-
-	env := initEnv()
-
-	for ii in 0 ..< 2 {
-		spawnDummyEnemy(&enemyPool, {-3, 0, f32(ii) * .1})
-	}
-
-	melePool := initMeleInstances()
-
-	ability := newSpawnMeleAbilityPlayer(&melePool, &player)
-	p := [dynamic]vec3{}
-	ability2 := newSpawnCubeAbilityPlayer(&p, &player)
-	dash := newPlayerDashAbility(&player, &camera)
-
-	UI := struct {
-		debug:   bool,
-		hideAll: bool,
+	// TODO: maybe change to a union for each state
+	app := enum {
+		HOME,
+		PLAYING,
+		OTHER,
 	}{}
 
-	f: f32 = 0
 	for !rl.WindowShouldClose() {
 		rl.BeginDrawing()
 		defer rl.EndDrawing()
 		rl.ClearBackground({123, 121, 126, 255})
-		{ 	// :: Player Actions
-			{
-				// SM :: Input
-				playerInputDash(&player, dash, &camera)
-				// TODO: Put into func; swap with 'Hand' logic stuff
-				if isKeyPressed(BLOCK) {
-					// doAction(ability.action)
-					enterPlayerState(&player, ability.state, &camera)
-				}
-				if isKeyPressed(ACTION_0) {
-					enterPlayerState(&player, ability2.state, &camera)
-				}
-				if rl.IsKeyPressed(.ONE) {
-					rl.ToggleBorderlessWindowed() // Less hassle
-				}
-			}
-			// SM :: Update
-			updatePlayerState(&player, &camera)
-		}
-		{ 	// :: Updates
-			updateAnimation(player.model, &player.animation, ANIMATION)
 
-			updateEnemyHitCollisions(&melePool, &enemyPool)
-			updateEnemyDummies(&enemyPool, player, &env)
-			applyBoundaryForces(&enemyPool, &env)
-			updateHitStop()
-			updateCameraPos(&camera, player)
-			updateCameraShake(&camera)
-		}
-		{ 	// Draw
-			rl.BeginMode3D(camera)
-			defer rl.EndMode3D()
-			rl.DrawGrid(100, .25)
-
-			drawMeleInstances(&melePool)
-			drawPlayer(player)
-			drawEnemies(&enemyPool)
-			drawEnv(&env)
-
-			for x in p {
-				rl.DrawSphere(x, .3, rl.BLACK)
+		switch app {
+		case .HOME:
+			if rl.IsKeyPressed(.SPACE) {
+				resetGame(&game)
+				app = .PLAYING
 			}
-			drawCamera(&camera)
-		}
-		{ 	// :: UI
-			clayFrameSetup()
-			clay.BeginLayout()
-			defer {
-				layout := clay.EndLayout()
-				clayRaylibRender(&layout)
+		// Add some UI + button
+		case .PLAYING:
+			// switch xx { case playing : case paused : case powerUp } // TODO
+			if isGameOver(game.player) {
+				app = .HOME
+				// reset values
 			}
-			rl.DrawFPS(10, 10)
-			UI.hideAll = true
-			if rl.IsKeyReleased(.TAB) {
-				UI.debug = !UI.debug
-			}
-			if UI.hideAll do continue
-			// Start UI
-			if clay.UI(clay.ID("root"), clay.Layout(layoutRoot)) {
-				if clay.UI(
-					clay.ID("top"),
-					clay.Layout(
-						{sizing = {height = clay.SizingPercent(.2), width = clay.SizingGrow({})}},
-					),
-					clay.Rectangle(testPannel),
-				) {}
-				if clay.UI(
-					clay.ID("center"),
-					clay.Layout({sizing = expand}),
-					// clay.Rectangle(testPannel),
-				) {
-					if UI.debug {
-						if clay.UI(
-							clay.ID("DEBUG"),
-							clay.Layout(layoutDebug),
-							clay.Rectangle(debugPannel),
-						) {
-							uiText("DEBUG", .large)
-							devider()
-							uiText(fmt.tprintf("%d FPS", rl.GetFPS()), .mid)
-							for enemy in enemyPool.active {
-								state := reflect.union_variant_type_info(enemy.state)
-								uiText(fmt.tprint(state), .mid)
-								debugEnemyHPBar(enemy.health)
-							}
-						}
-					}
-				}
-				if clay.UI(
-					clay.ID("bottom"),
-					clay.Layout(
-						{
-							sizing = {
-								height = clay.SizingPercent(.2),
-								width = clay.SizingGrow({}),
-							},
-							childGap = childGap,
-						},
-					),
-				) {
-					if clay.UI(
-						clay.ID("HP_XP"),
-						clay.Layout(
-							{
-								sizing = expand,
-								layoutDirection = .TOP_TO_BOTTOM,
-								childGap = childGap,
-							},
-						),
-						clay.Rectangle(testPannel),
-					) {
-						playerHPBar(.8)
-						// playerHPBar(.8)
-					}
-					if clay.UI(
-						clay.ID("Abilities"),
-						clay.Layout({sizing = expand}),
-						clay.Rectangle(testPannel),
-					) {
-
-					}
-					if clay.UI(
-						clay.ID("??"),
-						clay.Layout({sizing = expand}),
-						clay.Rectangle(testPannel),
-					) {
-
-					}
-				}
-			}
+			updateGame(&game)
+			drawGame(&game)
+			drawGameUI(&game)
+		case .OTHER:
 		}
 	}
 }
 
+isGameOver :: proc(player: ^Player) -> bool {
+	return player.health.current <= 0
+}
+
+// EndTexture mode flushes any commands that are pending to the texture target. EndDrawing flushes the commands to the back buffer and then swaps the back with the front buffer
+// @kolunmi
+// also you probably will have to change the filtering on the texture before you draw it so that it doesn't look blurry
+// rather pixelated
+// btw, just to be extra clear, do not load the render texture every frame (edited)
+// It remains valid across frames
+// Unload it when you are done though
+// Render textures are just framebuffers like the regular screen, so you can render whatever you want to them
+// }
+
 // Juice :: https://www.youtube.com/watch?v=3Omb5exWpd4
 // TODO:
-// 1.DamageDummy
-// -[x]HitFlash :: player white, enemy red
-// -[x]HitReaction
-// -[x]HitStop :: with curve; in and out
-// -[x]KnockBack 
-// 1.5 Camera
-// -[x]Camera Follow
-// -[x]Screen shake :: different levels 1 2 3 ; hit to player should be less than to enemy
-// UI
-// -[x] CLAY
-// SOUND
-// -[]Hurt
-// -[]swing
-// -[]hit
-// 2. AI
-// -[]Follow player {straight line}
-// - States
-// -[x]Idle,
-// -[x]pushback
-// -[]running
-// -[]attack
-// -[]dead
-// -[]hurt
-// 3. Player Die
-// -[]Health Bar'
+
+// Playable Demo
 // -[]Game over screen with Clay
-// 1.9
+// Improve V1
+// -[]Body block
 // -[]Partcle
+// -[]Combo
+// -[]VFX
+// -[]Juice
+// -[]New character with animations
+// -[]Better enemy AI
 
 // How many pools will I need to have, for sure 1 for player 1 for enemy and same for abilities. At least 4.
 //   I might also make different kinds of ability pools or enemy pools if I don't group them together.

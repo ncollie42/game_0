@@ -13,18 +13,31 @@ Health :: struct {
 
 
 updateHealth :: proc(hp: ^Health) {
+	assert(hp.max > 0, "Unit needs to have HP")
 	hp.showing = rl.Lerp(hp.showing, hp.current, .1)
 
 	hp.hitFlash = rl.Clamp(hp.hitFlash - getDelta() * 4, 0, 1)
 
-	if hp.showing <= 0 {
-		// Game Over if player
-		//TODO: Include/Create a game state struct - use to end game
-		hp.current = hp.max
-	}
+	// Temporary for player, reset HP
+	// if hp.showing <= 0 {
+	// 	hp.current = hp.max
+	// }
 }
 
 hurt :: proc(hp: ^Health, amount: f32) {
 	hp.current -= amount
 	fmt.println("Ouch!", hp.max, hp.current)
+	hp.hitFlash = 1
+}
+
+// Apply hit flash
+drawHitFlash :: proc(model: rl.Model, hp: Health) {
+	// TODO: assert shader
+
+	// Is it slow to getShaderLocation every time, do we want to move this somewhere else?
+	shader := model.materials[1].shader
+	flashIndex := rl.GetShaderLocation(shader, "flash")
+
+	data := hp.hitFlash
+	rl.SetShaderValue(shader, flashIndex, &data, .FLOAT)
 }

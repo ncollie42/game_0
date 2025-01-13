@@ -24,8 +24,9 @@ screenShake := struct {
 	debug  = false,
 }
 
-newCamera :: proc() -> rl.Camera3D {
-	camera := rl.Camera3D {
+newCamera :: proc() -> ^rl.Camera3D {
+	camera := new(rl.Camera3D)
+	camera^ = rl.Camera3D {
 		position   = camDist,
 		target     = {}, // what the camera is looking at
 		up         = {0, 1, 0},

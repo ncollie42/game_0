@@ -22,12 +22,13 @@ AbilityConfig :: struct {
 	state:      State, //State Transion for player
 	// UI
 	// Level
+	// Audio function?
 }
 
 // Actions :: Closure for actions in game; used at a later time.
 // Closure
 Action :: union {
-	ActionSpawnCubeAtPlayer,
+	ActionSpawnCubeAtLocation,
 	ActionSpawnCubeAtMouse,
 	ActionSpawnMeleAtPlayer,
 }
@@ -36,8 +37,8 @@ doAction :: proc(action: Action) {
 	switch a in action {
 	case ActionSpawnCubeAtMouse:
 		spawnCubeAtMouse(a.pool, a.camera)
-	case ActionSpawnCubeAtPlayer:
-		spawnCubeAtPlayer(a.pool, a.player)
+	case ActionSpawnCubeAtLocation:
+		spawnCubeAtLocation(a.pool, a.location)
 	case ActionSpawnMeleAtPlayer:
 		spawnMeleInstanceAtPlayer(a.pool, a.player)
 	}

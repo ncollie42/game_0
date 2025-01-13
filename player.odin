@@ -11,6 +11,7 @@ Player :: struct {
 	model:         rl.Model,
 	animation:     Animation,
 	using spacial: Spacial,
+	using health:  Health,
 	state:         State,
 	// collision:   Collision,
 }
@@ -18,12 +19,19 @@ Player :: struct {
 MOVE_SPEED :: 5
 TURN_SPEED :: 10.0
 
-initPlayer :: proc(path: cstring) -> Player {
-	player := Player{}
+initPlayer :: proc(path: cstring) -> ^Player {
+	player := new(Player)
+
 	player.model = rl.LoadModel(path)
 	assert(player.model.meshCount != 0, "No mesh")
 
-	// enterPlayerState(&player, playerStateBase{})
+	player.health = Health {
+		max     = 5,
+		current = 5,
+	}
+
+	shader := rl.LoadShader(nil, "shaders/flash.fs")
+	player.model.materials[1].shader = shader
 	return player
 }
 
@@ -122,6 +130,7 @@ enterPlayerState :: proc(player: ^Player, state: State, camera: ^rl.Camera3D) {
 		player.animation.speed = 1.0
 		player.animation.current = .IDLE
 	case playerStateDashing:
+		playSoundGrunt()
 		// Snap to player movement or forward dir if not moving
 		dir := getVector()
 		s.timer.left = s.timer.max
@@ -137,6 +146,7 @@ enterPlayerState :: proc(player: ^Player, state: State, camera: ^rl.Camera3D) {
 			// s.comboInput = true
 			return
 		}
+		playSoundWhoosh()
 		// if stateChange { set something to true or }
 		s.timer.left = s.timer.max
 		// Snap to mouse direction before aatack
@@ -184,6 +194,8 @@ playerStateAttack1 :: struct {
 // Draw
 
 drawPlayer :: proc(player: Player) {
+	drawHitFlash(player.model, player.health)
+
 	rl.DrawModelEx(
 		player.model,
 		player.spacial.pos,

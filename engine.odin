@@ -293,8 +293,22 @@ lerpRAD :: proc(current, target, amount: f32) -> f32 {
 Timer :: struct {
 	max:  f32, //MAX
 	left: f32, //Left
+	//onShot: bool,
+	//ready: bool, 
 }
 
+updateTimer :: proc(timer: ^Timer) {
+	timer.left -= getDelta()
+}
+
+isTimerReady :: proc(timer: Timer) -> bool {
+	return timer.left <= 0
+}
+
+startTimer :: proc(timer: ^Timer) {
+	assert(timer.max > 0, "Timer max value not set")
+	timer.left = timer.max
+}
 
 // -------------------------------------------
 // Odin version of update model animation, using to later try and blend between 2 animations
