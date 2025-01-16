@@ -34,7 +34,7 @@ initEnv :: proc() -> [dynamic]EnvObj {
 	}
 
 	{ 	// truck
-		model := rl.LoadModel("/home/nico/Downloads/truck.glb")
+		model := rl.LoadModel("resources/truck.glb")
 		boundingBox := rl.GetModelBoundingBox(model)
 
 		model.materials[0].maps[rl.MaterialMapIndex.ALBEDO].texture = texture

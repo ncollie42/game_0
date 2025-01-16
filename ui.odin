@@ -90,9 +90,9 @@ initClay :: proc() {
 	arena: clay.Arena = clay.CreateArenaWithCapacityAndMemory(minMemorySize, memory)
 	clay.Initialize(arena, {cast(f32)rl.GetScreenWidth(), cast(f32)rl.GetScreenHeight()})
 	// fonts :: TODO: load Bold
-	loadFont(FONT_ID_BODY_14, 14, "/home/nico/gameDev/resources/fonts/Calistoga-Regular.ttf")
-	loadFont(FONT_ID_BODY_16, 16, "/home/nico/gameDev/resources/fonts/Calistoga-Regular.ttf")
-	loadFont(FONT_ID_BODY_20, 20, "/home/nico/gameDev/resources/fonts/Calistoga-Regular.ttf")
+	loadFont(FONT_ID_BODY_14, 14, "resources/fonts/Calistoga-Regular.ttf")
+	loadFont(FONT_ID_BODY_16, 16, "resources/fonts/Calistoga-Regular.ttf")
+	loadFont(FONT_ID_BODY_20, 20, "resources/fonts/Calistoga-Regular.ttf")
 	clay.SetMeasureTextFunction(measureText)
 }
 
