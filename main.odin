@@ -14,11 +14,18 @@ SCREEN_W :: 1920 / 2
 SCREEN_H :: 1080 / 2
 
 // PIXEL_LOOK
-P_W :: SCREEN_W
-P_H :: SCREEN_H
-// P_W :: 1920 / 5
-// P_H :: 1080 / 5
+// P_W :: SCREEN_W
+// P_H :: SCREEN_H
+P_W :: 1920 / 5
+P_H :: 1080 / 5
 
+
+// TODO: maybe change to a union for each state
+App :: enum {
+	HOME,
+	PLAYING,
+	OTHER,
+}
 
 main :: proc() {
 	rl.SetTraceLogLevel(.ERROR)
@@ -28,7 +35,7 @@ main :: proc() {
 
 	rl.InitWindow(SCREEN_W, SCREEN_H, "Game")
 	defer rl.CloseWindow()
-
+	rl.SetTargetFPS(30)
 	initClay()
 
 	initAudio()
@@ -36,13 +43,7 @@ main :: proc() {
 
 	game := initGame()
 
-	// TODO: maybe change to a union for each state
-	app := enum {
-		HOME,
-		PLAYING,
-		OTHER,
-	}{}
-
+	app := App{}
 	for !rl.WindowShouldClose() {
 		rl.BeginDrawing()
 		defer rl.EndDrawing()
@@ -54,6 +55,7 @@ main :: proc() {
 				resetGame(&game)
 				app = .PLAYING
 			}
+			drawMainMemu(&app, &game)
 		// Add some UI + button
 		case .PLAYING:
 			// switch xx { case playing : case paused : case powerUp } // TODO
@@ -63,14 +65,15 @@ main :: proc() {
 			}
 			updateGame(&game)
 			drawGame(&game)
-			drawGameUI(&game)
+		// drawGameUI(&game)
 		case .OTHER:
 		}
 	}
 }
 
 isGameOver :: proc(player: ^Player) -> bool {
-	return player.health.current <= 0
+	return false
+	// return player.health.current <= 0
 }
 
 // EndTexture mode flushes any commands that are pending to the texture target. EndDrawing flushes the commands to the back buffer and then swaps the back with the front buffer

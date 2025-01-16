@@ -8,8 +8,8 @@ import rl "vendor:raylib"
 Game :: struct {
 	camera:          ^rl.Camera,
 	player:          ^Player,
-	env:             [dynamic]EnvObj,
-	enemyPool:       EnemyDummyPool,
+	objs:            [dynamic]EnvObj,
+	enemies:         EnemyDummyPool,
 	playerAbilities: ^AbilityPool,
 	enemyAbilities:  ^AbilityPool,
 	// Testing
@@ -23,8 +23,8 @@ initGame :: proc() -> Game {
 	game := Game {
 		camera          = newCamera(),
 		player          = initPlayer(engineerPath),
-		env             = initEnv(),
-		enemyPool       = initEnemyDummies(minionPath),
+		objs            = initEnv(),
+		enemies         = initEnemyDummies(minionPath),
 		playerAbilities = initAbilityPool(),
 		enemyAbilities  = initAbilityPool(),
 		screen          = rl.LoadRenderTexture(P_W, P_H),
@@ -55,14 +55,12 @@ resetGame :: proc(game: ^Game) {
 		current = 5,
 	}
 	// Enemies
-	despawnAllEnemies(&enemyPool)
+	despawnAllEnemies(&enemies)
 
 	for ii in 0 ..< 10 {
-		spawnDummyEnemy(&game.enemyPool, {-3, 0, f32(ii) * .1})
+		spawnDummyEnemy(&game.enemies, {-3, 0, f32(ii) * .1})
 	}
 }
-
-// TODO: resetGame
 
 updateGame :: proc(game: ^Game) {
 	using game
@@ -80,15 +78,25 @@ updateGame :: proc(game: ^Game) {
 		}
 	}
 	// SM :: Update
-	updatePlayerState(player, camera)
+	switch &s in player.state {
+	case playerStateBase:
+		updatePlayerStateBase(player, objs, &enemies)
+	case playerStateDashing:
+		updatePlayerStateDashing(&s, player, objs, &enemies, camera)
+	case playerStateAttack1:
+		updatePlayerStateAttack1(&s, player, camera)
+	case:
+		// If not state is set from init, go straight to Base
+		enterPlayerState(player, playerStateBase{}, camera)
+	}
 
 	updateAnimation(player.model, &player.animation, ANIMATION)
 	updatePlayerHitCollisions(enemyAbilities, player)
 	updateHealth(player)
 
-	updateEnemyDummies(&enemyPool, player^, &env, enemyAbilities)
-	applyBoundaryForces(&enemyPool, &env)
-	updateEnemyHitCollisions(playerAbilities, &enemyPool)
+	updateEnemyDummies(&enemies, player^, &objs, enemyAbilities)
+	applyBoundaryForces(&enemies, &objs)
+	updateEnemyHitCollisions(playerAbilities, &enemies)
 
 	updateHitStop()
 	updateCameraPos(camera, player^)
@@ -112,10 +120,10 @@ drawGame :: proc(game: ^Game) {
 	drawAbilityInstances(enemyAbilities, rl.RED)
 
 	drawPlayer(player^)
-	drawEnemies(&enemyPool)
-	drawEnv(&env)
+	drawEnemies(&enemies)
+	drawEnv(&objs)
 
-	drawFlipbook(camera^, fire^, {5, 1.5, 0}, 3)
+	// drawFlipbook(camera^, fire^, {5, 1.5, 0}, 3)
 
 	drawCamera(camera)
 	rl.EndMode3D()
@@ -171,7 +179,7 @@ drawGameUI :: proc(game: ^Game) {
 					uiText("DEBUG", .large)
 					devider()
 					uiText(fmt.tprintf("%d FPS", rl.GetFPS()), .mid)
-					for enemy in enemyPool.active {
+					for enemy in enemies.active {
 						state := reflect.union_variant_type_info(enemy.state)
 						uiText(fmt.tprint(state), .mid)
 						debugEnemyHPBar(enemy.health)

@@ -109,6 +109,7 @@ RIGHT :: rl.KeyboardKey.D
 LEFT :: rl.KeyboardKey.A
 
 isKeyPressed :: proc(keyBind: KeyBinding) -> bool {
+	// TODO: change for pressed work on key down and not key up
 	switch key in keyBind {
 	case rl.MouseButton:
 		if rl.IsMouseButtonReleased(key) {

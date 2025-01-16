@@ -81,6 +81,7 @@ initEnemyDummies :: proc(path: cstring) -> EnemyDummyPool {
 		enemy.attackCD = Timer {
 			max = 2.0,
 		}
+		enemy.shape = .8
 	}
 	return pool
 }
@@ -171,7 +172,6 @@ updateDummyMovement :: proc(
 	}
 	{ 	// Apply forces
 
-		// fmt.println("b4", target, clearPath, seperationForce, alignmentForce, cohesionForce)
 		target = normalize(
 			(clearPath * 10) +
 			(target * 1) +
@@ -191,6 +191,10 @@ updateDummyMovement :: proc(
 PUSH_BACK_SPEED: f32 = 2.5
 ENEMY_SPEED :: 3
 ENEMY_TURN_SPEED :: 4
+ATTACK_RANGE :: (2 - .2) // Attack range == ability spawn point + radius, 1 unit away w/ 1 unit radius == 2 - some distance to hit
+// linalg.cos(rl.PI / 8) == .92 // PI / 8 == 22.5 Degree, PI / 4 -> 45%
+ATTACK_FOV: f32 = .95
+
 updateDummy :: proc(
 	enemy: ^Enemy,
 	player: Player,
@@ -204,7 +208,11 @@ updateDummy :: proc(
 	case EnemyStateBase:
 		// TODO: Add extra states? Going to location ; fighting ; upclose to something ; ext
 		// When next to player, it's weird 
-		if linalg.distance(enemy.pos, player.pos) > 2 {
+
+		// updateDummyMovement(enemy, player, enemies, objs) // Boids
+		// enemy.animation.current = .WALKING_B
+
+		if linalg.distance(enemy.pos, player.pos) > ATTACK_RANGE {
 			updateDummyMovement(enemy, player, enemies, objs) // Boids
 			enemy.animation.current = .WALKING_B
 		} else {
@@ -214,7 +222,13 @@ updateDummy :: proc(
 			enemy.animation.current = .H2_MELEE_IDLE
 		}
 
-		if linalg.distance(enemy.pos, player.pos) < 2 && enemy.attackCD.left <= 0 {
+		inRange := linalg.distance(enemy.pos, player.pos) < ATTACK_RANGE
+		canAttack := enemy.attackCD.left <= 0
+		toPlayer := normalize(player.pos - enemy.pos)
+		forward := getForwardPoint(enemy)
+		facing := linalg.dot(forward, toPlayer) >= ATTACK_FOV
+
+		if inRange && canAttack && facing {
 			enemy.attackCD.left = enemy.attackCD.max // Start timer again
 			enterEnemyState(
 				enemy,
@@ -410,6 +424,9 @@ drawEnemy :: proc(enemy: Enemy) {
 
 	// boxEdge?
 	rl.DrawCube(enemy.wallPoint, .2, .2, .2, rl.BLACK)
+
+	// Collision shape
+	rl.DrawCylinderWires(enemy.pos, enemy.shape.(Sphere), enemy.shape.(Sphere), 2, 10, rl.BLACK)
 }
 
 // Update Funcs

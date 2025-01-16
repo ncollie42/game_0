@@ -14,6 +14,9 @@ Player :: struct {
 	using health:  Health,
 	state:         State,
 	// collision:   Collision,
+	//Test
+	point:         vec3,
+	normal:        vec3,
 }
 
 MOVE_SPEED :: 5
@@ -32,71 +35,133 @@ initPlayer :: proc(path: cstring) -> ^Player {
 
 	shader := rl.LoadShader(nil, "shaders/flash.fs")
 	player.model.materials[1].shader = shader
+	player.spacial.shape = .8 //radius
 	return player
 }
 
-// Look at tribes of midguard player controller for now
-updatePlayerState :: proc(player: ^Player, camera: ^rl.Camera3D) {
-	// dir := getVector()
-	// target rotation is either indirection of movement or mouse location
-	// target := player.spacial.pos + dir
-	// if player.lookAtMouse { // if player.combatTimer > 0
-	// target := mouseInWorld(camera)
-	// }
+moveAndSlide :: proc(
+	player: ^Player,
+	dir: vec3,
+	objs: [dynamic]EnvObj,
+	enemies: ^EnemyDummyPool,
+	speed: f32,
+) {
 
-	switch &s in player.state {
-	case playerStateBase:
-		dir := getVector()
-		player.spacial.pos += dir * getDelta() * MOVE_SPEED
+	// Projected movement
+	projected := player.spacial
+	projected.pos += dir * getDelta() * MOVE_SPEED
+	for obj in objs {
+		if checkCollision(obj, projected) {
+			collision := getCollision(obj, projected)
 
-		// Update rotation while moving
-		if dir != {} {
-			target := player.spacial.pos + dir
-			r := lookAtVec3(target, player.spacial.pos)
-			player.spacial.rot = lerpRAD(player.spacial.rot, r, getDelta() * TURN_SPEED)
+			player.point = collision.point
+			player.normal = collision.normal
+
+			// if normal dot is > .7 // mostly facing the same way. sharp corners.
+			if linalg.dot(collision.normal, dir) > .7 {break}
+
+			// Slide: Project velocity onto normal using dot product
+			dot := linalg.dot(dir, collision.normal)
+			slide := dir - (collision.normal * dot)
+
+			player.spacial.pos += slide * getDelta() * speed
+
+			// If colliding after moving, set possition at the edge of object
+			if checkCollision(obj, player.spacial) {
+				player.spacial.pos =
+					collision.point + collision.normal * (player.spacial.shape.(Sphere) * 1.05)
+			}
+			return
 		}
+	}
 
-		if dir != {} {
-			player.animation.current = .RUNNING_A
-		} else {
-			player.animation.current = .UNARMED_IDLE
-		}
+	// We COULD collect all collisions and do something off that. But this kinda feels good.
+	for enemy in enemies.active {
+		if checkCollision(enemy, projected) {
+			collision := getCollision(enemy, projected)
 
-	case playerStateDashing:
-		s.timer.left -= getDelta()
-		dir := getForwardPoint(player)
+			player.point = collision.point
+			player.normal = collision.normal
 
-		player.spacial.pos += dir * getDelta() * MOVE_SPEED * 2
+			// if normal dot is > .7 // mostly facing the same way. sharp corners.
+			if linalg.dot(collision.normal, dir) > .7 {break}
 
-		if s.timer.left <= 0 {
-			enterPlayerState(player, playerStateBase{}, camera)
+			// Slide: Project velocity onto normal using dot product
+			dot := linalg.dot(dir, collision.normal)
+			slide := dir - (collision.normal * dot)
+
+			player.spacial.pos += slide * getDelta() * speed
+
+			return
 		}
-	case playerStateAttack1:
-		// Input check
-		s.timer.left -= getDelta()
-		// if s.comboInput && between range {
-		// Do we use the same state and update attack values? or do we create a sub state enum
-		// eneterState? or
-		// update Timer
-		// anim
-		// action is same?
-		// }
-		if s.timer.left <= 0 {
-			enterPlayerState(player, playerStateBase{}, camera)
-		}
-		// if player.animation.finished {
-		// 	enterPlayerState(player, playerStateBase{}, camera)
-		// }
-		// State update
-		progress := 1 - (s.timer.left / s.timer.max)
-		// progress := getAnimationProgress(player.animation, ANIMATION)
-		if progress >= s.trigger && !s.hasTriggered {
-			s.hasTriggered = true
-			doAction(s.action)
-		}
-	case:
-		// If not state is set from init, go straight to Base
+	}
+
+	player.spacial.pos += dir * getDelta() * speed
+}
+updatePlayerStateBase :: proc(player: ^Player, objs: [dynamic]EnvObj, enemies: ^EnemyDummyPool) {
+
+	// Add a sub state - Idle and moving
+	dir := getVector()
+	moveAndSlide(player, dir, objs, enemies, MOVE_SPEED)
+
+	// Update rotation while moving
+	if dir != {} {
+		target := player.spacial.pos + dir
+		r := lookAtVec3(target, player.spacial.pos)
+		player.spacial.rot = lerpRAD(player.spacial.rot, r, getDelta() * TURN_SPEED)
+	}
+
+	if dir != {} {
+		player.animation.current = .RUNNING_A
+	} else {
+		player.animation.current = .UNARMED_IDLE
+	}
+
+}
+
+updatePlayerStateDashing :: proc(
+	dashing: ^playerStateDashing,
+	player: ^Player,
+	objs: [dynamic]EnvObj,
+	enemies: ^EnemyDummyPool,
+	camera: ^rl.Camera3D,
+) {
+	dashing.timer.left -= getDelta()
+	dir := getForwardPoint(player)
+
+	moveAndSlide(player, dir, objs, enemies, MOVE_SPEED * 2)
+
+	if dashing.timer.left <= 0 {
 		enterPlayerState(player, playerStateBase{}, camera)
+	}
+}
+
+updatePlayerStateAttack1 :: proc(
+	attack: ^playerStateAttack1,
+	player: ^Player,
+	camera: ^rl.Camera3D,
+) {
+	// Input check
+	attack.timer.left -= getDelta()
+	// if s.comboInput && between range {
+	// Do we use the same state and update attack values? or do we create a sub state enum
+	// eneterState? or
+	// update Timer
+	// anim
+	// action is same?
+	// }
+	if attack.timer.left <= 0 {
+		enterPlayerState(player, playerStateBase{}, camera)
+	}
+	// if player.animation.finished {
+	// 	enterPlayerState(player, playerStateBase{}, camera)
+	// }
+	// State update
+	progress := 1 - (attack.timer.left / attack.timer.max)
+	// progress := getAnimationProgress(player.animation, ANIMATION)
+	if progress >= attack.trigger && !attack.hasTriggered {
+		attack.hasTriggered = true
+		doAction(attack.action)
 	}
 }
 
@@ -192,9 +257,15 @@ playerStateAttack1 :: struct {
 }
 
 // Draw
-
 drawPlayer :: proc(player: Player) {
 	drawHitFlash(player.model, player.health)
+
+	// rl.DrawSphereWires(player.pos, player.shape.(Sphere), 10, 10, rl.BLACK)
+	rl.DrawCylinderWires(player.pos, player.shape.(Sphere), player.shape.(Sphere), 2, 10, rl.BLACK)
+
+	// rl.DrawSphere(player.point, .35, rl.RED)
+	// rl.DrawCapsule(player.point, player.point + player.normal, .15, 8, 8, rl.PURPLE)
+	// rl.DrawLine3D(player.pos, player.pos + player.normal, rl.PURPLE)
 
 	rl.DrawModelEx(
 		player.model,

@@ -8,8 +8,8 @@ import "core:reflect"
 import rl "vendor:raylib"
 
 EnvObj :: struct {
-	model:   rl.Model,
-	spacial: Spacial,
+	model:         rl.Model,
+	using spacial: Spacial,
 }
 
 
@@ -20,14 +20,27 @@ initEnv :: proc() -> [dynamic]EnvObj {
 	texture := rl.LoadTextureFromImage(checked)
 
 	{ 	// Box
-		mesh := rl.GenMeshCube(4, .1, 4)
+		mesh := rl.GenMeshCube(4, 2, 4)
 		model := rl.LoadModelFromMesh(mesh)
 		boundingBox := rl.GetMeshBoundingBox(mesh)
 
 		model.materials[0].maps[rl.MaterialMapIndex.ALBEDO].texture = texture
 		env := EnvObj {
 			model = model,
-			spacial = Spacial{pos = {6, 0, -6}, shape = boundingBox},
+			spacial = Spacial{pos = {6, 0, -6}, rot = 0, shape = boundingBox},
+			// spacial = Spacial{pos = {0, 1, 0}, rot = rl.PI / 4, shape = boundingBox},
+		}
+		append(&pool, env)
+	}
+
+	{ 	// truck
+		model := rl.LoadModel("/home/nico/Downloads/truck.glb")
+		boundingBox := rl.GetModelBoundingBox(model)
+
+		model.materials[0].maps[rl.MaterialMapIndex.ALBEDO].texture = texture
+		env := EnvObj {
+			model = model,
+			spacial = Spacial{pos = {1, 0, 0}, shape = boundingBox},
 		}
 		append(&pool, env)
 	}
@@ -100,24 +113,79 @@ initEnv :: proc() -> [dynamic]EnvObj {
 
 drawEnv :: proc(objs: ^[dynamic]EnvObj) {
 	for obj in objs {
-		// rl.DrawModel(obj.model, obj.spacial.pos, 1, rl.WHITE)
+		rl.DrawModelEx(obj.model, obj.spacial.pos, UP, rl.RAD2DEG * obj.spacial.rot, 1, rl.WHITE)
 		switch s in obj.spacial.shape {
-		case box:
-			bound := getBoundingBox(obj)
-			rl.DrawBoundingBox(bound, rl.BLACK)
-		case sphere:
-			// rl.DrawSphereWires(obj.spacial.pos, s, 10, 10, rl.BLACK)
+		case Box:
+			box := getBoundingBox(obj)
+			rl.DrawBoundingBox(box, rl.BLACK)
+		case Sphere:
 			rl.DrawCircle3D(obj.spacial.pos, s, {1, 0, 0}, 90, rl.BLACK)
 		}
 	}
 }
 
-getBoundingBox :: proc(obj: EnvObj) -> rl.BoundingBox {
-	// this should assert if it's not a box
-	bound := obj.spacial.shape.(box)
-	return rl.BoundingBox{min = bound.min + obj.spacial.pos, max = bound.max + obj.spacial.pos}
+getBoundingBoxRot :: proc(obj: Spacial) -> Box {
+	// Don't use for now untill we figure out how to do OBB collision, this will generate and draw.
+	box := obj.shape.(Box) // Get original box shape, not getBoundingBox
+	origin := obj.pos
+	rotation := rl.MatrixRotateY(obj.rot)
+
+	// Start with first corner
+	first := rl.Vector3Transform(vec3{box.min.x, box.min.y, box.min.z} - origin, rotation) + origin
+	min_corner := first
+	max_corner := first
+
+	// Check all corners to find true min and max
+	corners: [8]vec3
+	for ii in 0 ..< 8 {
+		x := (ii & 1) == 0 ? box.min.x : box.max.x
+		y := (ii & 2) == 0 ? box.min.y : box.max.y
+		z := (ii & 4) == 0 ? box.min.z : box.max.z
+
+		corner := rl.Vector3Transform(vec3{x, y, z} - origin, rotation) + origin
+		corners[ii] = corner
+
+		min_corner = {
+			min(min_corner.x, corner.x),
+			min(min_corner.y, corner.y),
+			min(min_corner.z, corner.z),
+		}
+		max_corner = {
+			max(max_corner.x, corner.x),
+			max(max_corner.y, corner.y),
+			max(max_corner.z, corner.z),
+		}
+	}
+	// Draw edges
+	// Bottom face
+	rl.DrawLine3D(corners[0], corners[1], rl.BLACK)
+	rl.DrawLine3D(corners[1], corners[3], rl.BLACK)
+	rl.DrawLine3D(corners[3], corners[2], rl.BLACK)
+	rl.DrawLine3D(corners[2], corners[0], rl.BLACK)
+
+	// Top face
+	rl.DrawLine3D(corners[4], corners[5], rl.BLACK)
+	rl.DrawLine3D(corners[5], corners[7], rl.BLACK)
+	rl.DrawLine3D(corners[7], corners[6], rl.BLACK)
+	rl.DrawLine3D(corners[6], corners[4], rl.BLACK)
+
+	// Vertical edges
+	rl.DrawLine3D(corners[0], corners[4], rl.BLACK)
+	rl.DrawLine3D(corners[1], corners[5], rl.BLACK)
+	rl.DrawLine3D(corners[2], corners[6], rl.BLACK)
+	rl.DrawLine3D(corners[3], corners[7], rl.BLACK)
+
+	rl.DrawCube(corners[0], 0.25, 0.25, 0.25, rl.PURPLE) // Optional: visualize all corners
+	rl.DrawCube(corners[7], 0.25, 0.25, 0.25, rl.PURPLE) // Optional: visualize all corners
+	return Box{min = min_corner, max = max_corner}
 }
 
+getBoundingBox :: proc(obj: Spacial) -> Box {
+	box := obj.shape.(Box)
+	origin := obj.pos
+
+	return Box{min = box.min + origin, max = box.max + origin}
+}
 
 // Apply forces when too close to walls.
 applyBoundaryForces :: proc(enemies: ^EnemyDummyPool, objs: ^[dynamic]EnvObj) {
@@ -132,7 +200,7 @@ applyBoundaryForces :: proc(enemies: ^EnemyDummyPool, objs: ^[dynamic]EnvObj) {
 		for obj in objs {
 			force: vec3 = {}
 			switch s in obj.spacial.shape {
-			case box:
+			case Box:
 				box := getBoundingBox(obj)
 				closest := vec3 {
 					clamp(enemy.pos.x, box.min.x, box.max.x),
@@ -159,7 +227,7 @@ applyBoundaryForces :: proc(enemies: ^EnemyDummyPool, objs: ^[dynamic]EnvObj) {
 				// Could extract force calculation if it gets more complex
 				force_scale := (1.0 - dist / PUSH_RANGE) * MAX_FORCE
 				force += normalize(to_boid) * force_scale
-			case sphere:
+			case Sphere:
 				radius := s
 
 				// force AWAY from center
@@ -205,10 +273,10 @@ findClearPath :: proc(boid: ^Enemy, objs: ^[dynamic]EnvObj) -> vec3 {
 		for obj in objs {
 			collision := rl.RayCollision{}
 			switch s in obj.spacial.shape {
-			case box:
+			case Box:
 				box := getBoundingBox(obj)
 				collision = rl.GetRayCollisionBox(ray, box)
-			case sphere:
+			case Sphere:
 				collision = rl.GetRayCollisionSphere(ray, obj.spacial.pos, s)
 				// not sure why circles do this
 				if collision.distance < 0 {

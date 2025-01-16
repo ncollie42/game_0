@@ -6,18 +6,17 @@ import "core:math/linalg"
 import "core:reflect"
 import rl "vendor:raylib"
 
-box :: rl.BoundingBox
-sphere :: f32 // radious
+Box :: rl.BoundingBox
+Sphere :: f32 // radious
 // bounds ::union{box, sphere}
 Spacial :: struct {
-	rot:     f32, // rotation / Orientation in Radians
-	pos:     vec3, // position
-	shape:   union {
+	rot:   f32, // rotation / Orientation in Radians
+	pos:   vec3, // position
+	shape: union {
 		// For collision
-		box,
-		sphere,
+		Box,
+		Sphere,
 	},
-	radious: f32, // For collision - TODO: remove
 }
 
 getBackwardPoint :: proc(obj: ^Spacial) -> vec3 {

@@ -536,7 +536,6 @@ dropDown :: proc(text: string) -> bool {
 					clay.Rectangle({color = light_05, cornerRadius = {5, 5, 5, 5}}),
 				) {
 					if clay.Hovered() {
-						// fmt.println("TEST")
 					}
 					// clay.Text("ONE", textConfig())
 					// clay.Text("TWO", textConfig())
