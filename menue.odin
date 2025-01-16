@@ -8,7 +8,7 @@ import rl "vendor:raylib"
 layoutRoot2 := clay.LayoutConfig {
 	sizing          = expand,
 	layoutDirection = .TOP_TO_BOTTOM,
-	padding         = {childGap, childGap},
+	padding         = {childGap, childGap, childGap, childGap},
 	childGap        = childGap,
 	childAlignment  = {.CENTER, .CENTER},
 }
@@ -38,7 +38,7 @@ buttonText :: proc(text: string) -> bool {
 	hovered := false
 	if clay.UI() {
 		if clay.UI(
-			clay.Layout(clay.LayoutConfig{sizing = expand, padding = {16, 8}}),
+			clay.Layout(clay.LayoutConfig{sizing = expand, padding = {16, 16, 8, 8}}),
 			clay.Rectangle(
 				{color = clay.Hovered() ? light_15 : light_05, cornerRadius = {5, 5, 5, 5}},
 			),

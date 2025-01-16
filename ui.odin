@@ -1,11 +1,10 @@
 package main
 
-import clay "/clay-odin"
+import clay "clay-odin"
 import "core:fmt"
 import "core:math"
 import "core:strings"
 import rl "vendor:raylib"
-
 // All placement is relative, no absolute X/Y placement
 // 20px bold 100% | 16px bold 100% | 14px reg 100% | 14px reg 65%
 
@@ -51,22 +50,21 @@ borderThick :: 2
 layoutRoot := clay.LayoutConfig {
 	sizing          = expand,
 	layoutDirection = .TOP_TO_BOTTOM,
-	padding         = {childGap, childGap},
+	padding         = {childGap, childGap, childGap, childGap},
 	childGap        = childGap,
 }
 layoutDebug := clay.LayoutConfig {
 	sizing          = {clay.SizingFixed(300), clay.SizingGrow({})},
 	layoutDirection = .TOP_TO_BOTTOM,
-	padding         = {childGap, childGap},
+	padding         = {childGap, childGap, childGap, childGap},
 	childGap        = childGap,
 }
 debugPannel := clay.RectangleElementConfig {
 	color = light_05,
 }
 
-testPannel := clay.RectangleElementConfig {
-	// color = {90, 90, 90, 180},
-}
+// 	// color = {90, 90, 90, 180},
+testPannel := clay.RectangleElementConfig{}
 
 
 debugModeEnabled: bool = false
@@ -88,7 +86,7 @@ initClay :: proc() {
 	minMemorySize: u32 = clay.MinMemorySize()
 	memory := make([^]u8, minMemorySize)
 	arena: clay.Arena = clay.CreateArenaWithCapacityAndMemory(minMemorySize, memory)
-	clay.Initialize(arena, {cast(f32)rl.GetScreenWidth(), cast(f32)rl.GetScreenHeight()})
+	clay.Initialize(arena, {cast(f32)rl.GetScreenWidth(), cast(f32)rl.GetScreenHeight()}, {})
 	// fonts :: TODO: load Bold
 	loadFont(FONT_ID_BODY_14, 14, "resources/fonts/Calistoga-Regular.ttf")
 	loadFont(FONT_ID_BODY_16, 16, "resources/fonts/Calistoga-Regular.ttf")
@@ -150,6 +148,7 @@ devider :: proc() {
 playerHPBar :: proc(hp: Health) {
 	amount := hp.showing / hp.max
 	// Do we make it percent based or fixed size? width = clay.SizingFixed(250)
+
 	if clay.UI(
 		clay.Layout({sizing = {width = clay.SizingPercent(.8), height = clay.SizingFixed(40)}}),
 		clay.BorderAllRadius({width = borderThick, color = light_100}, uiCorners),
@@ -471,7 +470,7 @@ button :: proc(text: string) -> bool {
 	hovered := false
 	if clay.UI() {
 		if clay.UI(
-			clay.Layout(clay.LayoutConfig{sizing = expand, padding = {16, 8}}),
+			clay.Layout(clay.LayoutConfig{sizing = expand, padding = {16, 16, 8, 8}}),
 			clay.Rectangle(
 				{color = clay.Hovered() ? light_15 : light_05, cornerRadius = {5, 5, 5, 5}},
 			),
@@ -495,7 +494,7 @@ button2 :: proc(text: string, selected: bool) -> bool {
 			color = light_100
 		}
 		if clay.UI(
-			clay.Layout(clay.LayoutConfig{sizing = expand, padding = {16, 8}}),
+			clay.Layout(clay.LayoutConfig{sizing = expand, padding = {16, 16, 8, 8}}),
 			clay.Rectangle({color = color, cornerRadius = {5, 5, 5, 5}}),
 		) {
 			// clay.Text(text, textConfig())
@@ -509,7 +508,7 @@ dropDown :: proc(text: string) -> bool {
 	if clay.UI() {
 		hovered = clay.Hovered()
 		if clay.UI(
-			clay.Layout(clay.LayoutConfig{sizing = expand, padding = {16, 8}}),
+			clay.Layout(clay.LayoutConfig{sizing = expand, padding = {16, 16, 8, 8}}),
 			clay.Rectangle(
 				{color = clay.Hovered() ? light_05 : light_100, cornerRadius = {5, 5, 5, 5}},
 			),
@@ -530,7 +529,7 @@ dropDown :: proc(text: string) -> bool {
 						clay.LayoutConfig {
 							sizing = {width = clay.SizingFixed(200)},
 							layoutDirection = .TOP_TO_BOTTOM,
-							padding = {16, 16},
+							padding = {16, 16, 16, 16},
 						},
 					),
 					clay.Rectangle({color = light_05, cornerRadius = {5, 5, 5, 5}}),
