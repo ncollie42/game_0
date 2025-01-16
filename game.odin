@@ -1,6 +1,6 @@
 package main
 
-import clay "../../clay-odin"
+import clay "/clay-odin"
 import "core:fmt"
 import "core:reflect"
 import rl "vendor:raylib"
@@ -46,6 +46,21 @@ initGame :: proc() -> Game {
 	return game
 }
 
+color0 := rl.GetColor(0x495435ff)
+color1 := rl.GetColor(0x8a8e48ff)
+color2 := rl.GetColor(0xdebf89ff)
+color3 := rl.GetColor(0xa4653eff)
+color4 := rl.GetColor(0x902e29ff)
+color5 := rl.GetColor(0x24171bff)
+color6 := rl.GetColor(0x5d453eff)
+color7 := rl.GetColor(0x907c68ff)
+
+spawnXDummyEnemies :: proc(game: ^Game, amount: int) {
+	for ii in 0 ..< amount {
+		spawnDummyEnemy(&game.enemies, {-3, 0, f32(ii) * .1})
+	}
+}
+
 resetGame :: proc(game: ^Game) {
 	using game
 
@@ -57,9 +72,7 @@ resetGame :: proc(game: ^Game) {
 	// Enemies
 	despawnAllEnemies(&enemies)
 
-	for ii in 0 ..< 10 {
-		spawnDummyEnemy(&game.enemies, {-3, 0, f32(ii) * .1})
-	}
+	spawnXDummyEnemies(game, 10)
 }
 
 updateGame :: proc(game: ^Game) {
@@ -84,7 +97,7 @@ updateGame :: proc(game: ^Game) {
 	case playerStateDashing:
 		updatePlayerStateDashing(&s, player, objs, &enemies, camera)
 	case playerStateAttack1:
-		updatePlayerStateAttack1(&s, player, camera)
+		updatePlayerStateAttack1(&s, player, camera, objs, &enemies)
 	case:
 		// If not state is set from init, go straight to Base
 		enterPlayerState(player, playerStateBase{}, camera)
@@ -114,10 +127,11 @@ drawGame :: proc(game: ^Game) {
 	rl.ClearBackground({})
 	rl.BeginMode3D(camera^)
 
-	rl.DrawGrid(100, .25)
+	// rl.DrawGrid(100, .25)
+	rl.DrawPlane({}, {25, 25}, color5)
 
-	drawAbilityInstances(playerAbilities, rl.BLUE)
-	drawAbilityInstances(enemyAbilities, rl.RED)
+	drawAbilityInstances(playerAbilities, color1)
+	drawAbilityInstances(enemyAbilities, color4)
 
 	drawPlayer(player^)
 	drawEnemies(&enemies)
@@ -179,11 +193,16 @@ drawGameUI :: proc(game: ^Game) {
 					uiText("DEBUG", .large)
 					devider()
 					uiText(fmt.tprintf("%d FPS", rl.GetFPS()), .mid)
-					for enemy in enemies.active {
-						state := reflect.union_variant_type_info(enemy.state)
-						uiText(fmt.tprint(state), .mid)
-						debugEnemyHPBar(enemy.health)
+					devider()
+					if buttonText("Spawn Enemies") {
+						spawnXDummyEnemies(game, 5)
 					}
+					uiText(fmt.tprintf("%d Enemies", len(enemies.active)), .mid)
+					// for enemy in enemies.active {
+					// 	state := reflect.union_variant_type_info(enemy.state)
+					// 	uiText(fmt.tprint(state), .mid)
+					// 	debugEnemyHPBar(enemy.health)
+					// }
 				}
 			}
 		}

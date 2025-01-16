@@ -140,9 +140,15 @@ updatePlayerStateAttack1 :: proc(
 	attack: ^playerStateAttack1,
 	player: ^Player,
 	camera: ^rl.Camera3D,
+	objs: [dynamic]EnvObj,
+	enemies: ^EnemyDummyPool,
 ) {
 	// Input check
 	attack.timer.left -= getDelta()
+
+	dir := getForwardPoint(player)
+	moveAndSlide(player, dir, objs, enemies, MOVE_SPEED * .35)
+
 	// if s.comboInput && between range {
 	// Do we use the same state and update attack values? or do we create a sub state enum
 	// eneterState? or
@@ -261,7 +267,7 @@ drawPlayer :: proc(player: Player) {
 	drawHitFlash(player.model, player.health)
 
 	// rl.DrawSphereWires(player.pos, player.shape.(Sphere), 10, 10, rl.BLACK)
-	rl.DrawCylinderWires(player.pos, player.shape.(Sphere), player.shape.(Sphere), 2, 10, rl.BLACK)
+	// rl.DrawCylinderWires(player.pos, player.shape.(Sphere), player.shape.(Sphere), 2, 10, rl.BLACK)
 
 	// rl.DrawSphere(player.point, .35, rl.RED)
 	// rl.DrawCapsule(player.point, player.point + player.normal, .15, 8, 8, rl.PURPLE)

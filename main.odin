@@ -1,14 +1,12 @@
 package main
 
-import clay "../../clay-odin"
+import clay "/clay-odin"
 import "core:fmt"
 import "core:math"
 import rl "vendor:raylib"
 
-engineerPath: cstring = "/home/nico/gameDev/resources/KayKit_Adventurers/m3d/Engineer.m3d"
-druidPath: cstring = "/home/nico/gameDev/resources/KayKit_Adventurers/m3d/Druid.m3d"
-
-minionPath: cstring = "/home/nico/gameDev/resources/KayKit_Skeletons/m3d/Skeleton_Minion.m3d"
+engineerPath: cstring = "resources/Engineer.m3d"
+minionPath: cstring = "resources/Skeleton_Minion.m3d"
 
 SCREEN_W :: 1920 / 2
 SCREEN_H :: 1080 / 2
@@ -35,7 +33,8 @@ main :: proc() {
 
 	rl.InitWindow(SCREEN_W, SCREEN_H, "Game")
 	defer rl.CloseWindow()
-	rl.SetTargetFPS(30)
+	// rl.SetTargetFPS(30)
+
 	initClay()
 
 	initAudio()
@@ -48,6 +47,7 @@ main :: proc() {
 		rl.BeginDrawing()
 		defer rl.EndDrawing()
 		rl.ClearBackground({123, 121, 126, 255})
+		rl.ClearBackground(color2)
 
 		switch app {
 		case .HOME:
@@ -65,7 +65,7 @@ main :: proc() {
 			}
 			updateGame(&game)
 			drawGame(&game)
-		// drawGameUI(&game)
+			drawGameUI(&game)
 		case .OTHER:
 		}
 	}

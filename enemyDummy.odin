@@ -414,7 +414,7 @@ drawEnemy :: proc(enemy: Enemy) {
 	// seperation
 	// rl.DrawCapsule(enemy.pos, enemy.pos + enemy.seperationDir, .05, 5, 5, rl.BLUE)
 	// Final forward 
-	rl.DrawCapsule(enemy.pos, enemy.pos + enemy.target, .05, 5, 5, rl.PURPLE)
+	rl.DrawCapsule(enemy.pos, enemy.pos + enemy.target, .05, 5, 5, color1)
 
 	// Alignment Range
 	// rl.DrawSphereWires(enemy.pos, enemy.range * alignmentRange, 10, 10, alignmentColor)
@@ -423,10 +423,10 @@ drawEnemy :: proc(enemy: Enemy) {
 	// rl.DrawCube(enemy.centertarget, .2, .2, .2, rl.BLACK)
 
 	// boxEdge?
-	rl.DrawCube(enemy.wallPoint, .2, .2, .2, rl.BLACK)
+	// rl.DrawCube(enemy.wallPoint, .2, .2, .2, rl.BLACK)
 
 	// Collision shape
-	rl.DrawCylinderWires(enemy.pos, enemy.shape.(Sphere), enemy.shape.(Sphere), 2, 10, rl.BLACK)
+	// rl.DrawCylinderWires(enemy.pos, enemy.shape.(Sphere), enemy.shape.(Sphere), 2, 10, rl.BLACK)
 }
 
 // Update Funcs

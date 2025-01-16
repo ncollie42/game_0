@@ -1,6 +1,6 @@
 package main
 
-import clay "../../clay-odin"
+import clay "/clay-odin"
 import "core:fmt"
 import rl "vendor:raylib"
 
@@ -26,7 +26,7 @@ drawMainMemu :: proc(app: ^App, game: ^Game) {
 	if clay.UI(clay.ID("root"), clay.Layout(layoutRoot2)) {
 		uiText("HELLO", .large)
 
-		if startButton("START") {
+		if buttonText("START") {
 			app^ = .PLAYING
 			resetGame(game)
 		}
@@ -34,7 +34,7 @@ drawMainMemu :: proc(app: ^App, game: ^Game) {
 	}
 }
 
-startButton :: proc(text: string) -> bool {
+buttonText :: proc(text: string) -> bool {
 	hovered := false
 	if clay.UI() {
 		if clay.UI(

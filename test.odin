@@ -81,21 +81,32 @@ newSpawnMeleAbilityPlayer :: proc(pool: ^AbilityPool, player: ^Player) -> Abilit
 	config.cd.max = 5
 	config.usageLimit = Limited{2, 2}
 	// ability.usageLimit = Infinate{}
+	// KICK
 	// config.state = playerStateAttack1 {
 	// 	cancellable = true,
-	// 	timer = Timer{max = .6},
-	// 	trigger = .4,
+	// 	timer = Timer{max = .4},
+	// 	trigger = .4, // [0, 1]
 	// 	animation = .UNARMED_MELEE_ATTACK_KICK,
-	// 	speed = 1,
+	// 	speed = 2,
 	// 	action = action,
 	// }
+	// PUNCH A
 	config.state = playerStateAttack1 {
+		cancellable = true,
 		timer = Timer{max = .4},
 		trigger = .4,
-		animation = .UNARMED_MELEE_ATTACK_PUNCH_B,
+		animation = .UNARMED_MELEE_ATTACK_PUNCH_A,
 		speed = 2,
 		action = action,
 	}
+	// PUNCH B
+	// config.state = playerStateAttack1 {
+	// 	timer = Timer{max = .4},
+	// 	trigger = .4,
+	// 	animation = .UNARMED_MELEE_ATTACK_PUNCH_B,
+	// 	speed = 2,
+	// 	action = action,
+	// }
 
 	return config
 }

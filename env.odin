@@ -1,6 +1,6 @@
 package main
 
-import clay "../../clay-odin"
+import clay "/clay-odin"
 import "core:fmt"
 import "core:math"
 import "core:math/linalg"
@@ -16,7 +16,7 @@ EnvObj :: struct {
 initEnv :: proc() -> [dynamic]EnvObj {
 	pool := [dynamic]EnvObj{}
 
-	checked := rl.GenImageChecked(4, 4, 1, 1, rl.RED, rl.GREEN)
+	checked := rl.GenImageChecked(4, 4, 1, 1, color0, color4)
 	texture := rl.LoadTextureFromImage(checked)
 
 	{ 	// Box
