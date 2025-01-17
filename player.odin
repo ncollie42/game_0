@@ -145,6 +145,7 @@ updatePlayerStateAttack1 :: proc(
 ) {
 	// Input check
 	attack.timer.left -= getDelta()
+	fmt.println(attack.timer.left, player.animation.current, attack.comboCount)
 
 	dir := getForwardPoint(player)
 	moveAndSlide(player, dir, objs, enemies, MOVE_SPEED * .35)
@@ -156,18 +157,35 @@ updatePlayerStateAttack1 :: proc(
 	// anim
 	// action is same?
 	// }
-	if attack.timer.left <= 0 {
-		enterPlayerState(player, playerStateBase{}, camera)
-	}
-	// if player.animation.finished {
-	// 	enterPlayerState(player, playerStateBase{}, camera)
-	// }
-	// State update
+
+	// Action
 	progress := 1 - (attack.timer.left / attack.timer.max)
-	// progress := getAnimationProgress(player.animation, ANIMATION)
 	if progress >= attack.trigger && !attack.hasTriggered {
 		attack.hasTriggered = true
 		doAction(attack.action)
+	}
+
+	if attack.timer.left <= 0 {
+		// TODO: startAttack[0] - [1] - [2], Add array of statefields
+		if attack.comboInput && attack.comboCount < 2 {
+			attack.comboInput = false
+			attack.comboCount += 1
+			attack.hasTriggered = false
+
+			fmt.println("COMBO", attack.comboCount)
+
+			playSoundWhoosh()
+			attack.timer.left = attack.timer.max
+			// Snap to mouse direction before attack
+			r := lookAtVec3(mouseInWorld(camera), player.spacial.pos)
+			player.spacial.rot = lerpRAD(player.spacial.rot, r, 1)
+
+			player.animation.speed = attack.speed
+			player.animation.current = .UNARMED_MELEE_ATTACK_KICK
+			// attack.comboCount == 1 ? .UNARMED_MELEE_ATTACK_PUNCH_A : .UNARMED_MELEE_ATTACK_KICK
+			return
+		}
+		enterPlayerState(player, playerStateBase{}, camera)
 	}
 }
 
@@ -214,13 +232,14 @@ enterPlayerState :: proc(player: ^Player, state: State, camera: ^rl.Camera3D) {
 		player.animation.current = s.animation
 	case playerStateAttack1:
 		if !stateChange {
-			// s.comboInput = true
+			progress := 1 - (s.timer.left / s.timer.max)
+			if progress < .5 {return} 	// Only combo if past 70%
+			s.comboInput = true
 			return
 		}
 		playSoundWhoosh()
-		// if stateChange { set something to true or }
 		s.timer.left = s.timer.max
-		// Snap to mouse direction before aatack
+		// Snap to mouse direction before attack
 		r := lookAtVec3(mouseInWorld(camera), player.spacial.pos)
 		player.spacial.rot = lerpRAD(player.spacial.rot, r, 1)
 
@@ -259,7 +278,9 @@ playerStateAttack1 :: struct {
 	trigger:      f32, // between 0 and 1
 	action:       Action,
 	// CanChainTo?
-	// comboInput:   bool,
+	// combo
+	comboInput:   bool,
+	comboCount:   i32,
 }
 
 // Draw

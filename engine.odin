@@ -37,10 +37,10 @@ startHitStop :: proc() {
 
 updateHitStop :: proc() {
 	if rl.IsKeyPressed(.PAGE_DOWN) {
-		timeScale -= .25
+		timeScale = clamp(timeScale - .25, 0, 3)
 	}
 	if rl.IsKeyPressed(.PAGE_UP) {
-		timeScale += .25
+		timeScale = clamp(timeScale + .25, 0, 3)
 	}
 	// Only use for player attacks
 	// 115 MS, 7 frames, ~.11666 tottal

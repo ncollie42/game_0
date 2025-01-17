@@ -76,7 +76,9 @@ resetGame :: proc(game: ^Game) {
 }
 
 updateGame :: proc(game: ^Game) {
+	// TODO: Add substates :: Playing : paused : powerup
 	using game
+
 	// :: Player Actions
 	{
 		// SM :: Input
@@ -90,7 +92,7 @@ updateGame :: proc(game: ^Game) {
 			rl.ToggleBorderlessWindowed() // Less hassle
 		}
 	}
-	// SM :: Update
+	// Update player states
 	switch &s in player.state {
 	case playerStateBase:
 		updatePlayerStateBase(player, objs, &enemies)
@@ -99,7 +101,7 @@ updateGame :: proc(game: ^Game) {
 	case playerStateAttack1:
 		updatePlayerStateAttack1(&s, player, camera, objs, &enemies)
 	case:
-		// If not state is set from init, go straight to Base
+		// Go straight to base state if not initialized.
 		enterPlayerState(player, playerStateBase{}, camera)
 	}
 
@@ -198,6 +200,25 @@ drawGameUI :: proc(game: ^Game) {
 						spawnXDummyEnemies(game, 5)
 					}
 					uiText(fmt.tprintf("%d Enemies", len(enemies.active)), .mid)
+					devider()
+					if clay.UI(
+						clay.Layout(
+							{
+								layoutDirection = .LEFT_TO_RIGHT,
+								childAlignment = {.CENTER, .CENTER},
+							},
+						),
+					) {
+						uiText("TimeScale:", .small)
+						if buttonText("-") {
+							timeScale = clamp(timeScale - .25, 0, 3)
+						}
+						uiText(fmt.tprint(timeScale), .small)
+						if buttonText("+") {
+							timeScale = clamp(timeScale + .25, 0, 3)
+						}
+					}
+					// }
 					// for enemy in enemies.active {
 					// 	state := reflect.union_variant_type_info(enemy.state)
 					// 	uiText(fmt.tprint(state), .mid)

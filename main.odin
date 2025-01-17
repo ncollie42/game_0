@@ -58,7 +58,6 @@ main :: proc() {
 			drawMainMemu(&app, &game)
 		// Add some UI + button
 		case .PLAYING:
-			// switch xx { case playing : case paused : case powerUp } // TODO
 			if isGameOver(game.player) {
 				app = .HOME
 				// reset values
@@ -67,6 +66,7 @@ main :: proc() {
 			drawGame(&game)
 			drawGameUI(&game)
 		case .OTHER:
+		// Could add a post game screen with stats
 		}
 	}
 }
@@ -92,7 +92,7 @@ isGameOver :: proc(player: ^Player) -> bool {
 // Playable Demo
 // -[]Game over screen with Clay
 // Improve V1
-// -[]Body block
+// -[X]Body block
 // -[]Partcle
 // -[]Combo
 // -[]VFX
