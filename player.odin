@@ -13,10 +13,18 @@ Player :: struct {
 	using spacial: Spacial,
 	using health:  Health,
 	state:         State,
-	// collision:   Collision,
-	//Test
+
+	//Test :: Collision
 	point:         vec3,
 	normal:        vec3,
+	// slash:
+	trail:         Trail,
+}
+
+Trail :: struct {
+	duration: f32,
+	model:    rl.Model,
+	// Use player's position for now
 }
 
 MOVE_SPEED :: 5
@@ -36,6 +44,11 @@ initPlayer :: proc(path: cstring) -> ^Player {
 	shader := rl.LoadShader(nil, "shaders/flash.fs")
 	player.model.materials[1].shader = shader
 	player.spacial.shape = .8 //radius
+
+
+	trailMesh := rl.GenMeshCube(2, .1, .25) // Replace with real mesh
+	trailModel := rl.LoadModelFromMesh(trailMesh)
+	player.trail.model = trailModel
 	return player
 }
 
@@ -98,6 +111,7 @@ moveAndSlide :: proc(
 
 	player.spacial.pos += dir * getDelta() * speed
 }
+
 updatePlayerStateBase :: proc(player: ^Player, objs: [dynamic]EnvObj, enemies: ^EnemyDummyPool) {
 
 	// Add a sub state - Idle and moving
@@ -145,7 +159,6 @@ updatePlayerStateAttack1 :: proc(
 ) {
 	// Input check
 	attack.timer.left -= getDelta()
-	fmt.println(attack.timer.left, player.animation.current, attack.comboCount)
 
 	dir := getForwardPoint(player)
 	moveAndSlide(player, dir, objs, enemies, MOVE_SPEED * .35)
@@ -237,6 +250,9 @@ enterPlayerState :: proc(player: ^Player, state: State, camera: ^rl.Camera3D) {
 			s.comboInput = true
 			return
 		}
+		// Slash
+		player.trail.duration = .1
+
 		playSoundWhoosh()
 		s.timer.left = s.timer.max
 		// Snap to mouse direction before attack
@@ -302,4 +318,16 @@ drawPlayer :: proc(player: Player) {
 		1,
 		rl.WHITE,
 	)
+
+	if player.trail.duration > 0 {
+		front := getForwardPoint(player)
+		rl.DrawModelEx(
+			player.trail.model,
+			player.pos + {0, 1, 0} + front,
+			UP,
+			rl.RAD2DEG * player.spacial.rot,
+			1,
+			rl.WHITE,
+		)
+	}
 }

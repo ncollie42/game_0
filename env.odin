@@ -33,17 +33,17 @@ initEnv :: proc() -> [dynamic]EnvObj {
 		append(&pool, env)
 	}
 
-	{ 	// truck
-		model := rl.LoadModel("resources/truck.glb")
-		boundingBox := rl.GetModelBoundingBox(model)
+	// { 	// truck
+	// 	model := rl.LoadModel("resources/truck.glb")
+	// 	boundingBox := rl.GetModelBoundingBox(model)
 
-		model.materials[0].maps[rl.MaterialMapIndex.ALBEDO].texture = texture
-		env := EnvObj {
-			model = model,
-			spacial = Spacial{pos = {1, 0, 0}, shape = boundingBox},
-		}
-		append(&pool, env)
-	}
+	// 	model.materials[0].maps[rl.MaterialMapIndex.ALBEDO].texture = texture
+	// 	env := EnvObj {
+	// 		model = model,
+	// 		spacial = Spacial{pos = {1, 0, 0}, shape = boundingBox},
+	// 	}
+	// 	append(&pool, env)
+	// }
 
 	{ 	// Box
 		mesh := rl.GenMeshCube(.25, .1, 25)

@@ -39,8 +39,8 @@ initFlipbook :: proc(path: cstring, width: i32, height: i32, frames: i32) -> ^Fl
 	return book
 }
 
-// FPS: f32 = 1.0 / 60.0
-FPS: f32 = 1.0 / 30.0
+FPS: f32 = 1.0 / 60.0 // impact
+// FPS: f32 = 1.0 / 30.0 // Fire
 // 1 / 24
 
 // updateFlipbookImpact :: proc(flipbook: ^Flipbook) {

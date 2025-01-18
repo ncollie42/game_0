@@ -10,7 +10,8 @@ import rl "vendor:raylib"
 // https://www.youtube.com/watch?v=tu-Qe66AvtY
 // https://www.youtube.com/watch?v=2JXR7IASSog
 
-camDist: vec3 = {0, 6, -5}
+// camDist: vec3 = {0, 6, -5}
+camDist: vec3 = {0, 8, -7.5}
 // camDist: vec3 = {0, 12, -10}
 CAMERA_SPEED :: 5
 

@@ -27,7 +27,7 @@ getBackwardPoint :: proc(obj: ^Spacial) -> vec3 {
 	return point
 }
 
-getForwardPoint :: proc(obj: ^Spacial) -> vec3 {
+getForwardPoint :: proc(obj: Spacial) -> vec3 {
 	// Return a point between 0 1 [0,0]
 	mat := rl.MatrixRotateY(obj.rot)
 	point := rl.Vector3Transform({0, 0, 1}, mat)

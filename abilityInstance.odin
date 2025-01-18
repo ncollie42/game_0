@@ -54,7 +54,7 @@ spawnMeleInstanceAtPlayer :: proc(pool: ^AbilityPool, player: ^Player) {
 }
 
 spawnInstanceFrontOfLocation :: proc(pool: ^AbilityPool, loc: ^Spacial) {
-	forward := getForwardPoint(loc)
+	forward := getForwardPoint(loc^)
 
 	append(&pool.active, newMeleInstance(forward + loc.pos))
 }
@@ -67,7 +67,11 @@ removeAbility :: proc(pool: ^AbilityPool, activeIndex: int) {
 
 // ---- Update
 
-updateEnemyHitCollisions :: proc(pool: ^AbilityPool, enemies: ^EnemyDummyPool) {
+updateEnemyHitCollisions :: proc(
+	pool: ^AbilityPool,
+	enemies: ^EnemyDummyPool,
+	impact: ^ImpactPool,
+) {
 	// Check collision
 	for &obj, index in pool.active {
 		for &enemy in enemies.active {
@@ -85,6 +89,7 @@ updateEnemyHitCollisions :: proc(pool: ^AbilityPool, enemies: ^EnemyDummyPool) {
 			}
 			enterEnemyState(&enemy, state)
 			playSoundPunch()
+			spawnImpact(impact, enemy.pos)
 			// enterEnemyState
 			// Sound
 			// Push back

@@ -85,7 +85,7 @@ newSpawnMeleAbilityPlayer :: proc(pool: ^AbilityPool, player: ^Player) -> Abilit
 	// config.state = playerStateAttack1 {
 	// 	cancellable = true,
 	// 	timer = Timer{max = .4},
-	// 	trigger = .4, // [0, 1]
+	// 	trigger = .0, // [0, 1]
 	// 	animation = .UNARMED_MELEE_ATTACK_KICK,
 	// 	speed = 2,
 	// 	action = action,
@@ -94,7 +94,7 @@ newSpawnMeleAbilityPlayer :: proc(pool: ^AbilityPool, player: ^Player) -> Abilit
 	config.state = playerStateAttack1 {
 		cancellable = true,
 		timer = Timer{max = .4},
-		trigger = .4,
+		trigger = .0,
 		animation = .UNARMED_MELEE_ATTACK_PUNCH_A,
 		speed = 2,
 		action = action,
@@ -102,7 +102,7 @@ newSpawnMeleAbilityPlayer :: proc(pool: ^AbilityPool, player: ^Player) -> Abilit
 	// PUNCH B
 	// config.state = playerStateAttack1 {
 	// 	timer = Timer{max = .4},
-	// 	trigger = .4,
+	// 	trigger = .0,
 	// 	animation = .UNARMED_MELEE_ATTACK_PUNCH_B,
 	// 	speed = 2,
 	// 	action = action,

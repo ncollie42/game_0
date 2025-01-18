@@ -17,6 +17,7 @@ Game :: struct {
 	dash:            State,
 	screen:          rl.RenderTexture2D,
 	fire:            ^Flipbook,
+	impact:          ImpactPool,
 }
 
 initGame :: proc() -> Game {
@@ -29,8 +30,9 @@ initGame :: proc() -> Game {
 		enemyAbilities  = initAbilityPool(),
 		screen          = rl.LoadRenderTexture(P_W, P_H),
 		fire            = initFlipbook("resources/fire.png", 96, 96, 18),
+		impact          = initImpactPool("resources/impact.png", 305, 383, 27),
+		// impact          = initFlipbook("resources/impact.png", 305, 383, 27),
 	}
-	// impact := initFlipbook("resources/impact.png", 305, 383, 27)
 
 	game.ability = newSpawnMeleAbilityPlayer(game.playerAbilities, game.player)
 	game.dash = newPlayerDashAbility(game.player, game.camera)
@@ -72,7 +74,7 @@ resetGame :: proc(game: ^Game) {
 	// Enemies
 	despawnAllEnemies(&enemies)
 
-	spawnXDummyEnemies(game, 10)
+	// spawnXDummyEnemies(game, 10)
 }
 
 updateGame :: proc(game: ^Game) {
@@ -92,6 +94,8 @@ updateGame :: proc(game: ^Game) {
 			rl.ToggleBorderlessWindowed() // Less hassle
 		}
 	}
+	// Update player trail
+	player.trail.duration -= getDelta()
 	// Update player states
 	switch &s in player.state {
 	case playerStateBase:
@@ -111,7 +115,7 @@ updateGame :: proc(game: ^Game) {
 
 	updateEnemyDummies(&enemies, player^, &objs, enemyAbilities)
 	applyBoundaryForces(&enemies, &objs)
-	updateEnemyHitCollisions(playerAbilities, &enemies)
+	updateEnemyHitCollisions(playerAbilities, &enemies, &impact)
 
 	updateHitStop()
 	updateCameraPos(camera, player^)
@@ -119,7 +123,13 @@ updateGame :: proc(game: ^Game) {
 
 	updateAudio()
 
+	// one update at a time for now
 	updateFlipbook(fire)
+
+	if rl.IsKeyPressed(.G) {
+		spawnImpact(&impact, mouseInWorld(camera))
+	}
+	updateImpactPool(&impact)
 }
 
 drawGame :: proc(game: ^Game) {
@@ -139,7 +149,8 @@ drawGame :: proc(game: ^Game) {
 	drawEnemies(&enemies)
 	drawEnv(&objs)
 
-	// drawFlipbook(camera^, fire^, {5, 1.5, 0}, 3)
+	drawFlipbook(camera^, fire^, {5, 1.5, 0}, 3)
+	drawImpactPool(camera^, impact)
 
 	drawCamera(camera)
 	rl.EndMode3D()
