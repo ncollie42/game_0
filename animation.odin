@@ -25,13 +25,13 @@ ANIMATION_NAMES :: union {
 	SKELE,
 }
 
-// Animations
-ANIMATION_FRAME_RATE :: 60 // 60 feels good, but actually be 25 or 30
+// Export maximo at 30 fps -> blender at 60 -> render FPS at 30 here
+FPS_30 :: 30
 
 AnimationState :: struct {
+	duration: f32,
 	finished: bool, // Signal :: Animation just finished
 	current:  ANIMATION_NAMES, //current anim
-	frame:    f32, //active animation frame
 	speed:    f32,
 }
 
@@ -49,7 +49,7 @@ updateAnimation :: proc(model: rl.Model, state: ^AnimationState, set: AnimationS
 		state.speed != 0,
 		fmt.tprint("Animation speed is Zero, do we want that?", model, state^, set),
 	)
-	frame := i32(math.floor(state.frame))
+	frame := i32(math.floor(state.duration * FPS_30))
 
 	current: i32
 	switch v in state.current {
@@ -62,16 +62,15 @@ updateAnimation :: proc(model: rl.Model, state: ^AnimationState, set: AnimationS
 	anim := set.anims[current]
 	rl.UpdateModelAnimation(model, anim, frame)
 
-	state.frame += getDelta() * ANIMATION_FRAME_RATE * state.speed
-	frame = i32(math.floor(state.frame))
+	state.duration += getDelta() * state.speed
+	// fmt.printfln("%.1f frame:%d total:%d", state.duration, frame, anim.frameCount)
 
 	// Will be set for a single frame until reset next turn.
 	state.finished = false
 	if frame >= anim.frameCount {
 		state.finished = true
+		state.duration = 0
 	}
-
-	state.frame = rl.Wrap(state.frame, 0, f32(anim.frameCount))
 }
 
 getAnimationProgress :: proc(state: AnimationState, set: AnimationSet) -> f32 {
@@ -83,5 +82,7 @@ getAnimationProgress :: proc(state: AnimationState, set: AnimationSet) -> f32 {
 		current = i32(v)
 	}
 
-	return state.frame / f32(set.anims[current].frameCount)
+	frame := i32(math.floor(state.duration * FPS_30))
+	anim := set.anims[current]
+	return f32(frame) / f32(anim.frameCount)
 }

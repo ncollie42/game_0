@@ -105,9 +105,8 @@ updateGame :: proc(game: ^Game) {
 		// Go straight to base state if not initialized.
 		enterPlayerState(player, playerStateBase{}, camera)
 	}
-	updateWaves(game)
+	// updateWaves(game)
 
-	fmt.println(player.state, player.animState, player.animState.speed)
 	updateAnimation(player.model, &player.animState, player.animSet)
 	updatePlayerHitCollisions(enemyAbilities, player)
 	updateHealth(player)

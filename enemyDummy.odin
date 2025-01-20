@@ -137,7 +137,6 @@ updateEnemyDummies :: proc(
 			despawnEnemy(enemies, index)
 		}
 
-		fmt.println(enemy.animState, enemy.animState.speed)
 		updateAnimation(enemy.model, &enemy.animState, enemies.animSet)
 	}
 }
@@ -437,11 +436,11 @@ drawEnemy :: proc(enemy: Enemy) {
 
 // ------ Eneter State
 enterEnemyState :: proc(enemy: ^Enemy, state: EnemyState) {
-	enemy.animState.frame = 0
+	enemy.animState.duration = 0
 	enemy.state = state
 	switch &s in enemy.state {
 	case EnemyStateBase:
-		enemy.animState.speed = 1.0
+		enemy.animState.speed = 0.5
 		enemy.animState.current = SKELE.idle
 	case EnemyAttack1:
 		// Face player

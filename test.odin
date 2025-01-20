@@ -20,54 +20,11 @@ ActionSpawnMeleAtPlayer :: struct {
 	pool:   ^AbilityPool,
 }
 
-newSpawnCubeAbilityMouse :: proc(pool: ^[dynamic]vec3, camera: ^rl.Camera3D) -> AbilityConfig {
-	action := ActionSpawnCubeAtMouse {
-		camera = camera,
-		pool   = pool,
-	}
-
-	config: AbilityConfig
-	config.cost = 1
-	config.cd.max = 5
-	config.usageLimit = Limited{2, 2}
-	// ability.usageLimit = Infinate{}
-	config.state = playerStateAttack1 {
-		timer = Timer{max = .6},
-		trigger = .4,
-		animation = PLAYER.punch2,
-		speed = 1,
-		action = action,
-	}
-	return config
-}
-
-// newSpawnCubeAbilityPlayer :: proc(pool: ^[dynamic]vec3, player: ^Player) -> AbilityConfig {
-newSpawnCubeAbilityLocation :: proc(pool: ^[dynamic]vec3, loc: ^Spacial) -> AbilityConfig {
-	action := ActionSpawnCubeAtLocation {
-		location = loc,
-		pool     = pool,
-	}
-
-	config: AbilityConfig
-	config.cost = 1
-	config.cd.max = 5
-	config.usageLimit = Limited{2, 2}
-	// ability.usageLimit = Infinate{}
-	config.state = playerStateAttack1 {
-		timer = Timer{max = .3},
-		trigger = .4,
-		animation = PLAYER.punch2,
-		speed = 1.0,
-		action = action,
-	}
-	return config
-}
-
 newPlayerDashAbility :: proc(player: ^Player, camera: ^rl.Camera3D) -> State {
 	// No action needed
 
 	// For now not using AbilityConfig; might have it's own config later.
-	return playerStateDashing{timer = Timer{max = .5}, animation = PLAYER.roll, speed = 2.9}
+	return playerStateDashing{timer = Timer{max = .5}, animation = PLAYER.roll, speed = 2.2}
 }
 
 newSpawnMeleAbilityPlayer :: proc(pool: ^AbilityPool, player: ^Player) -> AbilityConfig {
@@ -80,34 +37,14 @@ newSpawnMeleAbilityPlayer :: proc(pool: ^AbilityPool, player: ^Player) -> Abilit
 	config.cost = 1
 	config.cd.max = 5
 	config.usageLimit = Limited{2, 2}
-	// ability.usageLimit = Infinate{}
-	// KICK
-	// config.state = playerStateAttack1 {
-	// 	cancellable = true,
-	// 	timer = Timer{max = .4},
-	// 	trigger = .0, // [0, 1]
-	// 	animation = .UNARMED_MELEE_ATTACK_KICK,
-	// 	speed = 2,
-	// 	action = action,
-	// }
-	// PUNCH A
 	config.state = playerStateAttack1 {
 		cancellable = true,
 		timer = Timer{max = .3},
 		trigger = .0,
 		animation = PLAYER.punch1,
-		speed = 4,
+		speed = 2.5,
 		action = action,
 	}
-	// PUNCH B
-	// config.state = playerStateAttack1 {
-	// 	timer = Timer{max = .4},
-	// 	trigger = .0,
-	// 	animation = .UNARMED_MELEE_ATTACK_PUNCH_B,
-	// 	speed = 2,
-	// 	action = action,
-	// }
-
 	return config
 }
 

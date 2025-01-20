@@ -35,6 +35,11 @@ initPlayer :: proc() -> ^Player {
 
 	player.model = loadModel("/home/nico/Downloads/Human/base.m3d")
 	player.animSet = loadModelAnimations("/home/nico/Downloads/Human/base.m3d")
+	fmt.println(player.animSet.anims[PLAYER.idle].frameCount)
+	assert(
+		player.animSet.anims[PLAYER.idle].frameCount == 58,
+		"Frame count for idle doesn't match, Make sure you exported FPS properly",
+	)
 	texture := loadTexture("/home/nico/Downloads/Human/base.png")
 	player.model.materials[1].maps[rl.MaterialMapIndex.ALBEDO].texture = texture
 
@@ -225,7 +230,8 @@ enterPlayerState :: proc(player: ^Player, state: State, camera: ^rl.Camera3D) {
 		reflect.get_union_variant_raw_tag(player.state) != reflect.get_union_variant_raw_tag(state)
 	if stateChange {
 		// assert? maybe this should not be a thing when we enter with checks
-		player.animState.frame = 0
+		player.animState.duration = 0
+		// player.animState.frame = 0
 		player.state = state
 	}
 
