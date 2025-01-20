@@ -154,122 +154,6 @@ Direction_Vecs := [Direction]vec3 {
 	.East  = {-1, 0, 0},
 }
 
-// Animations
-
-ANIMATION_FRAME_RATE :: 90 // 60 feels good, but actually be 25 or 30
-
-// Stores all animations for the asset pack
-ANIMATION: Animations = {}
-
-ANIMATION_NAME :: enum {
-	H1_MELEE_ATTACK_CHOP             = 0,
-	H1_MELEE_ATTACK_SLICE_DIAGONAL   = 1,
-	H1_MELEE_ATTACK_SLICE_HORIZONTAL = 2,
-	H1_MELEE_ATTACK_STAB             = 3,
-	H1_RANGED_AIMING                 = 4,
-	H1_RANGED_RELOAD                 = 5,
-	H1_RANGED_SHOOT                  = 6,
-	H1_RANGED_SHOOTING               = 7,
-	H2_MELEE_ATTACK_CHOP             = 8,
-	H2_MELEE_ATTACK_SLICE            = 9,
-	H2_MELEE_ATTACK_SPIN             = 10,
-	H2_MELEE_ATTACK_SPINNING         = 11,
-	H2_MELEE_ATTACK_STAB             = 12,
-	H2_MELEE_IDLE                    = 13,
-	H2_RANGED_AIMING                 = 14,
-	H2_RANGED_RELOAD                 = 15,
-	H2_RANGED_SHOOT                  = 16,
-	H2_RANGED_SHOOTING               = 17,
-	BLOCK                            = 18,
-	BLOCK_ATTACK                     = 19,
-	BLOCK_HIT                        = 20,
-	BLOCKING                         = 21,
-	CHEER                            = 22,
-	DEATH_A                          = 23,
-	DEATH_B                          = 24,
-	DODGE_BACKWARD                   = 25,
-	DODGE_FORWARD                    = 26,
-	DODGE_LEFT                       = 27,
-	DODGE_RIGHT                      = 28,
-	DUALWIELD_MELEE_ATTACK_CHOP      = 29,
-	DUALWIELD_MELEE_ATTACK_SLICE     = 30,
-	DUALWIELD_MELEE_ATTACK_STAB      = 31,
-	HIT_A                            = 32,
-	HIT_B                            = 33,
-	IDLE                             = 34,
-	INTERACT                         = 35,
-	JUMP_FULL_LONG                   = 36,
-	JUMP_FULL_SHORT                  = 37,
-	JUMP_IDLE                        = 38,
-	JUMP_LAND                        = 39,
-	JUMP_START                       = 40,
-	LIE_DOWN                         = 41,
-	LIE_IDLE                         = 42,
-	LIE_STANDUP                      = 43,
-	PICKUP                           = 44,
-	RUNNING_A                        = 45,
-	RUNNING_B                        = 46,
-	RUNNING_STRAFE_LEFT              = 47,
-	RUNNING_STRAFE_RIGHT             = 48,
-	SIT_CHAIR_DOWN                   = 49,
-	SIT_CHAIR_IDLE                   = 50,
-	SIT_CHAIR_STANDUP                = 51,
-	SIT_FLOOR_DOWN                   = 52,
-	SIT_FLOOR_IDLE                   = 53,
-	SIT_FLOOR_STANDUP                = 54,
-	SPELLCAST_LONG                   = 55,
-	SPELLCAST_RAISE                  = 56,
-	SPELLCAST_SHOOT                  = 57,
-	SPELLCASTING                     = 58,
-	THROW                            = 59,
-	UNARMED_IDLE                     = 60,
-	UNARMED_MELEE_ATTACK_KICK        = 61,
-	UNARMED_MELEE_ATTACK_PUNCH_A     = 62,
-	UNARMED_MELEE_ATTACK_PUNCH_B     = 63,
-	USE_ITEM                         = 64,
-	WALKING_A                        = 65,
-	WALKING_B                        = 66,
-	WALKING_BACKWARDS                = 67,
-	WALKING_C                        = 68,
-}
-
-Animation :: struct {
-	finished: bool, // Signal :: Animation just finished
-	current:  ANIMATION_NAME, //current anim
-	frame:    f32, //active animation frame
-	speed:    f32,
-}
-
-// We can share this struct for models using the same animations {Adventueres | skeletons}
-Animations :: struct {
-	total: i32, //total animations
-	anims: [^]rl.ModelAnimation,
-}
-
-// https://www.youtube.com/live/-LPHV452k1Y?si=JLSJ31LMlaPsKLO0&t=3794
-// How to make own function for blending animations
-updateAnimation :: proc(model: rl.Model, animation: ^Animation, animations: Animations) {
-	frame := i32(math.floor(animation.frame))
-	anim := animations.anims[animation.current]
-
-	rl.UpdateModelAnimation(model, anim, frame)
-
-	animation.frame += getDelta() * ANIMATION_FRAME_RATE * animation.speed
-	frame = i32(math.floor(animation.frame))
-
-	// Will be set for a single frame until reset next turn.
-	animation.finished = false
-	if frame >= anim.frameCount {
-		animation.finished = true
-	}
-
-	animation.frame = rl.Wrap(animation.frame, 0, f32(anim.frameCount))
-}
-
-getAnimationProgress :: proc(animation: Animation, animations: Animations) -> f32 {
-	return animation.frame / f32(animations.anims[animation.current].frameCount)
-}
-
 lookAtVec3 :: proc(from, at: vec3) -> f32 {
 	diff := from - at
 	return math.atan2(diff.x, diff.z)
@@ -439,4 +323,33 @@ normalize :: proc(vec: vec3) -> vec3 {
 	if vec == {} {return {}}
 
 	return linalg.normalize(vec)
+}
+
+loadModel :: proc(path: cstring) -> rl.Model {
+	// Make sure it's a valid path.  
+	// Only glb, obj, m3d work.
+	//     No FBX.
+	model := rl.LoadModel(path)
+	assert(model.meshCount != 0, "Invalid Mesh")
+	return model
+}
+
+loadModelAnimations :: proc(path: cstring) -> AnimationSet {
+	anim := AnimationSet{}
+	anim.anims = rl.LoadModelAnimations(path, &anim.total)
+	assert(anim.total != 0, "No Anim")
+	// TODO: print animations
+
+	fmt.println(anim.anims)
+	for ii in 0 ..< anim.total {
+		fmt.println(ii, fmt.tprintf("%s", anim.anims[ii].name))
+	}
+	return anim
+}
+
+loadTexture :: proc(path: cstring) -> rl.Texture2D {
+	texture := rl.LoadTexture(path)
+	assert(rl.IsTextureValid(texture))
+	assert(rl.IsTextureReady(texture))
+	return texture
 }

@@ -34,6 +34,27 @@ drawMainMemu :: proc(app: ^App, game: ^Game) {
 	}
 }
 
+drawPostGameStats :: proc(app: ^App, game: ^Game) {
+	// TODO: Pass in closures for button actions?
+
+	clayFrameSetup()
+	clay.BeginLayout()
+	defer {
+		layout := clay.EndLayout()
+		clayRaylibRender(&layout)
+	}
+
+	if clay.UI(clay.ID("root"), clay.Layout(layoutRoot2)) {
+		uiText("Game Over", .large)
+
+		if buttonText("End") {
+			app^ = .HOME
+			resetGame(game)
+		}
+
+	}
+}
+
 buttonText :: proc(text: string) -> bool {
 	hovered := false
 	if clay.UI() {

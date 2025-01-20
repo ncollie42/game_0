@@ -6,7 +6,7 @@ import rl "vendor:raylib"
 
 Enemy :: struct {
 	model:             rl.Model,
-	animation:         Animation,
+	animState:         AnimationState,
 	using spacial:     Spacial,
 	using health:      Health,
 	state:             EnemyState,
@@ -24,8 +24,9 @@ Enemy :: struct {
 }
 
 EnemyDummyPool :: struct {
-	active: [dynamic]Enemy,
-	free:   [dynamic]Enemy,
+	animSet: AnimationSet,
+	active:  [dynamic]Enemy,
+	free:    [dynamic]Enemy,
 }
 
 EnemyState :: union {
@@ -37,7 +38,7 @@ EnemyState :: union {
 
 EnemyStateBase :: struct {}
 EnemyAttack1 :: struct {
-	animation:    ANIMATION_NAME,
+	animation:    ANIMATION_NAMES,
 	animSpeed:    f32,
 	duration:     f32, // Duration of state, player uses a timer, trying this instead.
 	trigger:      f32, // different than player to see how this works, trigger is time not [0,1]
@@ -45,12 +46,12 @@ EnemyAttack1 :: struct {
 }
 EnemyPushback :: struct {
 	duration:  f32,
-	animation: ANIMATION_NAME,
+	animation: SKELE,
 	animSpeed: f32,
 }
 EnemyHurt :: struct {
 	duration:  f32,
-	animation: ANIMATION_NAME,
+	animation: SKELE,
 	animSpeed: f32,
 }
 
@@ -58,7 +59,7 @@ EnemyHurt :: struct {
 // ---- Closure :: Action
 // ---- Init
 enemyPoolSize := 100
-initEnemyDummies :: proc(path: cstring) -> EnemyDummyPool {
+initEnemyDummies :: proc() -> EnemyDummyPool {
 	// It looks like we can share the same shader for all enemies
 	// shader := rl.LoadShader(nil, "shaders/grayScale.fs")
 	shader := rl.LoadShader(nil, "shaders/flash.fs")
@@ -67,11 +68,16 @@ initEnemyDummies :: proc(path: cstring) -> EnemyDummyPool {
 		active = make([dynamic]Enemy, 0, 0),
 		free   = make([dynamic]Enemy, enemyPoolSize, enemyPoolSize),
 	}
+	path: cstring = "/home/nico/Downloads/Human2/base.m3d"
+
+	pool.animSet = loadModelAnimations(path)
+	texture := loadTexture("/home/nico/Downloads/Human2/base.png")
 
 	for &enemy in pool.free {
 		// Note: is loadModel slow? can I load once and dup memory for every model after?
 		enemy.model = rl.LoadModel(path)
 		assert(enemy.model.meshCount != 0, "No mesh")
+		enemy.model.materials[1].maps[rl.MaterialMapIndex.ALBEDO].texture = texture
 		enemy.model.materials[1].shader = shader
 		enemy.health = Health {
 			max     = 10,
@@ -82,6 +88,7 @@ initEnemyDummies :: proc(path: cstring) -> EnemyDummyPool {
 			max = 2.0,
 		}
 		enemy.shape = .8
+		enemy.animState.speed = 1
 	}
 	return pool
 }
@@ -130,7 +137,8 @@ updateEnemyDummies :: proc(
 			despawnEnemy(enemies, index)
 		}
 
-		updateAnimation(enemy.model, &enemy.animation, ANIMATION)
+		fmt.println(enemy.animState, enemy.animState.speed)
+		updateAnimation(enemy.model, &enemy.animState, enemies.animSet)
 	}
 }
 
@@ -214,12 +222,12 @@ updateDummy :: proc(
 
 		if linalg.distance(enemy.pos, player.pos) > ATTACK_RANGE {
 			updateDummyMovement(enemy, player, enemies, objs) // Boids
-			enemy.animation.current = .WALKING_B
+			enemy.animState.current = SKELE.run
 		} else {
 			target := normalize(player.pos - enemy.pos) // toward player -> Target
 			r := lookAtVec3(target, {})
 			enemy.spacial.rot = lerpRAD(enemy.spacial.rot, r, getDelta() * ENEMY_TURN_SPEED)
-			enemy.animation.current = .H2_MELEE_IDLE
+			enemy.animState.current = SKELE.idle
 		}
 
 		inRange := linalg.distance(enemy.pos, player.pos) < ATTACK_RANGE
@@ -232,12 +240,7 @@ updateDummy :: proc(
 			enemy.attackCD.left = enemy.attackCD.max // Start timer again
 			enterEnemyState(
 				enemy,
-				EnemyAttack1 {
-					duration = 1,
-					trigger = .3,
-					animation = .H2_MELEE_ATTACK_CHOP,
-					animSpeed = 1,
-				},
+				EnemyAttack1{duration = 1, trigger = .3, animation = SKELE.attack, animSpeed = 1},
 			)
 		}
 	// if in range of player attack? Idle animation and running animation
@@ -389,7 +392,7 @@ drawEnemy :: proc(enemy: Enemy) {
 	// Apply hit flash
 	drawHitFlash(enemy.model, enemy.health)
 
-	rl.DrawModelEx(enemy.model, enemy.spacial.pos, UP, rl.RAD2DEG * enemy.spacial.rot, 1, rl.WHITE)
+	rl.DrawModelEx(enemy.model, enemy.spacial.pos, UP, rl.RAD2DEG * enemy.spacial.rot, 3, rl.WHITE)
 
 	angle120: f32 = rl.PI * 120 / 180 // 120* mirrored in both sides TODO: precompute
 	lineCount: f32 = 12 // 24
@@ -414,7 +417,7 @@ drawEnemy :: proc(enemy: Enemy) {
 	// seperation
 	// rl.DrawCapsule(enemy.pos, enemy.pos + enemy.seperationDir, .05, 5, 5, rl.BLUE)
 	// Final forward 
-	rl.DrawCapsule(enemy.pos, enemy.pos + enemy.target, .05, 5, 5, color1)
+	// rl.DrawCapsule(enemy.pos, enemy.pos + enemy.target, .05, 5, 5, color1)
 
 	// Alignment Range
 	// rl.DrawSphereWires(enemy.pos, enemy.range * alignmentRange, 10, 10, alignmentColor)
@@ -434,24 +437,24 @@ drawEnemy :: proc(enemy: Enemy) {
 
 // ------ Eneter State
 enterEnemyState :: proc(enemy: ^Enemy, state: EnemyState) {
-	enemy.animation.frame = 0
+	enemy.animState.frame = 0
 	enemy.state = state
 	switch &s in enemy.state {
 	case EnemyStateBase:
-		enemy.animation.speed = 1.0
-		enemy.animation.current = .WALKING_B
+		enemy.animState.speed = 1.0
+		enemy.animState.current = SKELE.idle
 	case EnemyAttack1:
 		// Face player
-		enemy.animation.speed = s.animSpeed
-		enemy.animation.current = s.animation
+		enemy.animState.speed = s.animSpeed
+		enemy.animState.current = s.animation
 	case EnemyPushback:
 		// TODO: update facing direction
-		enemy.animation.speed = s.animSpeed
-		enemy.animation.current = s.animation
+		enemy.animState.speed = s.animSpeed
+		enemy.animState.current = s.animation
 	case EnemyHurt:
 		// TODO: update facing direction
-		enemy.animation.speed = s.animSpeed
-		enemy.animation.current = s.animation
+		enemy.animState.speed = s.animSpeed
+		enemy.animState.current = s.animation
 	}
 	//TODO: default case
 }

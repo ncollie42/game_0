@@ -23,28 +23,24 @@ Game :: struct {
 initGame :: proc() -> Game {
 	game := Game {
 		camera          = newCamera(),
-		player          = initPlayer(engineerPath),
+		player          = initPlayer(),
 		objs            = initEnv(),
-		enemies         = initEnemyDummies(minionPath),
+		enemies         = initEnemyDummies(),
 		playerAbilities = initAbilityPool(),
 		enemyAbilities  = initAbilityPool(),
 		screen          = rl.LoadRenderTexture(P_W, P_H),
 		fire            = initFlipbook("resources/fire.png", 96, 96, 18),
 		impact          = initImpactPool("resources/impact.png", 305, 383, 27),
-		// impact          = initFlipbook("resources/impact.png", 305, 383, 27),
 	}
 
 	game.ability = newSpawnMeleAbilityPlayer(game.playerAbilities, game.player)
 	game.dash = newPlayerDashAbility(game.player, game.camera)
 
-	ANIMATION.anims = rl.LoadModelAnimations(engineerPath, &ANIMATION.total)
-	assert(ANIMATION.total != 0, "No Anim")
-
-
 	// For pixel look
 	rl.SetTextureFilter(game.screen.texture, rl.TextureFilter.POINT)
 
 
+	debugInit(&game)
 	return game
 }
 
@@ -81,6 +77,7 @@ updateGame :: proc(game: ^Game) {
 	// TODO: Add substates :: Playing : paused : powerup
 	using game
 
+	debugUpdateGame(game)
 	// :: Player Actions
 	{
 		// SM :: Input
@@ -108,8 +105,10 @@ updateGame :: proc(game: ^Game) {
 		// Go straight to base state if not initialized.
 		enterPlayerState(player, playerStateBase{}, camera)
 	}
+	updateWaves(game)
 
-	updateAnimation(player.model, &player.animation, ANIMATION)
+	fmt.println(player.state, player.animState, player.animState.speed)
+	updateAnimation(player.model, &player.animState, player.animSet)
 	updatePlayerHitCollisions(enemyAbilities, player)
 	updateHealth(player)
 
@@ -139,7 +138,8 @@ drawGame :: proc(game: ^Game) {
 	rl.ClearBackground({})
 	rl.BeginMode3D(camera^)
 
-	// rl.DrawGrid(100, .25)
+	debugDrawGame(game)
+
 	rl.DrawPlane({}, {25, 25}, color5)
 
 	drawAbilityInstances(playerAbilities, color1)
@@ -149,10 +149,10 @@ drawGame :: proc(game: ^Game) {
 	drawEnemies(&enemies)
 	drawEnv(&objs)
 
-	drawFlipbook(camera^, fire^, {5, 1.5, 0}, 3)
 	drawImpactPool(camera^, impact)
 
 	drawCamera(camera)
+	// -------------------------------------------------
 	rl.EndMode3D()
 	rl.EndTextureMode()
 
@@ -189,9 +189,17 @@ drawGameUI :: proc(game: ^Game) {
 	if clay.UI(clay.ID("root"), clay.Layout(layoutRoot)) {
 		if clay.UI(
 			clay.ID("top"),
-			clay.Layout({sizing = {height = clay.SizingPercent(.2), width = clay.SizingGrow({})}}),
+			clay.Layout(
+				{
+					sizing = {height = clay.SizingPercent(.2), width = clay.SizingGrow({})},
+					childAlignment = {x = .CENTER},
+				},
+			),
 			clay.Rectangle(testPannel),
-		) {}
+		) {
+			timer := fmt.tprintf("%.1f", Waves.duration)
+			uiText(timer, .large)
+		}
 		if clay.UI(
 			clay.ID("center"),
 			clay.Layout({sizing = expand}),

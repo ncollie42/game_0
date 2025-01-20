@@ -19,31 +19,34 @@ initEnv :: proc() -> [dynamic]EnvObj {
 	checked := rl.GenImageChecked(4, 4, 1, 1, color0, color4)
 	texture := rl.LoadTextureFromImage(checked)
 
-	{ 	// Box
-		mesh := rl.GenMeshCube(4, 2, 4)
-		model := rl.LoadModelFromMesh(mesh)
-		boundingBox := rl.GetMeshBoundingBox(mesh)
-
-		model.materials[0].maps[rl.MaterialMapIndex.ALBEDO].texture = texture
-		env := EnvObj {
-			model = model,
-			spacial = Spacial{pos = {6, 0, -6}, rot = 0, shape = boundingBox},
-			// spacial = Spacial{pos = {0, 1, 0}, rot = rl.PI / 4, shape = boundingBox},
-		}
-		append(&pool, env)
-	}
-
-	// { 	// truck
-	// 	model := rl.LoadModel("resources/truck.glb")
-	// 	boundingBox := rl.GetModelBoundingBox(model)
+	// Stuff
+	// { 	// Box
+	// 	mesh := rl.GenMeshCube(4, 2, 4)
+	// 	model := rl.LoadModelFromMesh(mesh)
+	// 	boundingBox := rl.GetMeshBoundingBox(mesh)
 
 	// 	model.materials[0].maps[rl.MaterialMapIndex.ALBEDO].texture = texture
 	// 	env := EnvObj {
 	// 		model = model,
-	// 		spacial = Spacial{pos = {1, 0, 0}, shape = boundingBox},
+	// 		spacial = Spacial{pos = {6, 0, -6}, rot = 0, shape = boundingBox},
+	// 		// spacial = Spacial{pos = {0, 1, 0}, rot = rl.PI / 4, shape = boundingBox},
 	// 	}
 	// 	append(&pool, env)
 	// }
+
+	// { 	// sphere
+	// 	rad: f32 = 3.0
+	// 	mesh := rl.GenMeshSphere(rad, 10, 10)
+	// 	model := rl.LoadModelFromMesh(mesh)
+	// 	model.materials[0].maps[rl.MaterialMapIndex.ALBEDO].texture = texture
+	// 	env := EnvObj {
+	// 		model = model,
+	// 		spacial = Spacial{pos = {-6, 0, -6}, shape = rad},
+	// 	}
+	// 	append(&pool, env)
+	// }
+
+	// Walls
 
 	{ 	// Box
 		mesh := rl.GenMeshCube(.25, .1, 25)
@@ -97,17 +100,6 @@ initEnv :: proc() -> [dynamic]EnvObj {
 		append(&pool, env)
 	}
 
-	{ 	// sphere
-		rad: f32 = 3.0
-		mesh := rl.GenMeshSphere(rad, 10, 10)
-		model := rl.LoadModelFromMesh(mesh)
-		model.materials[0].maps[rl.MaterialMapIndex.ALBEDO].texture = texture
-		env := EnvObj {
-			model = model,
-			spacial = Spacial{pos = {-6, 0, -6}, shape = rad},
-		}
-		append(&pool, env)
-	}
 	return pool
 }
 

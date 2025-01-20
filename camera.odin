@@ -10,9 +10,8 @@ import rl "vendor:raylib"
 // https://www.youtube.com/watch?v=tu-Qe66AvtY
 // https://www.youtube.com/watch?v=2JXR7IASSog
 
-// camDist: vec3 = {0, 6, -5}
-camDist: vec3 = {0, 8, -7.5}
-// camDist: vec3 = {0, 12, -10}
+camDist: vec3 = {0, 6, -5} * 2 //* 1.50
+
 CAMERA_SPEED :: 5
 
 screenShake := struct {
@@ -104,6 +103,10 @@ zoomOut :: proc(camera: ^rl.Camera3D) {
 	rl.CameraMoveToTarget(camera, 1)
 }
 
+zoomIn :: proc(camera: ^rl.Camera3D) {
+	rl.CameraMoveToTarget(camera, -1)
+}
+
 updateCameraPos :: proc(camera: ^rl.Camera3D, player: Player) {
 	// Should we take into account the mouse? mid point between the 2?
 	targetPos := player.spacial.pos + camDist
@@ -113,6 +116,9 @@ updateCameraPos :: proc(camera: ^rl.Camera3D, player: Player) {
 
 	if rl.IsKeyDown(.T) {
 		zoomOut(camera)
+	}
+	if rl.IsKeyDown(.Y) {
+		zoomIn(camera)
 	}
 }
 

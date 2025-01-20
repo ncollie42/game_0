@@ -34,7 +34,7 @@ newSpawnCubeAbilityMouse :: proc(pool: ^[dynamic]vec3, camera: ^rl.Camera3D) -> 
 	config.state = playerStateAttack1 {
 		timer = Timer{max = .6},
 		trigger = .4,
-		animation = .UNARMED_MELEE_ATTACK_PUNCH_A,
+		animation = PLAYER.punch2,
 		speed = 1,
 		action = action,
 	}
@@ -56,8 +56,8 @@ newSpawnCubeAbilityLocation :: proc(pool: ^[dynamic]vec3, loc: ^Spacial) -> Abil
 	config.state = playerStateAttack1 {
 		timer = Timer{max = .3},
 		trigger = .4,
-		animation = .UNARMED_MELEE_ATTACK_PUNCH_A,
-		speed = 2.2,
+		animation = PLAYER.punch2,
+		speed = 1.0,
 		action = action,
 	}
 	return config
@@ -67,7 +67,7 @@ newPlayerDashAbility :: proc(player: ^Player, camera: ^rl.Camera3D) -> State {
 	// No action needed
 
 	// For now not using AbilityConfig; might have it's own config later.
-	return playerStateDashing{timer = Timer{max = .25}, animation = .DODGE_FORWARD, speed = 1}
+	return playerStateDashing{timer = Timer{max = .5}, animation = PLAYER.roll, speed = 2.9}
 }
 
 newSpawnMeleAbilityPlayer :: proc(pool: ^AbilityPool, player: ^Player) -> AbilityConfig {
@@ -93,10 +93,10 @@ newSpawnMeleAbilityPlayer :: proc(pool: ^AbilityPool, player: ^Player) -> Abilit
 	// PUNCH A
 	config.state = playerStateAttack1 {
 		cancellable = true,
-		timer = Timer{max = .4},
+		timer = Timer{max = .3},
 		trigger = .0,
-		animation = .UNARMED_MELEE_ATTACK_PUNCH_A,
-		speed = 2,
+		animation = PLAYER.punch1,
+		speed = 4,
 		action = action,
 	}
 	// PUNCH B

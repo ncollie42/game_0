@@ -9,11 +9,11 @@ import rl "vendor:raylib"
 Player :: struct {
 	lookAtMouse:   bool,
 	model:         rl.Model,
-	animation:     Animation,
+	animState:     AnimationState,
+	animSet:       AnimationSet,
 	using spacial: Spacial,
 	using health:  Health,
 	state:         State,
-
 	//Test :: Collision
 	point:         vec3,
 	normal:        vec3,
@@ -30,11 +30,15 @@ Trail :: struct {
 MOVE_SPEED :: 5
 TURN_SPEED :: 10.0
 
-initPlayer :: proc(path: cstring) -> ^Player {
+initPlayer :: proc() -> ^Player {
 	player := new(Player)
 
-	player.model = rl.LoadModel(path)
-	assert(player.model.meshCount != 0, "No mesh")
+	player.model = loadModel("/home/nico/Downloads/Human/base.m3d")
+	player.animSet = loadModelAnimations("/home/nico/Downloads/Human/base.m3d")
+	texture := loadTexture("/home/nico/Downloads/Human/base.png")
+	player.model.materials[1].maps[rl.MaterialMapIndex.ALBEDO].texture = texture
+
+	player.animState.speed = 1
 
 	player.health = Health {
 		max     = 5,
@@ -44,7 +48,6 @@ initPlayer :: proc(path: cstring) -> ^Player {
 	shader := rl.LoadShader(nil, "shaders/flash.fs")
 	player.model.materials[1].shader = shader
 	player.spacial.shape = .8 //radius
-
 
 	trailMesh := rl.GenMeshCube(2, .1, .25) // Replace with real mesh
 	trailModel := rl.LoadModelFromMesh(trailMesh)
@@ -126,9 +129,9 @@ updatePlayerStateBase :: proc(player: ^Player, objs: [dynamic]EnvObj, enemies: ^
 	}
 
 	if dir != {} {
-		player.animation.current = .RUNNING_A
+		player.animState.current = PLAYER.run
 	} else {
-		player.animation.current = .UNARMED_IDLE
+		player.animState.current = PLAYER.idle
 	}
 
 }
@@ -161,7 +164,7 @@ updatePlayerStateAttack1 :: proc(
 	attack.timer.left -= getDelta()
 
 	dir := getForwardPoint(player)
-	moveAndSlide(player, dir, objs, enemies, MOVE_SPEED * .35)
+	moveAndSlide(player, dir, objs, enemies, MOVE_SPEED * .25)
 
 	// if s.comboInput && between range {
 	// Do we use the same state and update attack values? or do we create a sub state enum
@@ -193,9 +196,9 @@ updatePlayerStateAttack1 :: proc(
 			r := lookAtVec3(mouseInWorld(camera), player.spacial.pos)
 			player.spacial.rot = lerpRAD(player.spacial.rot, r, 1)
 
-			player.animation.speed = attack.speed
-			player.animation.current = .UNARMED_MELEE_ATTACK_KICK
-			// attack.comboCount == 1 ? .UNARMED_MELEE_ATTACK_PUNCH_A : .UNARMED_MELEE_ATTACK_KICK
+			player.animState.speed = attack.speed
+			player.animState.current = .punch2
+			// player.animation.current = attack.comboCount == 1 ? .punch2 : .kick
 			return
 		}
 		enterPlayerState(player, playerStateBase{}, camera)
@@ -222,15 +225,15 @@ enterPlayerState :: proc(player: ^Player, state: State, camera: ^rl.Camera3D) {
 		reflect.get_union_variant_raw_tag(player.state) != reflect.get_union_variant_raw_tag(state)
 	if stateChange {
 		// assert? maybe this should not be a thing when we enter with checks
-		player.animation.frame = 0
+		player.animState.frame = 0
 		player.state = state
 	}
 
 	switch &s in player.state {
 	case playerStateBase:
 		// Look at movemment
-		player.animation.speed = 1.0
-		player.animation.current = .IDLE
+		player.animState.speed = 1
+		player.animState.current = PLAYER.idle
 	case playerStateDashing:
 		playSoundGrunt()
 		// Snap to player movement or forward dir if not moving
@@ -241,8 +244,8 @@ enterPlayerState :: proc(player: ^Player, state: State, camera: ^rl.Camera3D) {
 		r := lookAtVec3(player.spacial.pos + dir, player.spacial.pos)
 		player.spacial.rot = lerpRAD(player.spacial.rot, r, 1)
 
-		player.animation.speed = s.speed
-		player.animation.current = s.animation
+		player.animState.speed = s.speed
+		player.animState.current = s.animation
 	case playerStateAttack1:
 		if !stateChange {
 			progress := 1 - (s.timer.left / s.timer.max)
@@ -259,8 +262,8 @@ enterPlayerState :: proc(player: ^Player, state: State, camera: ^rl.Camera3D) {
 		r := lookAtVec3(mouseInWorld(camera), player.spacial.pos)
 		player.spacial.rot = lerpRAD(player.spacial.rot, r, 1)
 
-		player.animation.speed = s.speed
-		player.animation.current = s.animation
+		player.animState.speed = s.speed
+		player.animState.current = s.animation
 	}
 }
 
@@ -276,7 +279,7 @@ playerStateBase :: struct {}
 playerStateDashing :: struct {
 	// TODO: maybe add Actions or other fields
 	timer:     Timer,
-	animation: ANIMATION_NAME, // TODO group these 2
+	animation: ANIMATION_NAMES, // TODO group these 2
 	speed:     f32,
 }
 
@@ -287,7 +290,7 @@ playerStateAttack1 :: struct {
 	// Need timer to know how deep into the state we are
 	timer:        Timer,
 	// Animation Data
-	animation:    ANIMATION_NAME,
+	animation:    ANIMATION_NAMES,
 	speed:        f32,
 	// Action Data TODO: Move into its own struct, take in array
 	hasTriggered: bool,
@@ -315,19 +318,20 @@ drawPlayer :: proc(player: Player) {
 		player.spacial.pos,
 		UP,
 		rl.RAD2DEG * player.spacial.rot,
-		1,
+		3,
 		rl.WHITE,
 	)
 
-	if player.trail.duration > 0 {
-		front := getForwardPoint(player)
-		rl.DrawModelEx(
-			player.trail.model,
-			player.pos + {0, 1, 0} + front,
-			UP,
-			rl.RAD2DEG * player.spacial.rot,
-			1,
-			rl.WHITE,
-		)
-	}
+	// This looks horrible, need to update this.
+	// if player.trail.duration > 0 {
+	// 	front := getForwardPoint(player)
+	// 	rl.DrawModelEx(
+	// 		player.trail.model,
+	// 		player.pos + {0, 1, 0} + front,
+	// 		UP,
+	// 		rl.RAD2DEG * player.spacial.rot,
+	// 		1,
+	// 		rl.WHITE,
+	// 	)
+	// }
 }

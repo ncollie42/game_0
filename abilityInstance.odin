@@ -84,7 +84,7 @@ updateEnemyHitCollisions :: proc(
 			addTrauma(.large)
 			state := EnemyPushback {
 				duration  = .35,
-				animation = .DODGE_BACKWARD,
+				animation = SKELE.hurt,
 				animSpeed = 1,
 			}
 			enterEnemyState(&enemy, state)

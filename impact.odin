@@ -1,6 +1,7 @@
 package main
 
 import "core:fmt"
+import "core:math"
 import rl "vendor:raylib"
 
 ImpactPool :: struct {
@@ -18,12 +19,12 @@ ImpactPool :: struct {
 
 // Animated Sprite
 Impact :: struct {
-	current: i32, // Active frame
-	pos:     vec3,
+	frame: f32,
+	pos:   vec3,
 }
 
 
-FPS_IMPACT: f32 = 1.0 / 160.0 // impact
+FPS_60 :: 60
 
 
 spawnImpact :: proc(pool: ^ImpactPool, pos: vec3) {
@@ -38,12 +39,11 @@ spawnImpact :: proc(pool: ^ImpactPool, pos: vec3) {
 
 
 initImpactPool :: proc(path: cstring, width: i32, height: i32, frames: i32) -> ImpactPool {
-
 	texture := rl.LoadTexture(path)
 	assert(rl.IsTextureValid(texture), "Not able to load texture")
 
 	pool := ImpactPool {
-		active  = make([dynamic]Impact, 1, 15),
+		active  = make([dynamic]Impact, 0, 15),
 		texture = texture,
 		rows    = texture.width / width,
 		cols    = texture.height / height,
@@ -57,16 +57,12 @@ initImpactPool :: proc(path: cstring, width: i32, height: i32, frames: i32) -> I
 
 
 updateImpactPool :: proc(pool: ^ImpactPool) {
-	pool.fpsCheck += rl.GetFrameTime()
-	if pool.fpsCheck >= FPS_IMPACT {
-		pool.fpsCheck = 0
-		return
-	}
 
 	// Loop in reverse and swap with last element on remove
 	#reverse for &impact, index in pool.active {
-		impact.current += 1
-		if impact.current == pool.total {
+		impact.frame += getDelta() * FPS_60
+		current := i32(math.floor(impact.frame))
+		if current == pool.total {
 			unordered_remove(&pool.active, index)
 		}
 	}
@@ -75,8 +71,10 @@ updateImpactPool :: proc(pool: ^ImpactPool) {
 drawImpactPool :: proc(camera: rl.Camera, pool: ImpactPool) {
 	// NOTE: draw order matters, I might want to make a pass and sort based on z. OR do in insert
 	for impact in pool.active {
-		down := impact.current / pool.rows
-		right := int(impact.current) % int(pool.rows)
+		current := i32(math.floor(impact.frame))
+
+		down := current / pool.rows
+		right := int(current) % int(pool.rows)
 
 		source_rec := rl.Rectangle {
 			x      = f32(pool.width) * f32(right),

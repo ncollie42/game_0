@@ -93,7 +93,6 @@ playSoundWhoosh :: proc() {
 playSoundGrunt :: proc() {
 	if !isTimerReady(grunt.CD) {return}
 
-	fmt.println("Grunting")
 	sound := rand.choice(grunt.sounds[:])
 	playSound(sound)
 	startTimer(&grunt.CD)

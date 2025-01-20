@@ -12,16 +12,17 @@ SCREEN_W :: 1920 / 2
 SCREEN_H :: 1080 / 2
 
 // PIXEL_LOOK
-// P_W :: SCREEN_W
-// P_H :: SCREEN_H
-P_W :: 1920 / 5
-P_H :: 1080 / 5
+P_W :: SCREEN_W
+P_H :: SCREEN_H
+// P_W :: 1920 / 5
+// P_H :: 1080 / 5
 
 
 // TODO: maybe change to a union for each state
 App :: enum {
 	HOME,
 	PLAYING,
+	STATS,
 	OTHER,
 }
 
@@ -59,21 +60,24 @@ main :: proc() {
 		// Add some UI + button
 		case .PLAYING:
 			if isGameOver(game.player) {
-				app = .HOME
+				app = .STATS
 				// reset values
 			}
 			updateGame(&game)
 			drawGame(&game)
 			drawGameUI(&game)
+		case .STATS:
+			if rl.IsKeyPressed(.SPACE) {
+				app = .HOME
+			}
 		case .OTHER:
-		// Could add a post game screen with stats
 		}
 	}
 }
 
 isGameOver :: proc(player: ^Player) -> bool {
-	return false
-	// return player.health.current <= 0
+	// return false
+	return player.health.current <= 0 // Or TIME > 30
 }
 
 // EndTexture mode flushes any commands that are pending to the texture target. EndDrawing flushes the commands to the back buffer and then swaps the back with the front buffer
@@ -109,3 +113,6 @@ isGameOver :: proc(player: ^Player) -> bool {
 // abilitesPlayer2 := InitAbilities2 // Type 2 for player
 // abilitesPlayer3 := InitAbilities3 // Type 3 for player
 // abilitesEnemies := InitAbilities  // Type 1 for Enemy
+
+
+// TODO: change impact from timebased and not fps check
