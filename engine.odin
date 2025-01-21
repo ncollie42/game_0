@@ -2,6 +2,7 @@ package main
 
 import "core:fmt"
 import "core:math"
+import "core:math/ease"
 import "core:math/linalg"
 import rl "vendor:raylib"
 
@@ -21,9 +22,9 @@ UP :: vec3{0, 1, 0}
 timeScale: f32 = 1
 
 hitStop := struct {
-	enable: bool,
-	time:   f32,
-	state:  enum {
+	enable:   bool,
+	duration: f32,
+	state:    enum {
 		waiting,
 		fadeIn,
 		hold,
@@ -36,51 +37,53 @@ startHitStop :: proc() {
 }
 
 updateHitStop :: proc() {
-	if rl.IsKeyPressed(.PAGE_DOWN) {
-		timeScale = clamp(timeScale - .25, 0, 3)
-	}
-	if rl.IsKeyPressed(.PAGE_UP) {
-		timeScale = clamp(timeScale + .25, 0, 3)
-	}
 	// Only use for player attacks
 	// 115 MS, 7 frames, ~.11666 tottal
 	// stateDuration: f32 = .04
-	inOut: f32 = .03
-	holdTime: f32 = .06
+	inOut: f32 = .03 * 1
+	holdTime: f32 = .06 * 1
 
 	switch hitStop.state {
 	case .waiting:
-		if hitStop.enable {
-			hitStop.state = .fadeIn
-			hitStop.time = 0
-			hitStop.enable = false
-		}
+		if !hitStop.enable {return}
+
+		hitStop.state = .fadeIn
+		hitStop.duration = inOut
+		hitStop.enable = false
 	case .fadeIn:
-		hitStop.time += rl.GetFrameTime()
-		amount := rl.Remap(hitStop.time, 0, inOut, 0, 1)
-		timeScale = rl.Lerp(1, .1, amount)
-		if amount >= 1.0 {
-			hitStop.state = .hold
-			hitStop.time = holdTime
-		}
+		hitStop.duration -= rl.GetFrameTime()
+
+		progress := 1 - (hitStop.duration / inOut) // [0, 1]
+		amount := ease.ease(.Cubic_In, progress) // [0,1]
+		timeScale = rl.Remap(amount, 1, 0, .05, 1)
+		timeScale = clamp(timeScale, .05, 1) // Prevent over shoot on the last tick, progress > 100%
+
+		if hitStop.duration > 0 {return}
+
+		hitStop.state = .hold
+		hitStop.duration = holdTime
 	case .hold:
-		hitStop.time -= rl.GetFrameTime()
-		if hitStop.time <= 0 {
-			hitStop.state = .fadeOut
-			hitStop.time = 0
-		}
+		hitStop.duration -= rl.GetFrameTime()
+
+		if hitStop.duration > 0 {return}
+
+		hitStop.state = .fadeOut
+		hitStop.duration = inOut
 	case .fadeOut:
-		hitStop.time += rl.GetFrameTime()
-		amount := rl.Remap(hitStop.time, 0, inOut, 0, 1)
-		timeScale = rl.Lerp(.1, 1, amount)
-		if amount >= 1.0 {
-			hitStop.state = .waiting
-			hitStop.time = 1
-			timeScale = 1.0
-		}
+		hitStop.duration -= rl.GetFrameTime()
+
+		progress := 1 - (hitStop.duration / inOut) // [0, 1]
+		amount := ease.ease(.Cubic_Out, progress) // [0, 1]
+		timeScale = rl.Remap(amount, 1, 0, 1, .05)
+		timeScale = clamp(timeScale, .05, 1) // Prevent over shoot on the last tick, progress > 100%
+
+		if hitStop.duration > 0 {return}
+
+		hitStop.state = .waiting
 	case:
 		hitStop.state = .waiting
 	}
+	assert(timeScale > 0, "Timescale can't be negative! Goofed up somewhere")
 }
 
 getDelta :: proc() -> f32 {

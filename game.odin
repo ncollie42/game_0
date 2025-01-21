@@ -10,6 +10,7 @@ Game :: struct {
 	player:          ^Player,
 	objs:            [dynamic]EnvObj,
 	enemies:         EnemyDummyPool,
+	spawners:        EnemySpanwerPool,
 	playerAbilities: ^AbilityPool,
 	enemyAbilities:  ^AbilityPool,
 	// Testing
@@ -26,6 +27,7 @@ initGame :: proc() -> Game {
 		player          = initPlayer(),
 		objs            = initEnv(),
 		enemies         = initEnemyDummies(),
+		spawners        = initEnemySpawner(),
 		playerAbilities = initAbilityPool(),
 		enemyAbilities  = initAbilityPool(),
 		screen          = rl.LoadRenderTexture(P_W, P_H),
@@ -62,11 +64,8 @@ spawnXDummyEnemies :: proc(game: ^Game, amount: int) {
 resetGame :: proc(game: ^Game) {
 	using game
 
-	// Player
-	player.health = Health {
-		max     = 5,
-		current = 5,
-	}
+	// Player :: TODO reset to a base line
+	player.health.current = player.health.max
 	// Enemies
 	despawnAllEnemies(&enemies)
 
@@ -105,7 +104,7 @@ updateGame :: proc(game: ^Game) {
 		// Go straight to base state if not initialized.
 		enterPlayerState(player, playerStateBase{}, camera)
 	}
-	// updateWaves(game)
+	updateWaves(game)
 
 	updateAnimation(player.model, &player.animState, player.animSet)
 	updatePlayerHitCollisions(enemyAbilities, player)

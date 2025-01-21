@@ -75,13 +75,12 @@ initEnemyDummies :: proc() -> EnemyDummyPool {
 
 	for &enemy in pool.free {
 		// Note: is loadModel slow? can I load once and dup memory for every model after?
-		enemy.model = rl.LoadModel(path)
-		assert(enemy.model.meshCount != 0, "No mesh")
+		enemy.model = loadModel(path)
 		enemy.model.materials[1].maps[rl.MaterialMapIndex.ALBEDO].texture = texture
 		enemy.model.materials[1].shader = shader
 		enemy.health = Health {
-			max     = 10,
-			current = 10,
+			max     = 4,
+			current = 4,
 		}
 		enemy.range = 1.75
 		enemy.attackCD = Timer {
@@ -96,11 +95,14 @@ initEnemyDummies :: proc() -> EnemyDummyPool {
 // ---- Spawn
 spawnDummyEnemy :: proc(pool: ^EnemyDummyPool, pos: vec3) {
 	if len(pool.free) == 0 {
+		// fmt.println("NOT ADDING MORE ENEMIES")
 		// Do nothing if there isn't space for a new one.
 		return
 	}
 
 	enemy := pop(&pool.free)
+	enemy.health.current = enemy.health.max
+	enemy.health.hitFlash = 0
 	enemy.spacial.pos = pos
 	enemy.spacial.rot = f32(rl.GetRandomValue(0, 6))
 	append(&pool.active, enemy)

@@ -78,20 +78,22 @@ updateEnemyHitCollisions :: proc(
 			hit := checkCollision(obj, enemy)
 			if !hit do continue
 			// on hit
-			hurt(&enemy, 1)
-			// At hitflash -> move out of hurt
-			startHitStop() // TODO: only apply from some abilities, like mele - else it feels off. IE a dot would be bad
-			addTrauma(.large)
-			state := EnemyPushback {
-				duration  = .35,
-				animation = SKELE.hurt,
-				animSpeed = 1,
+			{
+
+				hurt(&enemy, 1)
+				// At hitflash -> move out of hurt
+				startHitStop() // TODO: only apply from some abilities, like mele - else it feels off. IE a dot would be bad
+				addTrauma(.large)
+				state := EnemyPushback {
+					duration  = .35,
+					animation = SKELE.hurt,
+					animSpeed = 1,
+				}
+				enterEnemyState(&enemy, state)
+				playSoundPunch()
+				spawnImpact(impact, enemy.pos)
 			}
-			enterEnemyState(&enemy, state)
-			playSoundPunch()
-			spawnImpact(impact, enemy.pos)
 			// enterEnemyState
-			// Sound
 			// Push back
 			// Particle
 		}

@@ -35,7 +35,7 @@ initPlayer :: proc() -> ^Player {
 
 	player.model = loadModel("/home/nico/Downloads/Human/base.m3d")
 	player.animSet = loadModelAnimations("/home/nico/Downloads/Human/base.m3d")
-	fmt.println(player.animSet.anims[PLAYER.idle].frameCount)
+	// Mixamo -> 30 -> blender -> 60
 	assert(
 		player.animSet.anims[PLAYER.idle].frameCount == 58,
 		"Frame count for idle doesn't match, Make sure you exported FPS properly",
@@ -46,8 +46,8 @@ initPlayer :: proc() -> ^Player {
 	player.animState.speed = 1
 
 	player.health = Health {
-		max     = 5,
-		current = 5,
+		max     = 50,
+		current = 50,
 	}
 
 	shader := rl.LoadShader(nil, "shaders/flash.fs")

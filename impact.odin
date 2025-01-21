@@ -60,7 +60,7 @@ updateImpactPool :: proc(pool: ^ImpactPool) {
 
 	// Loop in reverse and swap with last element on remove
 	#reverse for &impact, index in pool.active {
-		impact.frame += getDelta() * FPS_60
+		impact.frame += rl.GetFrameTime() * FPS_60
 		current := i32(math.floor(impact.frame))
 		if current == pool.total {
 			unordered_remove(&pool.active, index)
@@ -87,8 +87,8 @@ drawImpactPool :: proc(camera: rl.Camera, pool: ImpactPool) {
 			camera,
 			pool.texture,
 			source_rec,
-			impact.pos + {0, 1.5, 0},
-			1.5,
+			impact.pos + {0, 1.8, 0},
+			2.8,
 			rl.WHITE,
 		)
 	}
