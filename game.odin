@@ -138,8 +138,6 @@ drawGame :: proc(game: ^Game) {
 
 	debugDrawGame(game)
 
-	rl.DrawPlane({}, {25, 25}, color5)
-
 	drawAbilityInstances(playerAbilities, color1)
 	drawAbilityInstances(enemyAbilities, color4)
 

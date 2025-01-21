@@ -10,8 +10,7 @@ import rl "vendor:raylib"
 // https://www.youtube.com/watch?v=tu-Qe66AvtY
 // https://www.youtube.com/watch?v=2JXR7IASSog
 
-camDist: vec3 = {0, 6, -5} * 2 //* 1.50
-
+camDist: vec3 = {0, 6, -5} * 2
 CAMERA_SPEED :: 5
 
 screenShake := struct {

@@ -150,8 +150,8 @@ updateDummyMovement :: proc(
 	objs: ^[dynamic]EnvObj,
 ) {
 	// target := vec3{}
-	// target := directionFromRotation(enemy.rot) // forward
-	target := normalize(player.pos - enemy.pos) // toward player -> Target
+	target := directionFromRotation(enemy.rot) // forward
+	// target := normalize(player.pos - enemy.pos) // toward player -> Target
 
 	// NOTE: optimization -we can use a quad tree and or move each force calculation to a different thread -> they don't have to be done sequaltially.
 	seperationForce := vec3{}
@@ -168,6 +168,7 @@ updateDummyMovement :: proc(
 	clearPath := vec3{}
 	{
 		clearPath += findClearPath(enemy, objs)
+		clearPath += avoidMapBounds(enemy)
 	}
 	// Alignment
 	alignmentForce := vec3{}

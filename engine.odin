@@ -36,6 +36,7 @@ startHitStop :: proc() {
 	hitStop.enable = true
 }
 
+// Ease: https://easings.net/
 updateHitStop :: proc() {
 	// Only use for player attacks
 	// 115 MS, 7 frames, ~.11666 tottal

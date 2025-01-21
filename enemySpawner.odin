@@ -2,6 +2,7 @@ package main
 
 import "core:fmt"
 import "core:math/linalg"
+import "core:math/noise"
 import rl "vendor:raylib"
 
 Spawner :: struct {
@@ -66,11 +67,16 @@ initEnemySpawner :: proc() -> EnemySpanwerPool {
 }
 
 // ---- Spawn
-spawnEnemySpawner :: proc(pool: ^EnemySpanwerPool, pos: vec3) {
+spawnEnemySpawner :: proc(pool: ^EnemySpanwerPool) {
 	if len(pool.free) == 0 {
 		// Do nothing if there isn't space for a new one.
 		return
 	}
+
+	// Get random spawn point
+	x := noise.noise_2d(0, {rl.GetTime(), rl.GetTime()})
+	z := noise.noise_2d(1, {rl.GetTime(), rl.GetTime()})
+	pos := 10 * normalize({x, 0, z})
 
 	enemy := pop(&pool.free)
 	enemy.spacial.pos = pos
@@ -129,7 +135,7 @@ updateSpawner :: proc(spawner: ^Spawner, enemies: ^EnemyDummyPool) {
 		s.cd -= getDelta()
 		if s.cd <= 0 {
 			spawnDummyEnemy(enemies, spawner.pos)
-			s.cd = .1
+			s.cd = 1
 			fmt.println(len(enemies.active))
 		}
 	case:

@@ -19,6 +19,7 @@ Player :: struct {
 	normal:        vec3,
 	// slash:
 	trail:         Trail,
+	edge:          bool,
 }
 
 Trail :: struct {
@@ -95,6 +96,25 @@ moveAndSlide :: proc(
 			return
 		}
 	}
+
+	mapCheck: {
+		dist := linalg.distance(projected.pos, vec3{})
+		diff := MapGround.shape.(Sphere) - player.spacial.shape.(Sphere)
+		player.edge = dist > diff
+		if dist > diff {
+			// Trying to get out
+			col := getCollision(MapGround, projected)
+			col.normal *= -1 // point inward
+
+			player.point = col.point
+			player.normal = col.normal
+
+			// TODO: maybe add in sliding?
+			player.pos = col.point + col.normal * (player.spacial.shape.(Sphere) * 1.05)
+			return
+		}
+	}
+
 
 	// We COULD collect all collisions and do something off that. But this kinda feels good.
 	for enemy in enemies.active {
@@ -312,7 +332,8 @@ playerStateAttack1 :: struct {
 drawPlayer :: proc(player: Player) {
 	drawHitFlash(player.model, player.health)
 
-	// rl.DrawSphereWires(player.pos, player.shape.(Sphere), 10, 10, rl.BLACK)
+	color := player.edge ? color1 : color2
+	rl.DrawSphereWires(player.pos, player.shape.(Sphere), 10, 10, color)
 	// rl.DrawCylinderWires(player.pos, player.shape.(Sphere), player.shape.(Sphere), 2, 10, rl.BLACK)
 
 	// rl.DrawSphere(player.point, .35, rl.RED)

@@ -12,6 +12,11 @@ EnvObj :: struct {
 	using spacial: Spacial,
 }
 
+MapGround := Spacial {
+	rot   = 0,
+	pos   = {},
+	shape = 10,
+}
 
 initEnv :: proc() -> [dynamic]EnvObj {
 	pool := [dynamic]EnvObj{}
@@ -34,76 +39,80 @@ initEnv :: proc() -> [dynamic]EnvObj {
 	// 	append(&pool, env)
 	// }
 
-	// { 	// sphere
-	// 	rad: f32 = 3.0
-	// 	mesh := rl.GenMeshSphere(rad, 10, 10)
+	{ 	// sphere
+		rad: f32 = 3.0
+		mesh := rl.GenMeshSphere(rad, 10, 10)
+		model := rl.LoadModelFromMesh(mesh)
+		model.materials[0].maps[rl.MaterialMapIndex.ALBEDO].texture = texture
+		env := EnvObj {
+			model = model,
+			spacial = Spacial{pos = {-6, 0, -6}, shape = rad},
+		}
+		append(&pool, env)
+	}
+
+	// Walls
+
+	// { 	// Box
+	// 	mesh := rl.GenMeshCube(.25, .1, 25)
 	// 	model := rl.LoadModelFromMesh(mesh)
+	// 	boundingBox := rl.GetMeshBoundingBox(mesh)
+
 	// 	model.materials[0].maps[rl.MaterialMapIndex.ALBEDO].texture = texture
 	// 	env := EnvObj {
 	// 		model = model,
-	// 		spacial = Spacial{pos = {-6, 0, -6}, shape = rad},
+	// 		spacial = Spacial{pos = {12.5, 0, 0}, shape = boundingBox},
 	// 	}
 	// 	append(&pool, env)
 	// }
 
-	// Walls
+	// { 	// Box
+	// 	mesh := rl.GenMeshCube(.25, .1, 25)
+	// 	model := rl.LoadModelFromMesh(mesh)
+	// 	boundingBox := rl.GetMeshBoundingBox(mesh)
 
-	{ 	// Box
-		mesh := rl.GenMeshCube(.25, .1, 25)
-		model := rl.LoadModelFromMesh(mesh)
-		boundingBox := rl.GetMeshBoundingBox(mesh)
+	// 	model.materials[0].maps[rl.MaterialMapIndex.ALBEDO].texture = texture
+	// 	env := EnvObj {
+	// 		model = model,
+	// 		spacial = Spacial{pos = {-12.5, 0, 0}, shape = boundingBox},
+	// 	}
+	// 	append(&pool, env)
+	// }
 
-		model.materials[0].maps[rl.MaterialMapIndex.ALBEDO].texture = texture
-		env := EnvObj {
-			model = model,
-			spacial = Spacial{pos = {12.5, 0, 0}, shape = boundingBox},
-		}
-		append(&pool, env)
-	}
+	// { 	// Box
+	// 	mesh := rl.GenMeshCube(25, .1, .25)
+	// 	model := rl.LoadModelFromMesh(mesh)
+	// 	boundingBox := rl.GetMeshBoundingBox(mesh)
 
-	{ 	// Box
-		mesh := rl.GenMeshCube(.25, .1, 25)
-		model := rl.LoadModelFromMesh(mesh)
-		boundingBox := rl.GetMeshBoundingBox(mesh)
+	// 	model.materials[0].maps[rl.MaterialMapIndex.ALBEDO].texture = texture
+	// 	env := EnvObj {
+	// 		model = model,
+	// 		spacial = Spacial{pos = {0, 0, 12.5}, shape = boundingBox},
+	// 	}
+	// 	append(&pool, env)
+	// }
 
-		model.materials[0].maps[rl.MaterialMapIndex.ALBEDO].texture = texture
-		env := EnvObj {
-			model = model,
-			spacial = Spacial{pos = {-12.5, 0, 0}, shape = boundingBox},
-		}
-		append(&pool, env)
-	}
+	// { 	// Box
+	// 	mesh := rl.GenMeshCube(25, .1, .25)
+	// 	model := rl.LoadModelFromMesh(mesh)
+	// 	boundingBox := rl.GetMeshBoundingBox(mesh)
 
-	{ 	// Box
-		mesh := rl.GenMeshCube(25, .1, .25)
-		model := rl.LoadModelFromMesh(mesh)
-		boundingBox := rl.GetMeshBoundingBox(mesh)
-
-		model.materials[0].maps[rl.MaterialMapIndex.ALBEDO].texture = texture
-		env := EnvObj {
-			model = model,
-			spacial = Spacial{pos = {0, 0, 12.5}, shape = boundingBox},
-		}
-		append(&pool, env)
-	}
-
-	{ 	// Box
-		mesh := rl.GenMeshCube(25, .1, .25)
-		model := rl.LoadModelFromMesh(mesh)
-		boundingBox := rl.GetMeshBoundingBox(mesh)
-
-		model.materials[0].maps[rl.MaterialMapIndex.ALBEDO].texture = texture
-		env := EnvObj {
-			model = model,
-			spacial = Spacial{pos = {0, 0, -12.5}, shape = boundingBox},
-		}
-		append(&pool, env)
-	}
+	// 	model.materials[0].maps[rl.MaterialMapIndex.ALBEDO].texture = texture
+	// 	env := EnvObj {
+	// 		model = model,
+	// 		spacial = Spacial{pos = {0, 0, -12.5}, shape = boundingBox},
+	// 	}
+	// 	append(&pool, env)
+	// }
 
 	return pool
 }
 
 drawEnv :: proc(objs: ^[dynamic]EnvObj) {
+	// Floor
+	rad := MapGround.shape.(Sphere)
+	rl.DrawCylinder({0, -1, 0}, rad, rad, 1, 25, color5)
+	// Objs
 	for obj in objs {
 		rl.DrawModelEx(obj.model, obj.spacial.pos, UP, rl.RAD2DEG * obj.spacial.rot, 1, rl.WHITE)
 		switch s in obj.spacial.shape {
@@ -179,77 +188,47 @@ getBoundingBox :: proc(obj: Spacial) -> Box {
 	return Box{min = box.min + origin, max = box.max + origin}
 }
 
-// Apply forces when too close to walls.
 applyBoundaryForces :: proc(enemies: ^EnemyDummyPool, objs: ^[dynamic]EnvObj) {
-	PUSH_RANGE :: .25
-	MAX_FORCE :: 5.0
-	INSIDE_FORCE :: 30.0
 
-	// Maybe change to 2D?
-	// Create a Env obj that in circular ; make in 2D, Draw it, Do envForce, do apply forces
-	// Maybe we keep the collision to 3D? later when we have projectiles the physical wont macht the collions; or maybe env is the test for 2D - where moving stuff stay 3D?
-	for &enemy in enemies.active {
+
+	for &boid in enemies.active {
+		projected := boid.spacial
+		projected.pos += getForwardPoint(boid) * getDelta() * ENEMY_SPEED
+
 		for obj in objs {
-			force: vec3 = {}
-			switch s in obj.spacial.shape {
-			case Box:
-				box := getBoundingBox(obj)
-				closest := vec3 {
-					clamp(enemy.pos.x, box.min.x, box.max.x),
-					clamp(enemy.pos.y, box.min.y, box.max.y),
-					clamp(enemy.pos.z, box.min.z, box.max.z),
-				}
-				enemy.wallPoint = closest
-
-				to_boid := enemy.pos - closest
-				dist := linalg.length(to_boid)
-
-				// Kick out boid if insude the space already
-				if dist == 0 {
-					// Find nearest face and push away from it
-					to_center := obj.spacial.pos - enemy.pos
-					escape_dir := -normalize(to_center)
-					force += escape_dir * INSIDE_FORCE
-					continue
-				}
-
-				// Early return if too far
-				if dist >= PUSH_RANGE {continue}
-
-				// Could extract force calculation if it gets more complex
-				force_scale := (1.0 - dist / PUSH_RANGE) * MAX_FORCE
-				force += normalize(to_boid) * force_scale
-			case Sphere:
-				radius := s
-
-				// force AWAY from center
-				to_boid := enemy.pos - obj.spacial.pos
-				dist := linalg.length(to_boid)
-
-				// Kick out boid if in side the space already
-				if dist <= radius {
-					// TODO: fix this issue, upping force is not kicking boid out enough.
-					fmt.println("INSIDE CIRCLE")
-					// Find nearest face and push away from it
-					escape_dir := normalize(to_boid)
-					force += escape_dir * INSIDE_FORCE
-					continue
-				}
-
-				// How far from surface
-				dist = dist - radius
-				// Early return if too far
-				if dist >= PUSH_RANGE {
-					continue
-				}
-
-				force_scale := (1.0 - dist / PUSH_RANGE) * MAX_FORCE
-				force += normalize(to_boid) * force_scale
-
+			if checkCollision(obj, projected) {
+				col := getCollision(obj, projected)
+				boid.spacial.pos = col.point + col.normal * (boid.spacial.shape.(Sphere) * 1.05)
+				break
 			}
-			enemy.spacial.pos += force * getDelta() * ENEMY_SPEED
+		}
+
+		// Bounds check with map
+		dist := linalg.distance(boid.pos, vec3{})
+		diff := MapGround.shape.(Sphere) - boid.spacial.shape.(Sphere) + .1 // Make slightly larger, to not effect boid check
+		if dist > diff {
+			// Trying to get out
+			col := getCollision(MapGround, projected)
+			col.normal *= -1 // point inward
+			boid.spacial.pos = col.point + col.normal * (boid.spacial.shape.(Sphere) * 1.05)
 		}
 	}
+}
+
+avoidMapBounds :: proc(boid: ^Enemy) -> vec3 {
+	projected := boid.spacial
+	projected.pos += getForwardPoint(boid) * getDelta() * ENEMY_SPEED
+
+	dist := linalg.distance(boid.pos, vec3{})
+	diff := MapGround.shape.(Sphere) - boid.spacial.shape.(Sphere)
+	if dist > diff {
+		// Trying to get out
+		col := getCollision(MapGround, projected)
+		col.normal *= -1 // point inward
+
+		return col.normal
+	}
+	return {}
 }
 
 // Collision avoidance

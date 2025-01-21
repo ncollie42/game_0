@@ -11,16 +11,24 @@ debugInit :: proc(game: ^Game) {
 debugUpdateGame :: proc(game: ^Game) {
 	using game
 
-	// if rl.IsKeyPressed(.PAGE_DOWN) {
-	// 	timeScale = clamp(timeScale - .25, 0, 3)
-	// }
-	// if rl.IsKeyPressed(.PAGE_UP) {
-	// 	timeScale = clamp(timeScale + .25, 0, 3)
-	// }
+	if rl.IsKeyPressed(.PAGE_DOWN) {
+		// timeScale = clamp(timeScale - .25, 0, 3)
+		MapGround.shape = clamp(MapGround.shape.(Sphere) - .25, 0, 20)
+	}
+	if rl.IsKeyPressed(.PAGE_UP) {
+		// timeScale = clamp(timeScale + .25, 0, 3)
+		MapGround.shape = clamp(MapGround.shape.(Sphere) + .25, 0, 20)
+	}
 	if rl.IsKeyPressed(.F) {
-		spawnEnemySpawner(&spawners, {10, 0, 0})
+		spawnEnemySpawner(&spawners)
 	}
 	updateEnemySpanwers(&spawners, &enemies, &objs)
+
+	// pool := impact
+	// for &instance, index in pool.active {
+	// 	// fmt.println(instance)
+	// 	// current := i32(math.floor(instance.frame))
+	// }
 }
 
 debugDrawGame :: proc(game: ^Game) {
