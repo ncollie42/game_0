@@ -15,7 +15,7 @@ EnvObj :: struct {
 MapGround := Spacial {
 	rot   = 0,
 	pos   = {},
-	shape = 10,
+	shape = 15,
 }
 
 initEnv :: proc() -> [dynamic]EnvObj {

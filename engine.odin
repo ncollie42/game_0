@@ -127,6 +127,21 @@ isKeyPressed :: proc(keyBind: KeyBinding) -> bool {
 	return false
 }
 
+isKeyDown :: proc(keyBind: KeyBinding) -> bool {
+	// TODO: change for pressed work on key down and not key up
+	switch key in keyBind {
+	case rl.MouseButton:
+		if rl.IsMouseButtonDown(key) {
+			return true
+		}
+	case rl.KeyboardKey:
+		if rl.IsKeyDown(key) {
+			return true
+		}
+	}
+	return false
+}
+
 // Animation: state machine based on current state?
 getVector :: proc() -> (dir: vec3) {
 	if rl.IsKeyDown(.W) {

@@ -18,7 +18,6 @@ AbilityConfig :: struct {
 	usageLimit: UsageLimit,
 	cost:       int,
 	cd:         Timer,
-	action:     Action,
 	state:      State, //State Transion for player
 	// UI
 	// Level

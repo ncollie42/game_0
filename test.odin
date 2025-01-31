@@ -27,27 +27,6 @@ newPlayerDashAbility :: proc(player: ^Player, camera: ^rl.Camera3D) -> State {
 	return playerStateDashing{timer = Timer{max = .5}, animation = PLAYER.roll, speed = 2.2}
 }
 
-newSpawnMeleAbilityPlayer :: proc(pool: ^AbilityPool, player: ^Player) -> AbilityConfig {
-	action := ActionSpawnMeleAtPlayer {
-		player = player,
-		pool   = pool,
-	}
-
-	config: AbilityConfig
-	config.cost = 1
-	config.cd.max = 5
-	config.usageLimit = Limited{2, 2}
-	config.state = playerStateAttack1 {
-		cancellable = true,
-		timer = Timer{max = .3},
-		trigger = .0,
-		animation = PLAYER.punch1,
-		speed = 2.5,
-		action = action,
-	}
-	return config
-}
-
 // ---- Init
 // ---- Spawn
 spawnCubeAtMouse :: proc(pool: ^[dynamic]vec3, camera: ^rl.Camera3D) {

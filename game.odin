@@ -14,7 +14,8 @@ Game :: struct {
 	playerAbilities: ^AbilityPool,
 	enemyAbilities:  ^AbilityPool,
 	// Testing
-	ability:         AbilityConfig,
+	normalAttack:    AbilityConfig,
+	chargeAttack:    AbilityConfig,
 	dash:            State,
 	screen:          rl.RenderTexture2D,
 	fire:            ^Flipbook,
@@ -35,7 +36,37 @@ initGame :: proc() -> Game {
 		impact          = initImpactPool("resources/impact.png", 305, 383, 27),
 	}
 
-	game.ability = newSpawnMeleAbilityPlayer(game.playerAbilities, game.player)
+	actionSpawnMeleAtPlayer := ActionSpawnMeleAtPlayer {
+		player = game.player,
+		pool   = game.playerAbilities,
+	}
+	// NOTE: We could make this global, and not part of the game object
+	game.normalAttack = AbilityConfig {
+		cost = 1,
+		cd = Timer{max = 5},
+		usageLimit = Limited{2, 2},
+		state = playerStateAttack1 {
+			cancellable = true,
+			timer = Timer{max = .3},
+			trigger = .0,
+			animation = PLAYER.punch1,
+			speed = 2.5,
+			action = actionSpawnMeleAtPlayer,
+		},
+	}
+	game.chargeAttack = AbilityConfig {
+		cost = 1,
+		cd = Timer{max = 5},
+		usageLimit = Limited{2, 2},
+		state = playerStateAttackLong {
+			cancellable = true,
+			timer = Timer{max = .6},
+			trigger = 1, //[0,1]
+			animation = PLAYER.longPunch,
+			speed = 2.3,
+			action = actionSpawnMeleAtPlayer,
+		},
+	}
 	game.dash = newPlayerDashAbility(game.player, game.camera)
 
 	// For pixel look
@@ -77,19 +108,10 @@ updateGame :: proc(game: ^Game) {
 	using game
 
 	debugUpdateGame(game)
+
 	// :: Player Actions
-	{
-		// SM :: Input
-		playerInputDash(player, dash, camera)
-		// TODO: Put into func swap with 'Hand' logic stuff
-		if isKeyPressed(ACTION_0) {
-			// doAction(ability.action)
-			enterPlayerState(player, ability.state, camera)
-		}
-		if rl.IsKeyPressed(.ONE) {
-			rl.ToggleBorderlessWindowed() // Less hassle
-		}
-	}
+	updatePlayerInput(game)
+
 	// Update player trail
 	player.trail.duration -= getDelta()
 	// Update player states
@@ -100,6 +122,8 @@ updateGame :: proc(game: ^Game) {
 		updatePlayerStateDashing(&s, player, objs, &enemies, camera)
 	case playerStateAttack1:
 		updatePlayerStateAttack1(&s, player, camera, objs, &enemies)
+	case playerStateAttackLong:
+		updatePlayerStateAttackLong(&s, player, camera, objs, &enemies)
 	case:
 		// Go straight to base state if not initialized.
 		enterPlayerState(player, playerStateBase{}, camera)
@@ -112,7 +136,7 @@ updateGame :: proc(game: ^Game) {
 
 	updateEnemyDummies(&enemies, player^, &objs, enemyAbilities)
 	applyBoundaryForces(&enemies, &objs)
-	updateEnemyHitCollisions(playerAbilities, &enemies, &impact)
+	updateEnemyHitCollisions(playerAbilities, &enemies, &spawners, &impact)
 
 	updateHitStop()
 	updateCameraPos(camera, player^)

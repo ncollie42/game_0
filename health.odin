@@ -33,9 +33,11 @@ hurt :: proc(hp: ^Health, amount: f32) {
 // Apply hit flash
 drawHitFlash :: proc(model: rl.Model, hp: Health) {
 	// TODO: assert shader
-
 	// Is it slow to getShaderLocation every time, do we want to move this somewhere else?
-	shader := model.materials[1].shader
+
+	index := model.materialCount - 1 // imported models are 2, generated are 1
+	assert(index >= 0, "index is not right")
+	shader := model.materials[index].shader
 	flashIndex := rl.GetShaderLocation(shader, "flash")
 
 	data := hp.hitFlash

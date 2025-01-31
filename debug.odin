@@ -24,11 +24,6 @@ debugUpdateGame :: proc(game: ^Game) {
 	}
 	updateEnemySpanwers(&spawners, &enemies, &objs)
 
-	// pool := impact
-	// for &instance, index in pool.active {
-	// 	// fmt.println(instance)
-	// 	// current := i32(math.floor(instance.frame))
-	// }
 }
 
 debugDrawGame :: proc(game: ^Game) {

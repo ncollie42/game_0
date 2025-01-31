@@ -70,6 +70,7 @@ removeAbility :: proc(pool: ^AbilityPool, activeIndex: int) {
 updateEnemyHitCollisions :: proc(
 	pool: ^AbilityPool,
 	enemies: ^EnemyDummyPool,
+	spawners: ^EnemySpanwerPool,
 	impact: ^ImpactPool,
 ) {
 	// Check collision
@@ -96,6 +97,19 @@ updateEnemyHitCollisions :: proc(
 			// enterEnemyState
 			// Push back
 			// Particle
+		}
+		for &enemy in spawners.active {
+			hit := checkCollision(obj, enemy)
+			if !hit do continue
+			// on hit
+			{
+				hurt(&enemy, 1)
+				// At hitflash -> move out of hurt
+				startHitStop() // TODO: only apply from some abilities, like mele - else it feels off. IE a dot would be bad
+				addTrauma(.large)
+				playSoundPunch()
+				spawnImpact(impact, enemy.pos)
+			}
 		}
 		removeAbility(pool, index)
 	}

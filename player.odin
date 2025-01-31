@@ -140,6 +140,52 @@ moveAndSlide :: proc(
 	player.spacial.pos += dir * getDelta() * speed
 }
 
+moveAndStop :: proc(
+	player: ^Player,
+	dir: vec3,
+	objs: [dynamic]EnvObj,
+	enemies: ^EnemyDummyPool,
+	speed: f32,
+) {
+
+	// Projected movement
+	projected := player.spacial
+	projected.pos += dir * getDelta() * MOVE_SPEED
+	for obj in objs {
+		if checkCollision(obj, projected) {
+			return
+		}
+	}
+
+	mapCheck: {
+		dist := linalg.distance(projected.pos, vec3{})
+		diff := MapGround.shape.(Sphere) - player.spacial.shape.(Sphere)
+		player.edge = dist > diff
+		if dist > diff {
+			// Trying to get out
+			col := getCollision(MapGround, projected)
+			col.normal *= -1 // point inward
+
+			player.point = col.point
+			player.normal = col.normal
+
+			// TODO: maybe add in sliding?
+			player.pos = col.point + col.normal * (player.spacial.shape.(Sphere) * 1.05)
+			return
+		}
+	}
+
+
+	// We COULD collect all collisions and do something off that. But this kinda feels good.
+	for enemy in enemies.active {
+		if checkCollision(enemy, projected) {
+			return
+		}
+	}
+
+	player.spacial.pos += dir * getDelta() * speed
+}
+
 updatePlayerStateBase :: proc(player: ^Player, objs: [dynamic]EnvObj, enemies: ^EnemyDummyPool) {
 
 	// Add a sub state - Idle and moving
@@ -230,6 +276,38 @@ updatePlayerStateAttack1 :: proc(
 	}
 }
 
+updatePlayerStateAttackLong :: proc(
+	attack: ^playerStateAttackLong,
+	player: ^Player,
+	camera: ^rl.Camera3D,
+	objs: [dynamic]EnvObj,
+	enemies: ^EnemyDummyPool,
+) {
+	// Input check
+	attack.timer.left -= getDelta()
+
+	// dir := getForwardPoint(player)
+	// moveAndSlide(player, dir, objs, enemies, MOVE_SPEED * .25)
+
+
+	// Action
+	progress := 1 - (attack.timer.left / attack.timer.max)
+	if progress >= attack.trigger && !attack.hasTriggered {
+		attack.hasTriggered = true
+		doAction(attack.action)
+	}
+
+	r := lookAtVec3(mouseInWorld(camera), player.spacial.pos)
+	player.spacial.rot = lerpRAD(player.spacial.rot, r, 1)
+	if progress > .5 { 	// Move .5 to struct?
+		dir := getForwardPoint(player)
+		moveAndStop(player, dir, objs, enemies, MOVE_SPEED * 3) // IF stoped -> trigger action? TODO: make func return collision
+	}
+	if attack.timer.left <= 0 {
+		enterPlayerState(player, playerStateBase{}, camera)
+	}
+}
+
 playerInputDash :: proc(player: ^Player, state: State, camera: ^rl.Camera3D) {
 	// Make 'ability' for dash
 
@@ -239,7 +317,6 @@ playerInputDash :: proc(player: ^Player, state: State, camera: ^rl.Camera3D) {
 	if isKeyPressed(DASH) {
 		enterPlayerState(player, state, camera)
 	}
-
 }
 
 // New AbilityState into State -> Passed in 
@@ -290,6 +367,12 @@ enterPlayerState :: proc(player: ^Player, state: State, camera: ^rl.Camera3D) {
 
 		player.animState.speed = s.speed
 		player.animState.current = s.animation
+	case playerStateAttackLong:
+		// playSOundChARGEc
+		// playSoundWhoosh() -> playSoundCharge
+		s.timer.left = s.timer.max
+		player.animState.speed = s.speed
+		player.animState.current = s.animation
 	}
 }
 
@@ -297,6 +380,7 @@ State :: union {
 	playerStateBase,
 	playerStateDashing,
 	playerStateAttack1, // DO we have one state of all abilities or each one has it's own?
+	playerStateAttackLong, // DO we have one state of all abilities or each one has it's own?
 	//	AbiltiyPreviewState
 }
 
@@ -327,6 +411,21 @@ playerStateAttack1 :: struct {
 	comboInput:   bool,
 	comboCount:   i32,
 }
+
+playerStateAttackLong :: struct {
+	// Can cancel
+	cancellable:  bool,
+	// Need timer to know how deep into the state we are
+	timer:        Timer,
+	// Animation Data
+	animation:    ANIMATION_NAMES,
+	speed:        f32,
+	// Action Data TODO: Move into its own struct, take in array
+	hasTriggered: bool,
+	trigger:      f32, // between 0 and 1
+	action:       Action,
+}
+
 
 // Draw
 drawPlayer :: proc(player: Player) {

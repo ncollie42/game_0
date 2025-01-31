@@ -9,6 +9,7 @@ PLAYER :: enum {
 	punch2,
 	punch1,
 	roll,
+	longPunch,
 	idle,
 }
 

@@ -3,20 +3,22 @@ package main
 import "core:fmt"
 import "core:math/linalg"
 import "core:math/noise"
+import "core:math/rand"
 import rl "vendor:raylib"
 
 Spawner :: struct {
-	// AnimatedModel
+	// AnimatedModel :: create this truct
 	model:         rl.Model,
 	animState:     AnimationState,
 	using spacial: Spacial,
 	using health:  Health,
 	state:         SpawnerState,
+	target:        vec3,
 	duration:      f32, // Till next phase
 }
 
 EnemySpanwerPool :: struct {
-	animSet: AnimationSet,
+	animSet: AnimationSet, // Not used for now
 	active:  [dynamic]Spawner,
 	free:    [dynamic]Spawner,
 }
@@ -58,8 +60,8 @@ initEnemySpawner :: proc() -> EnemySpanwerPool {
 		enemy.model.materials[0].maps[rl.MaterialMapIndex.ALBEDO].texture = texture
 		enemy.model.materials[0].shader = shader
 		enemy.health = Health {
-			max     = 10,
-			current = 10,
+			max     = 2,
+			current = 2,
 		}
 		enemy.shape = .8
 	}
@@ -76,11 +78,16 @@ spawnEnemySpawner :: proc(pool: ^EnemySpanwerPool) {
 	// Get random spawn point
 	x := noise.noise_2d(0, {rl.GetTime(), rl.GetTime()})
 	z := noise.noise_2d(1, {rl.GetTime(), rl.GetTime()})
-	pos := 10 * normalize({x, 0, z})
+	spawn := MapGround.shape.(Sphere) * normalize({x, 0, z})
+	x = noise.noise_2d(1, {rl.GetTime(), rl.GetTime()})
+	z = noise.noise_2d(2, {rl.GetTime(), rl.GetTime()})
+	target := rand.float32_range(3, 6) * normalize({x, 0, z})
 
 	enemy := pop(&pool.free)
-	enemy.spacial.pos = pos
+	enemy.spacial.pos = spawn
 	enemy.spacial.rot = f32(rl.GetRandomValue(0, 6))
+	enemy.target = target
+	enemy.health.current = enemy.health.max
 	append(&pool.active, enemy)
 }
 
@@ -94,11 +101,15 @@ spawnEnemySpawner :: proc(pool: ^EnemySpanwerPool) {
 // }
 
 
-// despawnEnemy :: proc(pool: ^EnemySpanwerPool, index: int) {
-// 	// Swap and remove last
-// 	append(&pool.free, pool.active[index])
-// 	pool.active[index] = pop(&pool.active)
-// }
+despawnSpawner :: proc(pool: ^EnemySpanwerPool, index: int) {
+	fmt.println(len(pool.active), len(pool.free))
+	// :: Swap
+	// Add to Free
+	append(&pool.free, pool.active[index])
+	// Remove from active
+	// pool.active[index] = pop(&pool.active)
+	unordered_remove(&pool.active, index)
+}
 
 // ---- Update
 updateEnemySpanwers :: proc(
@@ -111,9 +122,8 @@ updateEnemySpanwers :: proc(
 
 		updateHealth(&spawner)
 		if spawner.health.current <= 0 {
-			despawnEnemy(enemies, index)
+			despawnSpawner(spawners, index)
 		}
-
 	}
 }
 
@@ -122,7 +132,7 @@ updateSpawner :: proc(spawner: ^Spawner, enemies: ^EnemyDummyPool) {
 	switch &s in spawner.state {
 	case SpawnerBase:
 		// TOWARDS center
-		spawner.pos += normalize({} - spawner.pos) * getDelta()
+		spawner.pos += normalize(spawner.target - spawner.pos) * getDelta()
 		if spawner.duration <= 0 {
 			spawner.state = SpawnerSpawning{}
 			spawner.duration = 5
@@ -130,12 +140,12 @@ updateSpawner :: proc(spawner: ^Spawner, enemies: ^EnemyDummyPool) {
 	case SpawnerSpawning:
 		if spawner.duration <= 0 {
 			spawner.state = SpawnerBase{}
-			spawner.duration = 5
+			spawner.duration = 1
 		}
 		s.cd -= getDelta()
 		if s.cd <= 0 {
 			spawnDummyEnemy(enemies, spawner.pos)
-			s.cd = 1
+			s.cd = 5
 			fmt.println(len(enemies.active))
 		}
 	case:
@@ -265,6 +275,7 @@ drawEnemySpawner :: proc(enemy: Spawner) {
 	// Apply hit flash
 	drawHitFlash(enemy.model, enemy.health)
 
+	fmt.println(enemy.model.materialCount)
 	rl.DrawModelEx(
 		enemy.model,
 		enemy.spacial.pos + {0, 2, 0},
