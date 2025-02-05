@@ -133,6 +133,7 @@ updateGame :: proc(game: ^Game) {
 	updateAnimation(player.model, &player.animState, player.animSet)
 	updatePlayerHitCollisions(enemyAbilities, player)
 	updateHealth(player)
+	updateStamina()
 
 	updateEnemies(&enemies, player^, &objs, enemyAbilities)
 	updateEnemyAnimations(&enemies)
@@ -298,6 +299,28 @@ drawGameUI :: proc(game: ^Game) {
 				clay.Layout({sizing = expand}),
 				clay.Rectangle(testPannel),
 			) {}
+		}
+		if clay.UI(
+			clay.ID("Stamina bars"),
+			clay.Floating(
+				clay.FloatingElementConfig {
+					attachment = {parent = .CENTER_CENTER},
+					offset = {-30, 15},
+				},
+			),
+		) {
+			if clay.UI(
+				clay.Layout(
+					clay.LayoutConfig {
+						sizing = {width = clay.SizingFixed(30), height = clay.SizingFixed(30)},
+						childGap = 3,
+					},
+				),
+				clay.Rectangle(testPannel),
+			) {
+				staminaBar(Stamina.currentCharge, Stamina.charges)
+				// uiText("HELLO", .large)
+			}
 		}
 	}
 }

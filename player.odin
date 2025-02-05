@@ -299,12 +299,13 @@ updatePlayerStateAttackLong :: proc(
 playerInputDash :: proc(player: ^Player, state: State, camera: ^rl.Camera3D) {
 	// Make 'ability' for dash
 
-	// check current state
-	// check if already in dash?
 	// if ability is interruptable
-	if isKeyPressed(DASH) {
-		enterPlayerState(player, state, camera)
-	}
+	if !hasEnoughStamina() {return}
+	if !isKeyPressed(DASH) {return}
+	if !canDash(player) {return}
+
+	consumeStamina()
+	enterPlayerState(player, state, camera)
 }
 
 // New AbilityState into State -> Passed in 

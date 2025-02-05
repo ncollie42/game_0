@@ -63,8 +63,9 @@ debugPannel := clay.RectangleElementConfig {
 	color = light_05,
 }
 
-// 	// color = {90, 90, 90, 180},
-testPannel := clay.RectangleElementConfig{}
+testPannel := clay.RectangleElementConfig {
+	// color = {90, 90, 90, 180},
+}
 
 
 debugModeEnabled: bool = false
@@ -166,6 +167,26 @@ playerHPBar :: proc(hp: Health) {
 			),
 			clay.Rectangle({color = COLOR_RED, cornerRadius = clay.CornerRadiusAll(uiCorners)}),
 		) {}
+	}
+}
+
+// Progress bar stamina
+staminaBar :: proc(showing: f32, max: f32) {
+	for charge in 0 ..< max {
+		amount := math.max(0, math.min(1, showing - f32(charge)))
+
+		if clay.UI(
+			clay.Layout({sizing = {width = clay.SizingPercent(1), height = clay.SizingFixed(10)}}),
+		) {
+
+			// Fill
+			if clay.UI(
+				clay.Layout(
+					{sizing = {width = clay.SizingPercent(amount), height = clay.SizingGrow({})}},
+				),
+				clay.Rectangle({color = light_100}),
+			) {}
+		}
 	}
 }
 
