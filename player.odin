@@ -37,6 +37,7 @@ initPlayer :: proc() -> ^Player {
 	player.model = loadModel("/home/nico/Downloads/Human/base.m3d")
 	player.animSet = loadModelAnimations("/home/nico/Downloads/Human/base.m3d")
 	// Mixamo -> 30 -> blender -> 60
+	fmt.println(PLAYER.idle, player.animSet.anims[PLAYER.idle].frameCount)
 	assert(
 		player.animSet.anims[PLAYER.idle].frameCount == 58,
 		"Frame count for idle doesn't match, Make sure you exported FPS properly",
@@ -231,19 +232,9 @@ updatePlayerStateAttack1 :: proc(
 	objs: [dynamic]EnvObj,
 	enemies: ^EnemyDummyPool,
 ) {
-	// Input check
 	attack.timer.left -= getDelta()
-
-	dir := getForwardPoint(player)
-	moveAndSlide(player, dir, objs, enemies, MOVE_SPEED * .25)
-
-	// if s.comboInput && between range {
-	// Do we use the same state and update attack values? or do we create a sub state enum
-	// eneterState? or
-	// update Timer
-	// anim
-	// action is same?
-	// }
+	// dir := getForwardPoint(player)
+	// moveAndSlide(player, dir, objs, enemies, MOVE_SPEED * .50)
 
 	// Action
 	progress := 1 - (attack.timer.left / attack.timer.max)
@@ -252,24 +243,21 @@ updatePlayerStateAttack1 :: proc(
 		doAction(attack.action)
 	}
 
-	if attack.timer.left <= 0 {
-		// TODO: startAttack[0] - [1] - [2], Add array of statefields
-		if attack.comboInput && attack.comboCount < 2 {
+	// Use animation legth for now, later go back to attack.timer
+	if player.animState.finished {
+		// if attack.timer.left <= 0 {
+		if attack.comboInput && attack.comboCount < 1 {
 			attack.comboInput = false
 			attack.comboCount += 1
 			attack.hasTriggered = false
 
-			fmt.println("COMBO", attack.comboCount)
-
 			playSoundWhoosh()
 			attack.timer.left = attack.timer.max
-			// Snap to mouse direction before attack
+			// Snap to mouse direction before next attack
 			r := lookAtVec3(mouseInWorld(camera), player.spacial.pos)
 			player.spacial.rot = lerpRAD(player.spacial.rot, r, 1)
 
-			player.animState.speed = attack.speed
-			player.animState.current = .punch2
-			// player.animation.current = attack.comboCount == 1 ? .punch2 : .kick
+			player.animState.current = .p4
 			return
 		}
 		enterPlayerState(player, playerStateBase{}, camera)
@@ -432,7 +420,7 @@ drawPlayer :: proc(player: Player) {
 	drawHitFlash(player.model, player.health)
 
 	color := player.edge ? color1 : color2
-	rl.DrawSphereWires(player.pos, player.shape.(Sphere), 10, 10, color)
+	// rl.DrawSphereWires(player.pos, player.shape.(Sphere), 10, 10, color)
 	// rl.DrawCylinderWires(player.pos, player.shape.(Sphere), player.shape.(Sphere), 2, 10, rl.BLACK)
 
 	// rl.DrawSphere(player.point, .35, rl.RED)

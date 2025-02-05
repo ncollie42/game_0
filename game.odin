@@ -48,9 +48,9 @@ initGame :: proc() -> Game {
 		state = playerStateAttack1 {
 			cancellable = true,
 			timer = Timer{max = .3},
+			animation = PLAYER.p1,
 			trigger = .0,
-			animation = PLAYER.punch1,
-			speed = 2.5,
+			speed = 1,
 			action = actionSpawnMeleAtPlayer,
 		},
 	}
@@ -60,7 +60,7 @@ initGame :: proc() -> Game {
 		usageLimit = Limited{2, 2},
 		state = playerStateAttackLong {
 			cancellable = true,
-			timer = Timer{max = .6},
+			timer = Timer{max = .5},
 			trigger = 1, //[0,1]
 			animation = PLAYER.longPunch,
 			speed = 2.3,
@@ -88,7 +88,7 @@ color7 := rl.GetColor(0x907c68ff)
 
 spawnXDummyEnemies :: proc(game: ^Game, amount: int) {
 	for ii in 0 ..< amount {
-		spawnDummyEnemy(&game.enemies, {-3, 0, f32(ii) * .1})
+		spawnEnemyMele(&game.enemies, {-3, 0, f32(ii) * .1})
 	}
 }
 
@@ -134,11 +134,13 @@ updateGame :: proc(game: ^Game) {
 	updatePlayerHitCollisions(enemyAbilities, player)
 	updateHealth(player)
 
-	updateEnemyDummies(&enemies, player^, &objs, enemyAbilities)
+	updateEnemies(&enemies, player^, &objs, enemyAbilities)
+	updateEnemyAnimations(&enemies)
+	updateEnemyHealth(&enemies) //Add other enemies here too
 	applyBoundaryForces(&enemies, &objs)
 	updateEnemyHitCollisions(playerAbilities, &enemies, &spawners, &impact)
 
-	updateHitStop()
+	// updateHitStop()
 	updateCameraPos(camera, player^)
 	updateCameraShake(camera)
 

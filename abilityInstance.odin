@@ -6,10 +6,20 @@ import rl "vendor:raylib"
 // MeleInstance 
 AbilityInstance :: struct {
 	using spacial: Spacial,
-	// enum (Timer_based, Single, Other)
-	// timer
-	// hit:           bool, 
-	// Model
+	type:          union {
+		range,
+		mele,
+	},
+}
+// enum (Timer_based, Single, Other)
+// timer
+// hit:           bool, 
+// Model
+// }
+mele :: struct {}
+range :: struct {
+	speed:    f32,
+	duration: f32, //0 would be == 0 mele
 }
 
 // oneShot : hurt everything around
@@ -36,11 +46,22 @@ initAbilityPool :: proc() -> ^AbilityPool {
 }
 
 newMeleInstance :: proc(pos: vec3) -> AbilityInstance {
-	return AbilityInstance{spacial = Spacial{pos = pos, shape = 1.0}}
+	return AbilityInstance{spacial = Spacial{pos = pos, shape = 1.0}, type = mele{}}
+}
+
+newRangeInstance :: proc(pos: vec3, rot: f32) -> AbilityInstance {
+	return AbilityInstance {
+		spacial = Spacial{pos = pos, shape = 1.0, rot = rot},
+		type = range{duration = 1.5, speed = 7},
+	}
 }
 // ---- Spawn
 spawnMeleInstance :: proc(pool: ^AbilityPool, pos: vec3) {
 	append(&pool.active, newMeleInstance(pos))
+}
+
+spawnRangeInstance :: proc(pool: ^AbilityPool, pos: vec3, rot: f32) {
+	append(&pool.active, newRangeInstance(pos, rot))
 }
 
 spawnMeleInstanceAtPlayer :: proc(pool: ^AbilityPool, player: ^Player) {
@@ -53,10 +74,27 @@ spawnMeleInstanceAtPlayer :: proc(pool: ^AbilityPool, player: ^Player) {
 	append(&pool.active, newMeleInstance(p))
 }
 
+spawnRangeInstanceAtPlayer :: proc(pool: ^AbilityPool, player: ^Player) {
+	// TODO: replace with getForwardpoint
+	pos := player.spacial.pos
+	mat := rl.MatrixTranslate(pos.x, pos.y, pos.z)
+	mat = mat * rl.MatrixRotateY(player.spacial.rot)
+	mat = mat * rl.MatrixTranslate(0, 0, 1)
+	p := rl.Vector3Transform({}, mat)
+
+	spawnRangeInstance(pool, p, player.rot)
+}
+
 spawnInstanceFrontOfLocation :: proc(pool: ^AbilityPool, loc: ^Spacial) {
 	forward := getForwardPoint(loc^)
 
 	append(&pool.active, newMeleInstance(forward + loc.pos))
+}
+
+spawnRangeInstanceFrontOfLocation :: proc(pool: ^AbilityPool, loc: ^Spacial) {
+	forward := getForwardPoint(loc^)
+	fmt.println("Spawn")
+	append(&pool.active, newRangeInstance(forward + loc.pos, loc.rot))
 }
 
 // ---- despawn 
@@ -75,58 +113,159 @@ updateEnemyHitCollisions :: proc(
 ) {
 	// Check collision
 	for &obj, index in pool.active {
-		for &enemy in enemies.active {
-			hit := checkCollision(obj, enemy)
-			if !hit do continue
-			// on hit
-			{
-
-				hurt(&enemy, 1)
-				// At hitflash -> move out of hurt
-				startHitStop() // TODO: only apply from some abilities, like mele - else it feels off. IE a dot would be bad
-				addTrauma(.large)
-				state := EnemyPushback {
-					duration  = .35,
-					animation = SKELE.hurt,
-					animSpeed = 1,
-				}
-				enterEnemyState(&enemy, state)
-				playSoundPunch()
-				spawnImpact(impact, enemy.pos)
+		switch &v in obj.type {
+		case mele:
+			updateAbilityMele(&obj, enemies, spawners, impact)
+			removeAbility(pool, index)
+		case range:
+			v.duration -= getDelta()
+			obj.spacial.pos += getForwardPoint(obj) * getDelta() * v.speed
+			hit := updateAbilityRange(&obj, enemies, spawners, impact)
+			if v.duration <= 0 || hit {
+				removeAbility(pool, index)
 			}
-			// enterEnemyState
-			// Push back
-			// Particle
+		case:
+			panic("Ability has no type")
 		}
-		for &enemy in spawners.active {
-			hit := checkCollision(obj, enemy)
-			if !hit do continue
-			// on hit
-			{
-				hurt(&enemy, 1)
-				// At hitflash -> move out of hurt
-				startHitStop() // TODO: only apply from some abilities, like mele - else it feels off. IE a dot would be bad
-				addTrauma(.large)
-				playSoundPunch()
-				spawnImpact(impact, enemy.pos)
-			}
-		}
-		removeAbility(pool, index)
 	}
 }
 
+updateAbilityRange :: proc(
+	obj: ^AbilityInstance,
+	enemies: ^EnemyDummyPool,
+	spawners: ^EnemySpanwerPool,
+	impact: ^ImpactPool,
+) -> bool {
+	hitUnit := false
+	for &enemy in enemies.active {
+		hit := checkCollision(obj, enemy)
+		if !hit do continue
+		// on hit
+		{
+
+			hurt(&enemy, 1)
+			// At hitflash -> move out of hurt
+			startHitStop() // TODO: only apply from some abilities, like mele - else it feels off. IE a dot would be bad
+			addTrauma(.large)
+			// TODO : add to the ability? as enum or full struct
+			state := EnemyPushback {
+				duration  = .4,
+				animation = SKELE.hurt,
+				animSpeed = 1,
+			}
+
+			switch v in enemy.type {
+			case meleEnemy:
+				enterEnemyMeleState(&enemy, state)
+			case rangeEnemy:
+				enterEnemyRangeState(&enemy, state)
+			case dummyEnemy:
+				enterEnemyDummyState(&enemy, state)
+			}
+			playSoundPunch()
+			spawnImpact(impact, enemy.pos)
+		}
+		hitUnit = true
+		// enterEnemyState
+		// Push back
+		// Particle
+	}
+	for &enemy in spawners.active {
+		hit := checkCollision(obj, enemy)
+		if !hit do continue
+		// on hit
+		{
+			hurt(&enemy, 1)
+			// At hitflash -> move out of hurt
+			startHitStop() // TODO: only apply from some abilities, like mele - else it feels off. IE a dot would be bad
+			addTrauma(.large)
+			playSoundPunch()
+			spawnImpact(impact, enemy.pos)
+		}
+		hitUnit = true
+	}
+	return hitUnit
+}
+
+updateAbilityMele :: proc(
+	obj: ^AbilityInstance,
+	enemies: ^EnemyDummyPool,
+	spawners: ^EnemySpanwerPool,
+	impact: ^ImpactPool,
+) {
+	for &enemy in enemies.active {
+		hit := checkCollision(obj, enemy)
+		if !hit do continue
+		// on hit
+		{
+
+			hurt(&enemy, 1)
+			// At hitflash -> move out of hurt
+			startHitStop() // TODO: only apply from some abilities, like mele - else it feels off. IE a dot would be bad
+			addTrauma(.large)
+			// TODO : add to the ability? as enum or full struct
+			state := EnemyPushback {
+				duration  = .4,
+				animation = SKELE.hurt,
+				animSpeed = 1,
+			}
+
+			switch v in enemy.type {
+			case meleEnemy:
+				enterEnemyMeleState(&enemy, state)
+			case rangeEnemy:
+				enterEnemyRangeState(&enemy, state)
+			case dummyEnemy:
+				enterEnemyDummyState(&enemy, state)
+			}
+			playSoundPunch()
+			spawnImpact(impact, enemy.pos)
+		}
+		// enterEnemyState
+		// Push back
+		// Particle
+	}
+	for &enemy in spawners.active {
+		hit := checkCollision(obj, enemy)
+		if !hit do continue
+		// on hit
+		{
+			hurt(&enemy, 1)
+			// At hitflash -> move out of hurt
+			startHitStop() // TODO: only apply from some abilities, like mele - else it feels off. IE a dot would be bad
+			addTrauma(.large)
+			playSoundPunch()
+			spawnImpact(impact, enemy.pos)
+		}
+	}
+}
+
+// Abilities that hurt player
 updatePlayerHitCollisions :: proc(pool: ^AbilityPool, player: ^Player) {
 	// Check collision
 	for &obj, index in pool.active {
-		defer removeAbility(pool, index)
-
-		hit := checkCollision(obj, player)
-		if !hit do continue
-		fmt.println("Player hit")
-		// on hit
-		hurt(player, 1)
+		switch &v in obj.type {
+		case mele:
+			defer removeAbility(pool, index)
+			hit := checkCollision(obj, player)
+			if !hit do continue
+			hurt(player, 1)
 		// startHitStop()
 		// addTrauma(.large)
+		case range:
+			v.duration -= getDelta()
+			if v.duration <= 0 {
+				removeAbility(pool, index)
+			}
+
+			obj.spacial.pos += getForwardPoint(obj) * getDelta() * v.speed
+			hit := checkCollision(obj, player)
+			if !hit do continue
+			hurt(player, 1)
+			removeAbility(pool, index)
+		case:
+			panic("Ability has no type")
+		}
 	}
 }
 

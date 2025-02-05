@@ -42,7 +42,6 @@ updatePlayerInput :: proc(game: ^Game) {
 			if rl.IsMouseButtonReleased(.LEFT) {
 				MousePress = Idle{}
 				enterPlayerState(player, normalAttack.state, camera)
-				fmt.println("C : RELEASED")
 			}
 		case:
 			state = Idle{}

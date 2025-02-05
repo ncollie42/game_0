@@ -268,7 +268,8 @@ findClearPath :: proc(boid: ^Enemy, objs: ^[dynamic]EnvObj) -> vec3 {
 		}
 	}
 
-	dist := boid.range
+	range := boid.shape.(Sphere) * 2
+	dist := range
 	// Check forward cone first
 	forward_is_clear := true
 	for i in 0 ..< FORWARD_CONE_SIZE {

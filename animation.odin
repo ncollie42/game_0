@@ -10,13 +10,19 @@ PLAYER :: enum {
 	punch1,
 	roll,
 	longPunch,
+	p1,
+	p2,
+	p3,
+	p4,
 	idle,
 }
 
 // enum is 1 shifted down from what they are in the file
 SKELE :: enum {
+	idle2,
 	idle,
 	hurt,
+	hurt2,
 	run,
 	attack,
 }
@@ -64,7 +70,6 @@ updateAnimation :: proc(model: rl.Model, state: ^AnimationState, set: AnimationS
 	rl.UpdateModelAnimation(model, anim, frame)
 
 	state.duration += getDelta() * state.speed
-	// fmt.printfln("%.1f frame:%d total:%d", state.duration, frame, anim.frameCount)
 
 	// Will be set for a single frame until reset next turn.
 	state.finished = false

@@ -23,20 +23,23 @@ updateWaves :: proc(game: ^Game) {
 	case .ONE:
 		// Start next wave right away
 		Waves.waveDuration = 0
-		spawnXDummyEnemies(game, 5)
+		// spawnXDummyEnemies(game, 5)
+		spawnEnemySpawner(&game.spawners)
 		Waves.state = .TWO
 	case .TWO:
 		// Start next wave after X seconds
 		if Waves.waveDuration > 30 {
 			Waves.waveDuration = 0
-			spawnXDummyEnemies(game, 10)
+			// spawnXDummyEnemies(game, 10)
+			spawnEnemySpawner(&game.spawners)
 			Waves.state = .TWO
 		}
 	case .THREE:
 		// Start next wave after X seconds
 		if Waves.waveDuration > 30 {
 			Waves.waveDuration = 0
-			spawnXDummyEnemies(game, 10)
+			// spawnXDummyEnemies(game, 10)
+			spawnEnemySpawner(&game.spawners)
 			Waves.state = .THREE
 		}
 	case .LAST:

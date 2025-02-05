@@ -75,7 +75,8 @@ updateCameraShake :: proc(camera: ^rl.Camera3D) {
 	upDownAmount := SHAKE_DISTANCE * screenShake.shake * noice2
 
 	// SHAKE
-	rl.CameraMoveRight(camera, leftRightAmount, getDelta())
+	// rl.CameraMoveRight(camera, leftRightAmount, getDelta())
+	rl.CameraMoveRight(camera, leftRightAmount, true) // What changed??
 	rl.CameraMoveUp(camera, upDownAmount)
 	// rl.CameraRoll(camera, 0) // Maybe
 

@@ -1,5 +1,6 @@
 package main
 
+import "base:intrinsics"
 import "core:fmt"
 import "core:math"
 import "core:math/ease"
@@ -217,22 +218,31 @@ startTimer :: proc(timer: ^Timer) {
 // -------------------------------------------
 // Odin version of update model animation, using to later try and blend between 2 animations
 updateModelAnimation :: proc(model: rl.Model, anim: rl.ModelAnimation, frame: i32) {
-	// Update bones
 	rl.UpdateModelAnimationBones(model, anim, frame)
-	// Update the mesh using the bones.
+	// updateModelAnimationBones(model, anim, frame)
+
 	for m in 0 ..< model.meshCount {
-		mesh := model.meshes[m]
-		animVertex := vec3{}
-		animNormal := vec3{}
+		mesh := &model.meshes[m]
 		boneId: u8 = 0
 		boneCounter := 0
 		boneWeight: f32 = 0.0
 		updated := false
 		vValues := mesh.vertexCount * 3
 
-		// Skip if missing bone data, causes segfault without on some models
+		// Skip if missing bone data
 		if mesh.boneWeights == nil || mesh.boneIds == nil do continue
+
+		// Pre-calculate matrices for each bone to avoid recomputing -> this actually speeds up 10 FPS -> 60 FPS
+		invTransposedBoneMatrices := make([]rl.Matrix, anim.boneCount)
+		defer delete(invTransposedBoneMatrices)
+		for i in 0 ..< anim.boneCount {
+			invTransposedBoneMatrices[i] = rl.MatrixTranspose(
+				rl.MatrixInvert(model.meshes[m].boneMatrices[i]),
+			)
+		}
+
 		for vCounter: i32 = 0; vCounter < vValues; vCounter += 3 {
+			// #no_bounds_check {
 			mesh.animVertices[vCounter] = 0
 			mesh.animVertices[vCounter + 1] = 0
 			mesh.animVertices[vCounter + 2] = 0
@@ -247,38 +257,38 @@ updateModelAnimation :: proc(model: rl.Model, anim: rl.ModelAnimation, frame: i3
 			for j in 0 ..< 4 {
 				boneWeight = mesh.boneWeights[boneCounter]
 				boneId = mesh.boneIds[boneCounter]
-				boneCounter += 1 // Should this be here or above the 2 lines?
+				boneCounter += 1
 
-				// Early stop when no transformation will be applied
-				if boneWeight == 0 {
-					continue
-				}
+				if boneWeight == 0 do continue
 
-				animVertex = vec3 {
-					mesh.vertices[vCounter],
-					mesh.vertices[vCounter + 1],
-					mesh.vertices[vCounter + 2],
-				}
-				animVertex = rl.Vector3Transform(animVertex, model.meshes[m].boneMatrices[boneId])
+				vert: vec3
+				// Load vertex directly into array
+				vert.x = mesh.vertices[vCounter]
+				vert.y = mesh.vertices[vCounter + 1]
+				vert.z = mesh.vertices[vCounter + 2]
+
+				// Transform vertex
+				animVertex := rl.Vector3Transform(
+					{vert.x, vert.y, vert.z},
+					model.meshes[m].boneMatrices[boneId],
+				)
+
 				mesh.animVertices[vCounter] += animVertex.x * boneWeight
 				mesh.animVertices[vCounter + 1] += animVertex.y * boneWeight
 				mesh.animVertices[vCounter + 2] += animVertex.z * boneWeight
+
 				updated = true
 
-				// Normals processing
-				// NOTE: We use meshes.base_normals (default normal) to calculate meshes.normals (animated normals)
 				if mesh.normals != nil && mesh.animNormals != nil {
-					animNormal = vec3 {
-						mesh.normals[vCounter],
-						mesh.normals[vCounter + 1],
-						mesh.normals[vCounter + 2],
-					}
+					normal: vec3
+					normal.x = mesh.normals[vCounter]
+					normal.y = mesh.normals[vCounter + 1]
+					normal.x = mesh.normals[vCounter + 2]
 
-					// Matrix symbol is taken
-					matrixx := rl.MatrixTranspose(
-						rl.MatrixInvert(model.meshes[m].boneMatrices[boneId]),
+					animNormal := rl.Vector3Transform(
+						{normal.x, normal.y, normal.z},
+						invTransposedBoneMatrices[boneId],
 					)
-					animNormal = rl.Vector3Transform(animNormal, matrixx)
 
 					mesh.animNormals[vCounter] += animNormal.x * boneWeight
 					mesh.animNormals[vCounter + 1] += animNormal.y * boneWeight
@@ -288,17 +298,85 @@ updateModelAnimation :: proc(model: rl.Model, anim: rl.ModelAnimation, frame: i3
 		}
 
 		if updated {
-			// Update vertex position
-			rl.UpdateMeshBuffer(mesh, 0, mesh.animVertices, mesh.vertexCount * 3 * size_of(f32), 0)
+			rl.UpdateMeshBuffer(
+				mesh^,
+				0,
+				mesh.animVertices,
+				mesh.vertexCount * 3 * size_of(f32),
+				0,
+			)
 
-			// Update vertex normals
 			if mesh.normals != nil {
 				rl.UpdateMeshBuffer(
-					mesh,
+					mesh^,
 					2,
 					mesh.animNormals,
 					mesh.vertexCount * 3 * size_of(f32),
 					0,
+				)
+			}
+		}
+	}
+}
+
+// This function is broken --- Fix later
+updateModelAnimationBones :: proc(model: rl.Model, anim: rl.ModelAnimation, frame: i32) {
+	if !(anim.frameCount > 0 && anim.bones != nil && anim.framePoses != nil) {
+		return
+	}
+	aframe := frame
+	if frame >= anim.frameCount {aframe = frame % anim.frameCount}
+
+	// Get first mesh which has bones
+	firstMeshWithBones: i32 = -1
+	for ii in 0 ..< model.meshCount {
+		if model.meshes[ii].boneMatrices != nil {
+			if firstMeshWithBones == -1 {
+				firstMeshWithBones = ii
+				break
+			}
+		}
+	}
+
+	// Update all bones and boneMatrices of first mesh with bones
+	for boneId in 0 ..< anim.boneCount {
+		// The important part is maintaining the exact same transformation order as the C code
+		inTranslation := model.bindPose[boneId].translation
+		inRotation := model.bindPose[boneId].rotation
+		inScale := model.bindPose[boneId].scale
+
+		outTranslation := anim.framePoses[aframe][boneId].translation
+		outRotation := anim.framePoses[aframe][boneId].rotation
+		outScale := anim.framePoses[aframe][boneId].scale
+
+		invRotation := 1 / inRotation
+		invTranslation := rl.Vector3RotateByQuaternion(-inTranslation, invRotation)
+		invScale := vec3{1, 1, 1} / inScale
+
+		// Keep the exact same calculation order as the C code
+		boneTranslation :=
+			rl.Vector3RotateByQuaternion(outScale * invTranslation, outRotation) + outTranslation
+		boneRotation := outRotation * invRotation
+		boneScale := outScale * invScale
+
+		// The matrix multiplication order is critical - matching C exactly
+		boneMatrix :=
+			(rl.QuaternionToMatrix(boneRotation) *
+				rl.MatrixTranslate(boneTranslation.x, boneTranslation.y, boneTranslation.z)) *
+			rl.MatrixScale(boneScale.x, boneScale.y, boneScale.z)
+
+		model.meshes[firstMeshWithBones].boneMatrices[boneId] = boneMatrix
+	}
+
+	if firstMeshWithBones != -1 {
+		// Update remaining meshes with bones
+		for i := firstMeshWithBones + 1; i < model.meshCount; i += 1 {
+			if model.meshes[i].boneMatrices != nil {
+				size := model.meshes[i].boneCount * size_of(model.meshes[i].boneMatrices[0])
+				intrinsics.mem_copy(
+					model.meshes[i].boneMatrices,
+					model.meshes[firstMeshWithBones].boneMatrices,
+					size,
 				)
 			}
 		}
@@ -357,11 +435,21 @@ loadModelAnimations :: proc(path: cstring) -> AnimationSet {
 	anim := AnimationSet{}
 	anim.anims = rl.LoadModelAnimations(path, &anim.total)
 	assert(anim.total != 0, "No Anim")
-	// TODO: print animations
 
 	fmt.println(anim.anims)
 	for ii in 0 ..< anim.total {
-		fmt.println(ii, fmt.tprintf("%s", anim.anims[ii].name))
+		animation := anim.anims[ii]
+		fmt.printfln(
+			"%d %s %d Frames %d",
+			ii,
+			animation.name,
+			animation.boneCount,
+			animation.frameCount,
+		)
+		// Print Bones
+		for iii in 0 ..< animation.boneCount {
+			fmt.printf("%s %d\n", animation.bones[iii].name, animation.bones[iii].parent)
+		}
 	}
 	return anim
 }

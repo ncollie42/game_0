@@ -30,7 +30,7 @@ main :: proc() {
 	rl.SetTraceLogLevel(.ERROR)
 	// rl.SetConfigFlags({.WINDOW_RESIZABLE})
 	// rl.SetConfigFlags({.WINDOW_HIGHDPI, .MSAA_4X_HINT})
-	rl.SetConfigFlags({.VSYNC_HINT})
+	// rl.SetConfigFlags({.VSYNC_HINT})
 
 	rl.InitWindow(SCREEN_W, SCREEN_H, "Game")
 	defer rl.CloseWindow()

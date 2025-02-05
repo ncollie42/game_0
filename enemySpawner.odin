@@ -134,20 +134,25 @@ updateSpawner :: proc(spawner: ^Spawner, enemies: ^EnemyDummyPool) {
 		// TOWARDS center
 		spawner.pos += normalize(spawner.target - spawner.pos) * getDelta()
 		if spawner.duration <= 0 {
+			forward := getForwardPoint(spawner) * 3
 			spawner.state = SpawnerSpawning{}
 			spawner.duration = 5
+			spawnEnemyMele(enemies, spawner.pos + forward)
+			spawnEnemyMele(enemies, spawner.pos + forward)
+			spawnEnemyMele(enemies, spawner.pos + forward)
+			spawnEnemyRange(enemies, spawner.pos + forward)
 		}
 	case SpawnerSpawning:
 		if spawner.duration <= 0 {
 			spawner.state = SpawnerBase{}
-			spawner.duration = 1
+			spawner.duration = 5
 		}
-		s.cd -= getDelta()
-		if s.cd <= 0 {
-			spawnDummyEnemy(enemies, spawner.pos)
-			s.cd = 5
-			fmt.println(len(enemies.active))
-		}
+	// s.cd -= getDelta()
+	// if s.cd <= 0 {
+	// 	spawnEnemyMele(enemies, spawner.pos)
+	// 	spawnEnemyRange(enemies, spawner.pos)
+	// 	s.cd = 5
+	// }
 	case:
 		spawner.state = SpawnerBase{}
 		spawner.duration = 1
@@ -275,7 +280,6 @@ drawEnemySpawner :: proc(enemy: Spawner) {
 	// Apply hit flash
 	drawHitFlash(enemy.model, enemy.health)
 
-	fmt.println(enemy.model.materialCount)
 	rl.DrawModelEx(
 		enemy.model,
 		enemy.spacial.pos + {0, 2, 0},
