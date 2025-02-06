@@ -456,7 +456,8 @@ loadModelAnimations :: proc(path: cstring) -> AnimationSet {
 
 loadTexture :: proc(path: cstring) -> rl.Texture2D {
 	texture := rl.LoadTexture(path)
-	assert(rl.IsTextureValid(texture))
-	assert(rl.IsTextureReady(texture))
+
+	assert(rl.IsTextureValid(texture), fmt.tprint(path))
+	assert(rl.IsTextureReady(texture), fmt.tprint(path))
 	return texture
 }

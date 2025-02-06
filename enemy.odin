@@ -67,14 +67,17 @@ initEnemyDummies :: proc() -> EnemyDummyPool {
 		freeMele  = make([dynamic]Enemy, enemyPoolSize, enemyPoolSize),
 		freeRange = make([dynamic]Enemy, enemyPoolSize, enemyPoolSize),
 	}
-	path: cstring = "/home/nico/Downloads/Human2/base.m3d"
+	// modelPath: cstring = "/home/nico/Downloads/Human2/base.m3d"
+	// texturePath := loadTexture("/home/nico/Downloads/Human2/base.png")
+	modelPath: cstring = "resources/Human2/base.m3d"
+	texturePath: cstring = "resources/Human2/base.png"
 
-	pool.animSet = loadModelAnimations(path)
-	texture := loadTexture("/home/nico/Downloads/Human2/base.png")
+	pool.animSet = loadModelAnimations(modelPath)
+	texture := loadTexture(texturePath)
 
 	for &enemy in pool.freeDummy {
 		// Note: is loadModel slow? can I load once and dup memory for every model after?
-		enemy.model = loadModel(path)
+		enemy.model = loadModel(modelPath)
 		enemy.model.materials[1].maps[rl.MaterialMapIndex.ALBEDO].texture = texture
 		enemy.model.materials[1].shader = shader
 		enemy.health = Health {
@@ -91,7 +94,7 @@ initEnemyDummies :: proc() -> EnemyDummyPool {
 
 	for &enemy in pool.freeMele {
 		// Note: is loadModel slow? can I load once and dup memory for every model after?
-		enemy.model = loadModel(path)
+		enemy.model = loadModel(modelPath)
 		enemy.model.materials[1].maps[rl.MaterialMapIndex.ALBEDO].texture = texture
 		enemy.model.materials[1].shader = shader
 		enemy.health = Health {
@@ -108,7 +111,7 @@ initEnemyDummies :: proc() -> EnemyDummyPool {
 
 	for &enemy in pool.freeRange {
 		// Note: is loadModel slow? can I load once and dup memory for every model after?
-		enemy.model = loadModel(path)
+		enemy.model = loadModel(modelPath)
 		enemy.model.materials[1].maps[rl.MaterialMapIndex.ALBEDO].texture = texture
 		enemy.model.materials[1].shader = shader
 		enemy.health = Health {

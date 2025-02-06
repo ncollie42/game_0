@@ -34,15 +34,21 @@ TURN_SPEED :: 10.0
 initPlayer :: proc() -> ^Player {
 	player := new(Player)
 
-	player.model = loadModel("/home/nico/Downloads/Human/base.m3d")
-	player.animSet = loadModelAnimations("/home/nico/Downloads/Human/base.m3d")
+	// modelPath: cstring = "/home/nico/Downloads/Human/base.m3d"
+	// texturePath: cstring = "/home/nico/Downloads/Human/base.png"
+
+	modelPath: cstring = "resources/Human/base.m3d"
+	texturePath: cstring = "resources/Human/base.png"
+
+	player.model = loadModel(modelPath)
+	player.animSet = loadModelAnimations(modelPath)
 	// Mixamo -> 30 -> blender -> 60
 	fmt.println(PLAYER.idle, player.animSet.anims[PLAYER.idle].frameCount)
 	assert(
 		player.animSet.anims[PLAYER.idle].frameCount == 58,
 		"Frame count for idle doesn't match, Make sure you exported FPS properly",
 	)
-	texture := loadTexture("/home/nico/Downloads/Human/base.png")
+	texture := loadTexture(texturePath)
 	player.model.materials[1].maps[rl.MaterialMapIndex.ALBEDO].texture = texture
 
 	player.animState.speed = 1
