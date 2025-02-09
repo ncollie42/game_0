@@ -1,8 +1,11 @@
 package main
 
 import clay "/clay-odin"
+import "base:runtime"
 import "core:fmt"
 import "core:math"
+import "core:prof/spall"
+import "core:sync"
 import rl "vendor:raylib"
 
 engineerPath: cstring = "resources/Engineer.m3d"

@@ -49,7 +49,7 @@ initGame :: proc() -> Game {
 			cancellable = true,
 			timer = Timer{max = .3},
 			animation = PLAYER.p1,
-			trigger = .0,
+			trigger = .5,
 			speed = 1,
 			action = actionSpawnMeleAtPlayer,
 		},
@@ -88,7 +88,8 @@ color7 := rl.GetColor(0x907c68ff)
 
 spawnXDummyEnemies :: proc(game: ^Game, amount: int) {
 	for ii in 0 ..< amount {
-		spawnEnemyMele(&game.enemies, {-3, 0, f32(ii) * .1})
+		// spawnEnemyMele(&game.enemies, {-3, 0, f32(ii) * .1})
+		spawnEnemyDummy(&game.enemies, {-3, 0, f32(ii) * .1})
 	}
 }
 
@@ -128,7 +129,7 @@ updateGame :: proc(game: ^Game) {
 		// Go straight to base state if not initialized.
 		enterPlayerState(player, playerStateBase{}, camera)
 	}
-	updateWaves(game)
+	// updateWaves(game)
 
 	updateAnimation(player.model, &player.animState, player.animSet)
 	updatePlayerHitCollisions(enemyAbilities, player)
@@ -141,7 +142,7 @@ updateGame :: proc(game: ^Game) {
 	applyBoundaryForces(&enemies, &objs)
 	updateEnemyHitCollisions(playerAbilities, &enemies, &spawners, &impact)
 
-	// updateHitStop()
+	updateHitStop()
 	updateCameraPos(camera, player^)
 	updateCameraShake(camera)
 
@@ -150,10 +151,7 @@ updateGame :: proc(game: ^Game) {
 	// one update at a time for now
 	updateFlipbook(fire)
 
-	if rl.IsKeyPressed(.G) {
-		spawnImpact(&impact, mouseInWorld(camera))
-	}
-	updateImpactPool(&impact)
+	updateImpactPool(&impact, 60)
 }
 
 drawGame :: proc(game: ^Game) {
@@ -163,8 +161,6 @@ drawGame :: proc(game: ^Game) {
 	rl.ClearBackground({})
 	rl.BeginMode3D(camera^)
 
-	debugDrawGame(game)
-
 	drawAbilityInstances(playerAbilities, color1)
 	drawAbilityInstances(enemyAbilities, color4)
 
@@ -172,6 +168,7 @@ drawGame :: proc(game: ^Game) {
 	drawEnemies(&enemies)
 	drawEnv(&objs)
 
+	debugDrawGame(game)
 	drawImpactPool(camera^, impact)
 
 	drawCamera(camera)

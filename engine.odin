@@ -21,6 +21,7 @@ UP :: vec3{0, 1, 0}
 
 // Delta
 timeScale: f32 = 1
+hitStopScale: f32 = 1
 
 hitStop := struct {
 	enable:   bool,
@@ -57,8 +58,8 @@ updateHitStop :: proc() {
 
 		progress := 1 - (hitStop.duration / inOut) // [0, 1]
 		amount := ease.ease(.Cubic_In, progress) // [0,1]
-		timeScale = rl.Remap(amount, 1, 0, .05, 1)
-		timeScale = clamp(timeScale, .05, 1) // Prevent over shoot on the last tick, progress > 100%
+		hitStopScale = rl.Remap(amount, 1, 0, .05, 1)
+		hitStopScale = clamp(hitStopScale, .05, 1) // Prevent over shoot on the last tick, progress > 100%
 
 		if hitStop.duration > 0 {return}
 
@@ -76,8 +77,8 @@ updateHitStop :: proc() {
 
 		progress := 1 - (hitStop.duration / inOut) // [0, 1]
 		amount := ease.ease(.Cubic_Out, progress) // [0, 1]
-		timeScale = rl.Remap(amount, 1, 0, 1, .05)
-		timeScale = clamp(timeScale, .05, 1) // Prevent over shoot on the last tick, progress > 100%
+		hitStopScale = rl.Remap(amount, 1, 0, 1, .05)
+		hitStopScale = clamp(hitStopScale, .05, 1) // Prevent over shoot on the last tick, progress > 100%
 
 		if hitStop.duration > 0 {return}
 
@@ -85,12 +86,14 @@ updateHitStop :: proc() {
 	case:
 		hitStop.state = .waiting
 	}
-	assert(timeScale > 0, "Timescale can't be negative! Goofed up somewhere")
+	assert(hitStopScale > 0, "hitStopScale can't be negative! Goofed up somewhere")
 }
 
 getDelta :: proc() -> f32 {
-	// Used for timeScale is used for hitstop, dont use this delta for env visuals IE: particles.
-	return rl.GetFrameTime() * timeScale
+	// Dont use this delta for env visuals IE: particles.
+	// timeScale is for engine global time.
+	// hitstop is used for attacks
+	return rl.GetFrameTime() * timeScale * hitStopScale
 }
 
 // Key presses
@@ -213,174 +216,6 @@ isTimerReady :: proc(timer: Timer) -> bool {
 startTimer :: proc(timer: ^Timer) {
 	assert(timer.max > 0, "Timer max value not set")
 	timer.left = timer.max
-}
-
-// -------------------------------------------
-// Odin version of update model animation, using to later try and blend between 2 animations
-updateModelAnimation :: proc(model: rl.Model, anim: rl.ModelAnimation, frame: i32) {
-	rl.UpdateModelAnimationBones(model, anim, frame)
-	// updateModelAnimationBones(model, anim, frame)
-
-	for m in 0 ..< model.meshCount {
-		mesh := &model.meshes[m]
-		boneId: u8 = 0
-		boneCounter := 0
-		boneWeight: f32 = 0.0
-		updated := false
-		vValues := mesh.vertexCount * 3
-
-		// Skip if missing bone data
-		if mesh.boneWeights == nil || mesh.boneIds == nil do continue
-
-		// Pre-calculate matrices for each bone to avoid recomputing -> this actually speeds up 10 FPS -> 60 FPS
-		invTransposedBoneMatrices := make([]rl.Matrix, anim.boneCount)
-		defer delete(invTransposedBoneMatrices)
-		for i in 0 ..< anim.boneCount {
-			invTransposedBoneMatrices[i] = rl.MatrixTranspose(
-				rl.MatrixInvert(model.meshes[m].boneMatrices[i]),
-			)
-		}
-
-		for vCounter: i32 = 0; vCounter < vValues; vCounter += 3 {
-			// #no_bounds_check {
-			mesh.animVertices[vCounter] = 0
-			mesh.animVertices[vCounter + 1] = 0
-			mesh.animVertices[vCounter + 2] = 0
-
-			if mesh.animNormals != nil {
-				mesh.animNormals[vCounter] = 0
-				mesh.animNormals[vCounter + 1] = 0
-				mesh.animNormals[vCounter + 2] = 0
-			}
-
-			// Iterates over 4 bones per vertex
-			for j in 0 ..< 4 {
-				boneWeight = mesh.boneWeights[boneCounter]
-				boneId = mesh.boneIds[boneCounter]
-				boneCounter += 1
-
-				if boneWeight == 0 do continue
-
-				vert: vec3
-				// Load vertex directly into array
-				vert.x = mesh.vertices[vCounter]
-				vert.y = mesh.vertices[vCounter + 1]
-				vert.z = mesh.vertices[vCounter + 2]
-
-				// Transform vertex
-				animVertex := rl.Vector3Transform(
-					{vert.x, vert.y, vert.z},
-					model.meshes[m].boneMatrices[boneId],
-				)
-
-				mesh.animVertices[vCounter] += animVertex.x * boneWeight
-				mesh.animVertices[vCounter + 1] += animVertex.y * boneWeight
-				mesh.animVertices[vCounter + 2] += animVertex.z * boneWeight
-
-				updated = true
-
-				if mesh.normals != nil && mesh.animNormals != nil {
-					normal: vec3
-					normal.x = mesh.normals[vCounter]
-					normal.y = mesh.normals[vCounter + 1]
-					normal.x = mesh.normals[vCounter + 2]
-
-					animNormal := rl.Vector3Transform(
-						{normal.x, normal.y, normal.z},
-						invTransposedBoneMatrices[boneId],
-					)
-
-					mesh.animNormals[vCounter] += animNormal.x * boneWeight
-					mesh.animNormals[vCounter + 1] += animNormal.y * boneWeight
-					mesh.animNormals[vCounter + 2] += animNormal.z * boneWeight
-				}
-			}
-		}
-
-		if updated {
-			rl.UpdateMeshBuffer(
-				mesh^,
-				0,
-				mesh.animVertices,
-				mesh.vertexCount * 3 * size_of(f32),
-				0,
-			)
-
-			if mesh.normals != nil {
-				rl.UpdateMeshBuffer(
-					mesh^,
-					2,
-					mesh.animNormals,
-					mesh.vertexCount * 3 * size_of(f32),
-					0,
-				)
-			}
-		}
-	}
-}
-
-// This function is broken --- Fix later
-updateModelAnimationBones :: proc(model: rl.Model, anim: rl.ModelAnimation, frame: i32) {
-	if !(anim.frameCount > 0 && anim.bones != nil && anim.framePoses != nil) {
-		return
-	}
-	aframe := frame
-	if frame >= anim.frameCount {aframe = frame % anim.frameCount}
-
-	// Get first mesh which has bones
-	firstMeshWithBones: i32 = -1
-	for ii in 0 ..< model.meshCount {
-		if model.meshes[ii].boneMatrices != nil {
-			if firstMeshWithBones == -1 {
-				firstMeshWithBones = ii
-				break
-			}
-		}
-	}
-
-	// Update all bones and boneMatrices of first mesh with bones
-	for boneId in 0 ..< anim.boneCount {
-		// The important part is maintaining the exact same transformation order as the C code
-		inTranslation := model.bindPose[boneId].translation
-		inRotation := model.bindPose[boneId].rotation
-		inScale := model.bindPose[boneId].scale
-
-		outTranslation := anim.framePoses[aframe][boneId].translation
-		outRotation := anim.framePoses[aframe][boneId].rotation
-		outScale := anim.framePoses[aframe][boneId].scale
-
-		invRotation := 1 / inRotation
-		invTranslation := rl.Vector3RotateByQuaternion(-inTranslation, invRotation)
-		invScale := vec3{1, 1, 1} / inScale
-
-		// Keep the exact same calculation order as the C code
-		boneTranslation :=
-			rl.Vector3RotateByQuaternion(outScale * invTranslation, outRotation) + outTranslation
-		boneRotation := outRotation * invRotation
-		boneScale := outScale * invScale
-
-		// The matrix multiplication order is critical - matching C exactly
-		boneMatrix :=
-			(rl.QuaternionToMatrix(boneRotation) *
-				rl.MatrixTranslate(boneTranslation.x, boneTranslation.y, boneTranslation.z)) *
-			rl.MatrixScale(boneScale.x, boneScale.y, boneScale.z)
-
-		model.meshes[firstMeshWithBones].boneMatrices[boneId] = boneMatrix
-	}
-
-	if firstMeshWithBones != -1 {
-		// Update remaining meshes with bones
-		for i := firstMeshWithBones + 1; i < model.meshCount; i += 1 {
-			if model.meshes[i].boneMatrices != nil {
-				size := model.meshes[i].boneCount * size_of(model.meshes[i].boneMatrices[0])
-				intrinsics.mem_copy(
-					model.meshes[i].boneMatrices,
-					model.meshes[firstMeshWithBones].boneMatrices,
-					size,
-				)
-			}
-		}
-	}
 }
 
 // Coppied from randy

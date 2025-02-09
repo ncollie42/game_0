@@ -263,6 +263,9 @@ updatePlayerStateAttack1 :: proc(
 			r := lookAtVec3(mouseInWorld(camera), player.spacial.pos)
 			player.spacial.rot = lerpRAD(player.spacial.rot, r, 1)
 
+			pos := getForwardPoint(player)
+			spawnImpact(&pool, player.pos + pos, player.rot)
+
 			player.animState.current = .p4
 			return
 		}
@@ -359,6 +362,9 @@ enterPlayerState :: proc(player: ^Player, state: State, camera: ^rl.Camera3D) {
 		// Snap to mouse direction before attack
 		r := lookAtVec3(mouseInWorld(camera), player.spacial.pos)
 		player.spacial.rot = lerpRAD(player.spacial.rot, r, 1)
+
+		pos := getForwardPoint(player)
+		spawnImpact(&pool, player.pos + pos, player.rot)
 
 		player.animState.speed = s.speed
 		player.animState.current = s.animation

@@ -25,9 +25,10 @@ updateEnemyDummy :: proc(
 	dummy := &enemy.type.(dummyEnemy) or_else panic("Invalid enemy type")
 	switch &s in dummy.state {
 	case EnemyStateRunning:
-		if linalg.distance(enemy.pos, player.pos) > ATTACK_RANGE_DUMMY {return}
+		updateEnemyMovement(.FORWARD, enemy, player, enemies, objs) // Boids
+	// if linalg.distance(enemy.pos, player.pos) > ATTACK_RANGE_DUMMY {return}
 
-		enterEnemyDummyState(enemy, EnemyStateIdle{})
+	// enterEnemyDummyState(enemy, EnemyStateIdle{})
 	case EnemyStateIdle:
 		// Face player :: 
 		target := normalize(player.pos - enemy.pos)
@@ -41,7 +42,8 @@ updateEnemyDummy :: proc(
 			enterEnemyDummyState(enemy, EnemyStateIdle{})
 		}
 	case:
-		enterEnemyDummyState(enemy, EnemyStateIdle{})
+		// enterEnemyDummyState(enemy, EnemyStateIdle{})
+		enterEnemyDummyState(enemy, EnemyStateRunning{})
 	}
 }
 

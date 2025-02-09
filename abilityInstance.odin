@@ -163,7 +163,7 @@ updateAbilityRange :: proc(
 				enterEnemyDummyState(&enemy, state)
 			}
 			playSoundPunch()
-			spawnImpact(impact, enemy.pos)
+			spawnImpact(impact, enemy.pos, 0)
 		}
 		hitUnit = true
 		// enterEnemyState
@@ -180,7 +180,7 @@ updateAbilityRange :: proc(
 			startHitStop() // TODO: only apply from some abilities, like mele - else it feels off. IE a dot would be bad
 			addTrauma(.large)
 			playSoundPunch()
-			spawnImpact(impact, enemy.pos)
+			spawnImpact(impact, enemy.pos, 0)
 		}
 		hitUnit = true
 	}
@@ -219,7 +219,7 @@ updateAbilityMele :: proc(
 				enterEnemyDummyState(&enemy, state)
 			}
 			playSoundPunch()
-			spawnImpact(impact, enemy.pos)
+			spawnImpact(impact, enemy.pos, 0)
 		}
 		// enterEnemyState
 		// Push back
@@ -235,7 +235,7 @@ updateAbilityMele :: proc(
 			startHitStop() // TODO: only apply from some abilities, like mele - else it feels off. IE a dot would be bad
 			addTrauma(.large)
 			playSoundPunch()
-			spawnImpact(impact, enemy.pos)
+			spawnImpact(impact, enemy.pos, 0)
 		}
 	}
 }

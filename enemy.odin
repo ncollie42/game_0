@@ -55,7 +55,7 @@ EnemyHurt :: struct {
 }
 
 // ---- ---- ---- ---- Init ---- ---- ---- ---- 
-enemyPoolSize := 25
+enemyPoolSize := 100
 initEnemyDummies :: proc() -> EnemyDummyPool {
 	// It looks like we can share the same shader for all enemies
 	// shader := rl.LoadShader(nil, "shaders/grayScale.fs")
