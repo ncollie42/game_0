@@ -40,6 +40,7 @@ doAction :: proc(action: Action) {
 		spawnCubeAtLocation(a.pool, a.location)
 	case ActionSpawnMeleAtPlayer:
 		spawnMeleInstanceAtPlayer(a.pool, a.player)
+	// Spawn mele trail?
 	}
 }
 

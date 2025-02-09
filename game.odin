@@ -18,8 +18,7 @@ Game :: struct {
 	chargeAttack:    AbilityConfig,
 	dash:            State,
 	screen:          rl.RenderTexture2D,
-	fire:            ^Flipbook,
-	impact:          ImpactPool,
+	impact:          Flipbook,
 }
 
 initGame :: proc() -> Game {
@@ -32,8 +31,7 @@ initGame :: proc() -> Game {
 		playerAbilities = initAbilityPool(),
 		enemyAbilities  = initAbilityPool(),
 		screen          = rl.LoadRenderTexture(P_W, P_H),
-		fire            = initFlipbook("resources/fire.png", 96, 96, 18),
-		impact          = initImpactPool("resources/impact.png", 305, 383, 27),
+		impact          = initFlipbookPool("resources/impact.png", 305, 383, 27),
 	}
 
 	actionSpawnMeleAtPlayer := ActionSpawnMeleAtPlayer {
@@ -113,8 +111,6 @@ updateGame :: proc(game: ^Game) {
 	// :: Player Actions
 	updatePlayerInput(game)
 
-	// Update player trail
-	player.trail.duration -= getDelta()
 	// Update player states
 	switch &s in player.state {
 	case playerStateBase:
@@ -148,10 +144,8 @@ updateGame :: proc(game: ^Game) {
 
 	updateAudio()
 
-	// one update at a time for now
-	updateFlipbook(fire)
-
-	updateImpactPool(&impact, 60)
+	updateFlipbookOneShot(&impact, 60)
+	updateFlipbookOneShot(&player.trail, 10)
 }
 
 drawGame :: proc(game: ^Game) {
@@ -169,7 +163,8 @@ drawGame :: proc(game: ^Game) {
 	drawEnv(&objs)
 
 	debugDrawGame(game)
-	drawImpactPool(camera^, impact)
+	drawFlipbook(camera^, impact, 3, {}, {})
+	drawMeleTrail(camera^, player.trail)
 
 	drawCamera(camera)
 	// -------------------------------------------------

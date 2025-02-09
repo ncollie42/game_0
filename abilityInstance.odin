@@ -109,7 +109,7 @@ updateEnemyHitCollisions :: proc(
 	pool: ^AbilityPool,
 	enemies: ^EnemyDummyPool,
 	spawners: ^EnemySpanwerPool,
-	impact: ^ImpactPool,
+	impact: ^Flipbook,
 ) {
 	// Check collision
 	for &obj, index in pool.active {
@@ -134,7 +134,7 @@ updateAbilityRange :: proc(
 	obj: ^AbilityInstance,
 	enemies: ^EnemyDummyPool,
 	spawners: ^EnemySpanwerPool,
-	impact: ^ImpactPool,
+	impact: ^Flipbook,
 ) -> bool {
 	hitUnit := false
 	for &enemy in enemies.active {
@@ -163,7 +163,7 @@ updateAbilityRange :: proc(
 				enterEnemyDummyState(&enemy, state)
 			}
 			playSoundPunch()
-			spawnImpact(impact, enemy.pos, 0)
+			spawnFlipbook(impact, enemy.pos, 0)
 		}
 		hitUnit = true
 		// enterEnemyState
@@ -180,7 +180,7 @@ updateAbilityRange :: proc(
 			startHitStop() // TODO: only apply from some abilities, like mele - else it feels off. IE a dot would be bad
 			addTrauma(.large)
 			playSoundPunch()
-			spawnImpact(impact, enemy.pos, 0)
+			spawnFlipbook(impact, enemy.pos, 0)
 		}
 		hitUnit = true
 	}
@@ -191,7 +191,7 @@ updateAbilityMele :: proc(
 	obj: ^AbilityInstance,
 	enemies: ^EnemyDummyPool,
 	spawners: ^EnemySpanwerPool,
-	impact: ^ImpactPool,
+	impact: ^Flipbook,
 ) {
 	for &enemy in enemies.active {
 		hit := checkCollision(obj, enemy)
@@ -219,7 +219,7 @@ updateAbilityMele :: proc(
 				enterEnemyDummyState(&enemy, state)
 			}
 			playSoundPunch()
-			spawnImpact(impact, enemy.pos, 0)
+			spawnFlipbook(impact, enemy.pos, 0)
 		}
 		// enterEnemyState
 		// Push back
@@ -235,7 +235,7 @@ updateAbilityMele :: proc(
 			startHitStop() // TODO: only apply from some abilities, like mele - else it feels off. IE a dot would be bad
 			addTrauma(.large)
 			playSoundPunch()
-			spawnImpact(impact, enemy.pos, 0)
+			spawnFlipbook(impact, enemy.pos, 0)
 		}
 	}
 }

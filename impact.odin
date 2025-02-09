@@ -4,7 +4,8 @@ import "core:fmt"
 import "core:math"
 import rl "vendor:raylib"
 
-ImpactPool :: struct {
+// Add multiple textures, and index :: put all flipbooks in one, and sort before update
+Flipbook :: struct {
 	fpsCheck: f32,
 	texture:  rl.Texture2D,
 	rows:     i32,
@@ -14,32 +15,33 @@ ImpactPool :: struct {
 	height:   i32,
 	// total number of frames in texture
 	total:    i32,
-	active:   [dynamic]Impact, // inline struct here?
+	active:   [dynamic]Particle, // inline struct here?
+	// One Shot?
 }
 
 // Animated Sprite
-Impact :: struct {
+Particle :: struct {
 	frame: f32,
 	pos:   vec3,
 	rot:   f32,
 }
 
-spawnImpact :: proc(pool: ^ImpactPool, pos: vec3, rot: f32) {
+spawnFlipbook :: proc(pool: ^Flipbook, pos: vec3, rot: f32) {
 	if len(pool.active) == cap(pool.active) {
 		// Do nothing if there isn't space for a new one.
 		return
 	}
 
-	impact := Impact{0, pos, rot}
+	impact := Particle{0, pos, rot}
 	append(&pool.active, impact)
 }
 
-initImpactPool :: proc(path: cstring, width: i32, height: i32, frames: i32) -> ImpactPool {
+initFlipbookPool :: proc(path: cstring, width: i32, height: i32, frames: i32) -> Flipbook {
 	texture := rl.LoadTexture(path)
 	assert(rl.IsTextureValid(texture), "Not able to load texture")
 
-	pool := ImpactPool {
-		active  = make([dynamic]Impact, 0, 15),
+	pool := Flipbook {
+		active  = make([dynamic]Particle, 0, 15),
 		texture = texture,
 		rows    = texture.width / width,
 		cols    = texture.height / height,
@@ -52,9 +54,7 @@ initImpactPool :: proc(path: cstring, width: i32, height: i32, frames: i32) -> I
 }
 
 
-// updateOneShotFlipbook
-updateImpactPool :: proc(pool: ^ImpactPool, FPS: f32) {
-
+updateFlipbookOneShot :: proc(pool: ^Flipbook, FPS: f32) {
 	// Loop in reverse and swap with last element on remove
 	#reverse for &impact, index in pool.active {
 		impact.frame += rl.GetFrameTime() * FPS
@@ -65,33 +65,23 @@ updateImpactPool :: proc(pool: ^ImpactPool, FPS: f32) {
 	}
 }
 
-drawImpactPool :: proc(camera: rl.Camera, pool: ImpactPool) {
-	// NOTE: draw order matters, I might want to make a pass and sort based on z. OR do in insert
-	for impact in pool.active {
+updateFlipbook :: proc(pool: ^Flipbook, FPS: f32) {
+	for &impact, index in pool.active {
+		impact.frame += rl.GetFrameTime() * FPS
 		current := i32(math.floor(impact.frame))
-
-		down := current / pool.rows
-		right := int(current) % int(pool.rows)
-
-		source_rec := rl.Rectangle {
-			x      = f32(pool.width) * f32(right),
-			y      = f32(pool.height) * f32(down),
-			width  = f32(pool.width),
-			height = f32(pool.height),
+		if current > pool.total {
+			impact.frame = 0
 		}
-		// rl.DrawBillboard(camera, pool.texture, impact.pos, 3, rl.WHITE)
-		rl.DrawBillboardRec(
-			camera,
-			pool.texture,
-			source_rec,
-			impact.pos + {0, 1.8, 0},
-			2.8,
-			rl.WHITE,
-		)
 	}
 }
 
-drawImpactPoolFlat :: proc(camera: rl.Camera, pool: ImpactPool) {
+drawFlipbook :: proc(
+	camera: rl.Camera,
+	pool: Flipbook,
+	size: f32,
+	offsetPos: vec3,
+	offsetDeg: f32,
+) {
 	// NOTE: draw order matters, I might want to make a pass and sort based on z. OR do in insert
 	for impact in pool.active {
 		current := i32(math.floor(impact.frame))
@@ -105,10 +95,8 @@ drawImpactPoolFlat :: proc(camera: rl.Camera, pool: ImpactPool) {
 			width  = f32(pool.width),
 			height = f32(pool.height),
 		}
-		fmt.println(current, source_rec, impact.rot)
 
-		size: f32 = 4
-		pos := impact.pos + {0, 1, 0}
+		pos := impact.pos + offsetPos
 
 		// rl.DrawBillboard(camera, pool.texture, impact.pos + {0, 2, 0}, 3, rl.WHITE)
 		// rl.DrawBillboardRec(camera, pool.texture, source_rec, pos, size, rl.WHITE)
@@ -117,12 +105,18 @@ drawImpactPoolFlat :: proc(camera: rl.Camera, pool: ImpactPool) {
 			camera,
 			pool.texture,
 			source_rec,
-			pos,
+			pos + {0, size / 2, 0},
 			UP,
 			size,
 			{size / 2, size / 2},
-			impact.rot * rl.RAD2DEG + 90,
+			impact.rot * rl.RAD2DEG + offsetDeg,
 			rl.WHITE,
 		)
 	}
+}
+drawFireFlipbook :: proc(camera: rl.Camera, pool: Flipbook) {
+	drawFlipbook(camera, pool, 4, {0, 0, 0}, 0)
+}
+drawMeleTrail :: proc(camera: rl.Camera, pool: Flipbook) {
+	drawFlipbook(camera, pool, 4, {0, 0, 0}, 90)
 }

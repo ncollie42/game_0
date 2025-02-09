@@ -14,18 +14,11 @@ Player :: struct {
 	using spacial: Spacial,
 	using health:  Health,
 	state:         State,
+	trail:         Flipbook, // TODO: add left + right trail
 	//Test :: Collision
 	point:         vec3,
 	normal:        vec3,
-	// slash:
-	trail:         Trail,
 	edge:          bool,
-}
-
-Trail :: struct {
-	duration: f32,
-	model:    rl.Model,
-	// Use player's position for now
 }
 
 MOVE_SPEED :: 5
@@ -62,9 +55,8 @@ initPlayer :: proc() -> ^Player {
 	player.model.materials[1].shader = shader
 	player.spacial.shape = .8 //radius
 
-	trailMesh := rl.GenMeshCube(2, .1, .25) // Replace with real mesh
-	trailModel := rl.LoadModelFromMesh(trailMesh)
-	player.trail.model = trailModel
+	path: cstring = "/home/nico/Downloads/smear.png"
+	player.trail = initFlipbookPool(path, 240 / 5, 48, 5)
 	return player
 }
 
@@ -264,7 +256,7 @@ updatePlayerStateAttack1 :: proc(
 			player.spacial.rot = lerpRAD(player.spacial.rot, r, 1)
 
 			pos := getForwardPoint(player)
-			spawnImpact(&pool, player.pos + pos, player.rot)
+			spawnFlipbook(&player.trail, player.pos + pos, player.rot)
 
 			player.animState.current = .p4
 			return
@@ -354,8 +346,6 @@ enterPlayerState :: proc(player: ^Player, state: State, camera: ^rl.Camera3D) {
 			s.comboInput = true
 			return
 		}
-		// Slash
-		player.trail.duration = .1
 
 		playSoundWhoosh()
 		s.timer.left = s.timer.max
@@ -364,7 +354,7 @@ enterPlayerState :: proc(player: ^Player, state: State, camera: ^rl.Camera3D) {
 		player.spacial.rot = lerpRAD(player.spacial.rot, r, 1)
 
 		pos := getForwardPoint(player)
-		spawnImpact(&pool, player.pos + pos, player.rot)
+		spawnFlipbook(&player.trail, player.pos + pos, player.rot)
 
 		player.animState.speed = s.speed
 		player.animState.current = s.animation
@@ -449,16 +439,4 @@ drawPlayer :: proc(player: Player) {
 		rl.WHITE,
 	)
 
-	// This looks horrible, need to update this.
-	// if player.trail.duration > 0 {
-	// 	front := getForwardPoint(player)
-	// 	rl.DrawModelEx(
-	// 		player.trail.model,
-	// 		player.pos + {0, 1, 0} + front,
-	// 		UP,
-	// 		rl.RAD2DEG * player.spacial.rot,
-	// 		1,
-	// 		rl.WHITE,
-	// 	)
-	// }
 }
