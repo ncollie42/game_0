@@ -9,6 +9,7 @@ import rl "vendor:raylib"
 Player :: struct {
 	lookAtMouse:   bool,
 	model:         rl.Model,
+	scale:         f32,
 	animState:     AnimationState,
 	animSet:       AnimationSet,
 	using spacial: Spacial,
@@ -21,28 +22,21 @@ Player :: struct {
 	edge:          bool,
 }
 
-MOVE_SPEED :: 5
+MOVE_SPEED :: 4.5
 TURN_SPEED :: 10.0
 
 initPlayer :: proc() -> ^Player {
 	player := new(Player)
 
-	// modelPath: cstring = "/home/nico/Downloads/Human/base.m3d"
-	// texturePath: cstring = "/home/nico/Downloads/Human/base.png"
-
-	modelPath: cstring = "resources/Human/base.m3d"
-	texturePath: cstring = "resources/Human/base.png"
+	modelPath: cstring = "/home/nico/Downloads/warrior/base.m3d"
+	texturePath: cstring = "/home/nico/Downloads/warrior/95_p.png"
 
 	player.model = loadModel(modelPath)
-	player.animSet = loadModelAnimations(modelPath)
-	// Mixamo -> 30 -> blender -> 60
-	fmt.println(PLAYER.idle, player.animSet.anims[PLAYER.idle].frameCount)
-	assert(
-		player.animSet.anims[PLAYER.idle].frameCount == 58,
-		"Frame count for idle doesn't match, Make sure you exported FPS properly",
-	)
+	player.animSet = loadM3DAnimationsWithRootMotion(modelPath)
+
 	texture := loadTexture(texturePath)
-	player.model.materials[1].maps[rl.MaterialMapIndex.ALBEDO].texture = texture
+	player.model.materials[player.model.materialCount - 1].maps[rl.MaterialMapIndex.ALBEDO].texture =
+		texture
 
 	player.animState.speed = 1
 
@@ -57,20 +51,21 @@ initPlayer :: proc() -> ^Player {
 
 	path: cstring = "/home/nico/Downloads/smear.png"
 	player.trail = initFlipbookPool(path, 240 / 5, 48, 5)
+
+	player.scale = 5
 	return player
 }
 
 moveAndSlide :: proc(
 	player: ^Player,
-	dir: vec3,
+	velocity: vec3,
 	objs: [dynamic]EnvObj,
 	enemies: ^EnemyDummyPool,
-	speed: f32,
 ) {
 
 	// Projected movement
 	projected := player.spacial
-	projected.pos += dir * getDelta() * MOVE_SPEED
+	projected.pos += velocity * getDelta()
 	for obj in objs {
 		if checkCollision(obj, projected) {
 			collision := getCollision(obj, projected)
@@ -79,13 +74,13 @@ moveAndSlide :: proc(
 			player.normal = collision.normal
 
 			// if normal dot is > .7 // mostly facing the same way. sharp corners.
-			if linalg.dot(collision.normal, dir) > .7 {break}
+			if linalg.dot(collision.normal, velocity) > .7 {break}
 
 			// Slide: Project velocity onto normal using dot product
-			dot := linalg.dot(dir, collision.normal)
-			slide := dir - (collision.normal * dot)
+			dot := linalg.dot(velocity, collision.normal)
+			slide := velocity - (collision.normal * dot)
 
-			player.spacial.pos += slide * getDelta() * speed
+			player.spacial.pos += slide * getDelta()
 
 			// If colliding after moving, set possition at the edge of object
 			if checkCollision(obj, player.spacial) {
@@ -124,32 +119,31 @@ moveAndSlide :: proc(
 			player.normal = collision.normal
 
 			// if normal dot is > .7 // mostly facing the same way. sharp corners.
-			if linalg.dot(collision.normal, dir) > .7 {break}
+			if linalg.dot(collision.normal, velocity) > .7 {break}
 
 			// Slide: Project velocity onto normal using dot product
-			dot := linalg.dot(dir, collision.normal)
-			slide := dir - (collision.normal * dot)
+			dot := linalg.dot(velocity, collision.normal)
+			slide := velocity - (collision.normal * dot)
 
-			player.spacial.pos += slide * getDelta() * speed
+			player.spacial.pos += slide * getDelta()
 
 			return
 		}
 	}
 
-	player.spacial.pos += dir * getDelta() * speed
+	player.spacial.pos += velocity * getDelta()
 }
 
 moveAndStop :: proc(
 	player: ^Player,
-	dir: vec3,
+	velocity: vec3,
 	objs: [dynamic]EnvObj,
 	enemies: ^EnemyDummyPool,
-	speed: f32,
 ) {
 
 	// Projected movement
 	projected := player.spacial
-	projected.pos += dir * getDelta() * MOVE_SPEED
+	projected.pos += velocity * getDelta()
 	for obj in objs {
 		if checkCollision(obj, projected) {
 			return
@@ -182,15 +176,13 @@ moveAndStop :: proc(
 		}
 	}
 
-	player.spacial.pos += dir * getDelta() * speed
+	player.spacial.pos += velocity * getDelta()
 }
 
 updatePlayerStateBase :: proc(player: ^Player, objs: [dynamic]EnvObj, enemies: ^EnemyDummyPool) {
 
 	// Add a sub state - Idle and moving
 	dir := getVector()
-	moveAndSlide(player, dir, objs, enemies, MOVE_SPEED)
-
 	// Update rotation while moving
 	if dir != {} {
 		target := player.spacial.pos + dir
@@ -198,12 +190,10 @@ updatePlayerStateBase :: proc(player: ^Player, objs: [dynamic]EnvObj, enemies: ^
 		player.spacial.rot = lerpRAD(player.spacial.rot, r, getDelta() * TURN_SPEED)
 	}
 
-	if dir != {} {
-		player.animState.current = PLAYER.run
-	} else {
-		player.animState.current = PLAYER.idle
-	}
+	speed := getRootMotionSpeed(&player.animState, player.animSet, player.scale)
+	moveAndSlide(player, dir * speed, objs, enemies)
 
+	player.animState.current = (dir != {}) ? PLAYER.run : PLAYER.idle
 }
 
 updatePlayerStateDashing :: proc(
@@ -216,7 +206,8 @@ updatePlayerStateDashing :: proc(
 	dashing.timer.left -= getDelta()
 	dir := getForwardPoint(player)
 
-	moveAndSlide(player, dir, objs, enemies, MOVE_SPEED * 2)
+	speed := getRootMotionSpeed(&player.animState, player.animSet, player.scale)
+	moveAndSlide(player, dir * speed * 2, objs, enemies)
 
 	if dashing.timer.left <= 0 {
 		enterPlayerState(player, playerStateBase{}, camera)
@@ -231,11 +222,13 @@ updatePlayerStateAttack1 :: proc(
 	enemies: ^EnemyDummyPool,
 ) {
 	attack.timer.left -= getDelta()
-	// dir := getForwardPoint(player)
-	// moveAndSlide(player, dir, objs, enemies, MOVE_SPEED * .50)
+
+	speed := getRootMotionSpeed(&player.animState, player.animSet, player.scale)
+	dir := getForwardPoint(player)
+	moveAndSlide(player, dir * speed, objs, enemies)
 
 	// Action
-	progress := 1 - (attack.timer.left / attack.timer.max)
+	progress := getAnimationProgress(player.animState, player.animSet)
 	if progress >= attack.trigger && !attack.hasTriggered {
 		attack.hasTriggered = true
 		doAction(attack.action)
@@ -250,7 +243,7 @@ updatePlayerStateAttack1 :: proc(
 			attack.hasTriggered = false
 
 			playSoundWhoosh()
-			attack.timer.left = attack.timer.max
+			// attack.timer.left = attack.timer.max
 			// Snap to mouse direction before next attack
 			r := lookAtVec3(mouseInWorld(camera), player.spacial.pos)
 			player.spacial.rot = lerpRAD(player.spacial.rot, r, 1)
@@ -258,7 +251,7 @@ updatePlayerStateAttack1 :: proc(
 			pos := getForwardPoint(player)
 			spawnFlipbook(&player.trail, player.pos + pos, player.rot)
 
-			player.animState.current = .p4
+			player.animState.current = PLAYER.punch2
 			return
 		}
 		enterPlayerState(player, playerStateBase{}, camera)
@@ -275,10 +268,6 @@ updatePlayerStateAttackLong :: proc(
 	// Input check
 	attack.timer.left -= getDelta()
 
-	// dir := getForwardPoint(player)
-	// moveAndSlide(player, dir, objs, enemies, MOVE_SPEED * .25)
-
-
 	// Action
 	progress := 1 - (attack.timer.left / attack.timer.max)
 	if progress >= attack.trigger && !attack.hasTriggered {
@@ -290,7 +279,7 @@ updatePlayerStateAttackLong :: proc(
 	player.spacial.rot = lerpRAD(player.spacial.rot, r, 1)
 	if progress > .5 { 	// Move .5 to struct?
 		dir := getForwardPoint(player)
-		moveAndStop(player, dir, objs, enemies, MOVE_SPEED * 3) // IF stoped -> trigger action? TODO: make func return collision
+		moveAndStop(player, dir * MOVE_SPEED * 3, objs, enemies) // IF stoped -> trigger action? TODO: make func return collision
 	}
 	if attack.timer.left <= 0 {
 		enterPlayerState(player, playerStateBase{}, camera)
@@ -430,12 +419,15 @@ drawPlayer :: proc(player: Player) {
 	// rl.DrawCapsule(player.point, player.point + player.normal, .15, 8, 8, rl.PURPLE)
 	// rl.DrawLine3D(player.pos, player.pos + player.normal, rl.PURPLE)
 
+
+	// Draw player
+	assert(player.scale != 0, "Scale is 0")
 	rl.DrawModelEx(
 		player.model,
 		player.spacial.pos,
 		UP,
 		rl.RAD2DEG * player.spacial.rot,
-		3,
+		player.scale,
 		rl.WHITE,
 	)
 

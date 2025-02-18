@@ -39,17 +39,17 @@ initEnv :: proc() -> [dynamic]EnvObj {
 	// 	append(&pool, env)
 	// }
 
-	{ 	// sphere
-		rad: f32 = 3.0
-		mesh := rl.GenMeshSphere(rad, 10, 10)
-		model := rl.LoadModelFromMesh(mesh)
-		model.materials[0].maps[rl.MaterialMapIndex.ALBEDO].texture = texture
-		env := EnvObj {
-			model = model,
-			spacial = Spacial{pos = {-6, 0, -6}, shape = rad},
-		}
-		append(&pool, env)
-	}
+	// { 	// sphere
+	// 	rad: f32 = 3.0
+	// 	mesh := rl.GenMeshSphere(rad, 10, 10)
+	// 	model := rl.LoadModelFromMesh(mesh)
+	// 	model.materials[0].maps[rl.MaterialMapIndex.ALBEDO].texture = texture
+	// 	env := EnvObj {
+	// 		model = model,
+	// 		spacial = Spacial{pos = {-6, 0, -6}, shape = rad},
+	// 	}
+	// 	append(&pool, env)
+	// }
 
 	// Walls
 

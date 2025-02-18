@@ -22,7 +22,6 @@ updatePlayerInput :: proc(game: ^Game) {
 	playerInputDash(player, dash, camera)
 	// TODO: Put into func swap with 'Hand' logic stuff
 	CheckMousePress: {
-		// fmt.println(MousePress)
 		_, idle := MousePress.(Idle)
 		_, longAttack := player.state.(playerStateAttackLong)
 

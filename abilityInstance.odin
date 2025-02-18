@@ -93,7 +93,6 @@ spawnInstanceFrontOfLocation :: proc(pool: ^AbilityPool, loc: ^Spacial) {
 
 spawnRangeInstanceFrontOfLocation :: proc(pool: ^AbilityPool, loc: ^Spacial) {
 	forward := getForwardPoint(loc^)
-	fmt.println("Spawn")
 	append(&pool.active, newRangeInstance(forward + loc.pos, loc.rot))
 }
 

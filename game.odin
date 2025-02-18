@@ -46,8 +46,8 @@ initGame :: proc() -> Game {
 		state = playerStateAttack1 {
 			cancellable = true,
 			timer = Timer{max = .3},
-			animation = PLAYER.p1,
-			trigger = .5,
+			animation = PLAYER.punch,
+			trigger = .1,
 			speed = 1,
 			action = actionSpawnMeleAtPlayer,
 		},
@@ -60,7 +60,7 @@ initGame :: proc() -> Game {
 			cancellable = true,
 			timer = Timer{max = .5},
 			trigger = 1, //[0,1]
-			animation = PLAYER.longPunch,
+			animation = PLAYER.punch,
 			speed = 2.3,
 			action = actionSpawnMeleAtPlayer,
 		},
@@ -69,7 +69,6 @@ initGame :: proc() -> Game {
 
 	// For pixel look
 	rl.SetTextureFilter(game.screen.texture, rl.TextureFilter.POINT)
-
 
 	debugInit(&game)
 	return game

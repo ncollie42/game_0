@@ -102,7 +102,6 @@ spawnEnemySpawner :: proc(pool: ^EnemySpanwerPool) {
 
 
 despawnSpawner :: proc(pool: ^EnemySpanwerPool, index: int) {
-	fmt.println(len(pool.active), len(pool.free))
 	// :: Swap
 	// Add to Free
 	append(&pool.free, pool.active[index])

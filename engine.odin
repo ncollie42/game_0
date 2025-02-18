@@ -5,6 +5,7 @@ import "core:fmt"
 import "core:math"
 import "core:math/ease"
 import "core:math/linalg"
+import "core:strings"
 import rl "vendor:raylib"
 
 // https://bztsrc.gitlab.io/model3d/viewer/
@@ -258,11 +259,16 @@ normalize :: proc(vec: vec3) -> vec3 {
 }
 
 loadModel :: proc(path: cstring) -> rl.Model {
+	assert(
+		!strings.has_suffix(string(path), ".fbx"),
+		fmt.tprint("[loadModel] does not support FBX files :", path),
+	)
 	// Make sure it's a valid path.  
 	// Only glb, obj, m3d work.
 	//     No FBX.
 	model := rl.LoadModel(path)
-	assert(model.meshCount != 0, "Invalid Mesh")
+
+	assert(model.meshCount != 0, fmt.tprintf("[loadModel] Invalid Mesh %s", path))
 	return model
 }
 
@@ -271,23 +277,9 @@ loadModelAnimations :: proc(path: cstring) -> AnimationSet {
 	anim.anims = rl.LoadModelAnimations(path, &anim.total)
 	assert(anim.total != 0, "No Anim")
 
-	fmt.println(anim.anims)
-	for ii in 0 ..< anim.total {
-		animation := anim.anims[ii]
-		fmt.printfln(
-			"%d %s %d Frames %d",
-			ii,
-			animation.name,
-			animation.boneCount,
-			animation.frameCount,
-		)
-		// Print Bones
-		for iii in 0 ..< animation.boneCount {
-			fmt.printf("%s %d\n", animation.bones[iii].name, animation.bones[iii].parent)
-		}
-	}
 	return anim
 }
+
 
 loadTexture :: proc(path: cstring) -> rl.Texture2D {
 	texture := rl.LoadTexture(path)

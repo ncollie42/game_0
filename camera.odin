@@ -100,11 +100,11 @@ addTrauma :: proc(amount: enum {
 }
 
 zoomOut :: proc(camera: ^rl.Camera3D) {
-	rl.CameraMoveToTarget(camera, 1)
+	rl.CameraMoveToTarget(camera, .5)
 }
 
 zoomIn :: proc(camera: ^rl.Camera3D) {
-	rl.CameraMoveToTarget(camera, -1)
+	rl.CameraMoveToTarget(camera, -.5)
 }
 
 updateCameraPos :: proc(camera: ^rl.Camera3D, player: Player) {
