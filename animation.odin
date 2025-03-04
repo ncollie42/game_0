@@ -15,23 +15,12 @@ PLAYER :: enum {
 	kick,
 	punch,
 	punch2,
-	run,
 	run_fast,
+	run,
+	// run_fast,
 	idle,
 	// roll,
 }
-// um {
-// 	run,
-// 	// punch2,
-// 	// punch1,
-// 	roll,
-// 	longPunch,
-// 	// p1,
-// 	// p2,
-// 	// p3,
-// 	// p4,
-// 	idle,
-// }
 
 // enum is 1 shifted down from what they are in the file
 SKELE :: enum {
@@ -58,11 +47,15 @@ ANIMATION_NAMES :: union {
 FPS_30 :: 30
 
 AnimationState :: struct {
-	duration: f32,
-	finished: bool, // Signal :: Animation just finished
-	current:  ANIMATION_NAMES,
+	duration:       f32,
+	finished:       bool, // Signal :: Animation just finished
+	current:        ANIMATION_NAMES,
+	// Blending between 2 anims
+	next:           ANIMATION_NAMES,
+	transitionTime: f32, // [0,1] for when doing animation blending between two animations
+	nextDuration:   f32,
 	// current:  i32, //current anim
-	speed:    f32,
+	speed:          f32,
 }
 
 // We can share this struct for models using the same animations {Adventueres | skeletons}
@@ -70,6 +63,24 @@ AnimationSet :: struct {
 	total: i32, //total animations
 	anims: [^]rl.ModelAnimation,
 	RMs:   [dynamic][dynamic]vec3, // RootMotion baked in [animation][frame]
+}
+
+TRANSITION_TIME :: .15
+transitionAnimBlend :: proc(state: ^AnimationState, anim: ANIMATION_NAMES) {
+	if state.next == anim do return
+	if state.current == anim do return
+	state.next = anim
+	state.transitionTime = TRANSITION_TIME
+	state.nextDuration = 0
+}
+
+transitionAnim :: proc(state: ^AnimationState, anim: ANIMATION_NAMES) {
+	state.next = nil
+	state.current = anim
+	state.duration = 0
+
+	state.transitionTime = 0
+	state.nextDuration = 0
 }
 
 // https://www.youtube.com/live/-LPHV452k1Y?si=JLSJ31LMlaPsKLO0&t=3794
@@ -86,7 +97,29 @@ updateAnimation :: proc(model: rl.Model, state: ^AnimationState, set: AnimationS
 	frame := i32(math.floor(state.duration * FPS_30))
 	actualFrame := frame % anim.frameCount
 
-	updateModelAnimation(model, anim, frame)
+	if state.next != nil {
+		state.transitionTime -= getDelta()
+		frame2 := i32(math.floor(state.nextDuration * FPS_30))
+
+		next: i32 = animEnumToInt(state.next)
+		anim2 := set.anims[next]
+
+		amount := rl.Remap(state.transitionTime, TRANSITION_TIME, 0, 0, 1) // [0,1]
+		amount = clamp(amount, 0.0, 1.0)
+
+		updateModelAnimationTransition(model, anim, frame, anim2, frame2, amount)
+		if state.transitionTime <= 0 {
+			state.current = state.next
+			state.duration = state.nextDuration
+
+			state.next = nil
+			state.transitionTime = 0
+		}
+
+		state.nextDuration += getDelta() * state.speed
+	} else {
+		rl.UpdateModelAnimation(model, anim, frame)
+	}
 
 	state.duration += getDelta() * state.speed
 	nextFrame := i32(math.floor(state.duration * FPS_30))
@@ -189,16 +222,105 @@ updateModelAnimation :: proc(model: rl.Model, anim: rl.ModelAnimation, frame: i3
 	}
 }
 
-// This function is broken --- Fix later
+updateModelAnimationTransition :: proc(
+	model: rl.Model,
+	anim: rl.ModelAnimation,
+	frame: i32,
+	anim2: rl.ModelAnimation,
+	frame2: i32,
+	amount: f32,
+) {
+	updateModelAnimationBonesBlendTransition(model, anim, frame, anim2, frame2, amount)
+
+	invTransposedBoneMatrices := make([]rl.Matrix, anim.boneCount) // NOTE: can we save this some where in init?
+	defer delete(invTransposedBoneMatrices)
+
+	for m in 0 ..< model.meshCount {
+		mesh := model.meshes[m]
+		animVertex: vec3 = {}
+		animNormal: vec3 = {}
+		boneId: u8 = 0
+		boneCounter := 0
+		boneWeight: f32 = 0.0
+		updated := false // Flag to check when anim vertex information is updated
+		vValues := mesh.vertexCount * 3
+
+		// Skip if missing bone data
+		if mesh.boneWeights == nil || mesh.boneIds == nil do continue
+
+		// Pre-calculate matrices for each bone to avoid recomputing -> this actually speeds a good amount
+		for i in 0 ..< anim.boneCount {
+			invTransposedBoneMatrices[i] = linalg.transpose(linalg.inverse(mesh.boneMatrices[i]))
+		}
+
+		for vCounter: i32 = 0; vCounter < vValues; vCounter += 3 {
+			mesh.animVertices[vCounter] = 0
+			mesh.animVertices[vCounter + 1] = 0
+			mesh.animVertices[vCounter + 2] = 0
+
+			if mesh.animNormals != nil {
+				mesh.animNormals[vCounter] = 0
+				mesh.animNormals[vCounter + 1] = 0
+				mesh.animNormals[vCounter + 2] = 0
+			}
+
+			// Iterates over 4 bones per vertex
+			for j in 0 ..< 4 {
+				boneWeight = mesh.boneWeights[boneCounter]
+				boneId = mesh.boneIds[boneCounter]
+				boneCounter += 1
+
+				if boneWeight == 0 do continue
+
+				// Transform vertex
+				animVertex =
+					(mesh.boneMatrices[boneId] * vec4{mesh.vertices[vCounter], mesh.vertices[vCounter + 1], mesh.vertices[vCounter + 2], 1}).xyz
+
+				mesh.animVertices[vCounter] += animVertex.x * boneWeight
+				mesh.animVertices[vCounter + 1] += animVertex.y * boneWeight
+				mesh.animVertices[vCounter + 2] += animVertex.z * boneWeight
+
+				updated = true
+
+				if mesh.normals != nil && mesh.animNormals != nil {
+
+					animNormal =
+						(invTransposedBoneMatrices[boneId] * vec4{mesh.normals[vCounter], mesh.normals[vCounter + 1], mesh.normals[vCounter + 2], 1}).xyz
+
+					mesh.animNormals[vCounter] += animNormal.x * boneWeight
+					mesh.animNormals[vCounter + 1] += animNormal.y * boneWeight
+					mesh.animNormals[vCounter + 2] += animNormal.z * boneWeight
+				}
+			}
+		}
+
+		if updated {
+			rl.UpdateMeshBuffer(mesh, 0, mesh.animVertices, mesh.vertexCount * 3 * size_of(f32), 0)
+
+			if mesh.normals != nil {
+				rl.UpdateMeshBuffer(
+					mesh,
+					2,
+					mesh.animNormals,
+					mesh.vertexCount * 3 * size_of(f32),
+					0,
+				)
+			}
+		}
+	}
+}
+
+// https://github.com/raysan5/raylib/blob/master/src/rmodels.c#L2268-L2332l
 updateModelAnimationBones :: proc(model: rl.Model, anim: rl.ModelAnimation, frame: i32) {
 	if !(anim.frameCount > 0 && anim.bones != nil && anim.framePoses != nil) {
 		return
 	}
 	aframe := frame
-	if frame >= anim.frameCount {aframe = frame % anim.frameCount}
+	if aframe >= anim.frameCount do aframe = aframe % anim.frameCount
 
 	// Get first mesh which has bones
 	firstMeshWithBones: i32 = -1
+
 	for ii in 0 ..< model.meshCount {
 		if model.meshes[ii].boneMatrices != nil {
 			if firstMeshWithBones == -1 {
@@ -210,7 +332,6 @@ updateModelAnimationBones :: proc(model: rl.Model, anim: rl.ModelAnimation, fram
 
 	// Update all bones and boneMatrices of first mesh with bones
 	for boneId in 0 ..< anim.boneCount {
-		// The important part is maintaining the exact same transformation order as the C code
 		inTranslation := model.bindPose[boneId].translation
 		inRotation := model.bindPose[boneId].rotation
 		inScale := model.bindPose[boneId].scale
@@ -221,30 +342,112 @@ updateModelAnimationBones :: proc(model: rl.Model, anim: rl.ModelAnimation, fram
 
 		invRotation := 1 / inRotation
 		invTranslation := rl.Vector3RotateByQuaternion(-inTranslation, invRotation)
-		invScale := vec3{1, 1, 1} / inScale
+		invScale := vec3{1.0, 1.0, 1.0} / inScale
 
-		// Keep the exact same calculation order as the C code
 		boneTranslation :=
 			rl.Vector3RotateByQuaternion(outScale * invTranslation, outRotation) + outTranslation
+
 		boneRotation := outRotation * invRotation
 		boneScale := outScale * invScale
 
-		// The matrix multiplication order is critical - matching C exactly
+		// C and Odin Matrix multipy are reversed! at least the rl.Matrimultiply - it's flipped from the origianl
 		boneMatrix :=
-			(rl.QuaternionToMatrix(boneRotation) *
-				rl.MatrixTranslate(boneTranslation.x, boneTranslation.y, boneTranslation.z)) *
-			rl.MatrixScale(boneScale.x, boneScale.y, boneScale.z)
-
+			rl.MatrixScale(boneScale.x, boneScale.y, boneScale.z) *
+			(rl.MatrixTranslate(boneTranslation.x, boneTranslation.y, boneTranslation.z) *
+					rl.QuaternionToMatrix(boneRotation)) // new
 		model.meshes[firstMeshWithBones].boneMatrices[boneId] = boneMatrix
 	}
 
 	if firstMeshWithBones != -1 {
 		// Update remaining meshes with bones
-		for i := firstMeshWithBones + 1; i < model.meshCount; i += 1 {
-			if model.meshes[i].boneMatrices != nil {
-				size := model.meshes[i].boneCount * size_of(model.meshes[i].boneMatrices[0])
+		for ii := firstMeshWithBones + 1; ii < model.meshCount; ii += 1 {
+			if model.meshes[ii].boneMatrices != nil {
+				size := model.meshes[ii].boneCount * size_of(model.meshes[ii].boneMatrices[0])
 				intrinsics.mem_copy(
-					model.meshes[i].boneMatrices,
+					model.meshes[ii].boneMatrices,
+					model.meshes[firstMeshWithBones].boneMatrices,
+					size,
+				)
+			}
+		}
+	}
+}
+
+updateModelAnimationBonesBlendTransition :: proc(
+	model: rl.Model,
+	anim1: rl.ModelAnimation,
+	frame1: i32,
+	anim2: rl.ModelAnimation,
+	frame2: i32,
+	amount: f32,
+) {
+	// only intended to be use with looping anims,
+	// not sure about oneShots and transition towards the end. don't want to loop.
+	if !(anim1.frameCount > 0 && anim1.bones != nil && anim1.framePoses != nil) {
+		return
+	}
+	if !(anim2.frameCount > 0 && anim2.bones != nil && anim2.framePoses != nil) {
+		return
+	}
+	aframe := frame1
+	if aframe >= anim1.frameCount do aframe = aframe % anim1.frameCount
+	aframe2 := frame2
+	if aframe2 >= anim2.frameCount do aframe2 = aframe2 % anim2.frameCount
+
+	// Get first mesh which has bones
+	firstMeshWithBones: i32 = -1
+
+	for ii in 0 ..< model.meshCount {
+		if model.meshes[ii].boneMatrices != nil {
+			if firstMeshWithBones == -1 {
+				firstMeshWithBones = ii
+				break
+			}
+		}
+	}
+	// Update all bones and boneMatrices of first mesh with bones
+	for boneId in 0 ..< anim1.boneCount {
+		inTranslation := model.bindPose[boneId].translation
+		inRotation := model.bindPose[boneId].rotation
+		inScale := model.bindPose[boneId].scale
+
+		outTranslation := anim1.framePoses[aframe][boneId].translation
+		outRotation := anim1.framePoses[aframe][boneId].rotation
+		outScale := anim1.framePoses[aframe][boneId].scale
+
+		outTranslation2 := anim2.framePoses[aframe2][boneId].translation
+		outRotation2 := anim2.framePoses[aframe2][boneId].rotation
+		outScale2 := anim2.framePoses[aframe2][boneId].scale
+
+		outTranslation = linalg.lerp(outTranslation, outTranslation2, amount)
+		outRotation = rl.QuaternionSlerp(outRotation, outRotation2, amount) // This needs to be Slerp and not lerp
+		outScale = linalg.lerp(outScale, outScale2, amount)
+
+		invRotation := 1 / inRotation
+		invTranslation := rl.Vector3RotateByQuaternion(-inTranslation, invRotation)
+		invScale := vec3{1.0, 1.0, 1.0} / inScale
+
+		boneTranslation :=
+			rl.Vector3RotateByQuaternion(outScale * invTranslation, outRotation) + outTranslation
+
+		boneRotation := outRotation * invRotation
+		boneScale := outScale * invScale
+
+		// C and Odin Matrix multipy are reversed! at least the rl.Matrimultiply - it's flipped from the origianl
+		boneMatrix :=
+			rl.MatrixScale(boneScale.x, boneScale.y, boneScale.z) *
+			(rl.MatrixTranslate(boneTranslation.x, boneTranslation.y, boneTranslation.z) *
+					rl.QuaternionToMatrix(boneRotation)) // new
+		model.meshes[firstMeshWithBones].boneMatrices[boneId] = boneMatrix
+	}
+
+	if firstMeshWithBones != -1 {
+		// Update remaining meshes with bones
+		for ii := firstMeshWithBones + 1; ii < model.meshCount; ii += 1 {
+			if model.meshes[ii].boneMatrices != nil {
+				size := model.meshes[ii].boneCount * size_of(model.meshes[ii].boneMatrices[0])
+				intrinsics.mem_copy(
+					model.meshes[ii].boneMatrices,
 					model.meshes[firstMeshWithBones].boneMatrices,
 					size,
 				)

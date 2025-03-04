@@ -118,5 +118,6 @@ drawFireFlipbook :: proc(camera: rl.Camera, pool: Flipbook) {
 	drawFlipbook(camera, pool, 4, {0, 0, 0}, 0)
 }
 drawMeleTrail :: proc(camera: rl.Camera, pool: Flipbook) {
-	drawFlipbook(camera, pool, 3, {0, 0, 0}, 90)
+	// drawFlipbook(camera, pool, 3, {0, 0, 0}, 90)
+	drawFlipbook(camera, pool, 3, {0, 0, 0}, 180)
 }

@@ -29,7 +29,6 @@ debugUpdateGame :: proc(game: ^Game) {
 		timeScale -= .25
 		fmt.println(timeScale)
 	}
-
 	// updateEnemiesRange(&enemiesRange, player^, &objs, enemyAbilities)
 	updateEnemySpanwers(&spawners, &enemies, &objs)
 }
@@ -37,4 +36,5 @@ debugUpdateGame :: proc(game: ^Game) {
 debugDrawGame :: proc(game: ^Game) {
 	using game
 
+	drawEnemySpanwers(&spawners)
 }

@@ -47,7 +47,9 @@ initGame :: proc() -> Game {
 			cancellable = true,
 			timer = Timer{max = .3},
 			animation = PLAYER.punch,
-			trigger = .1,
+			// trigger = .55,
+			action_frame = 10,
+			cancel_frame = 16,
 			speed = 1,
 			action = actionSpawnMeleAtPlayer,
 		},
@@ -60,7 +62,7 @@ initGame :: proc() -> Game {
 			cancellable = true,
 			timer = Timer{max = .5},
 			trigger = 1, //[0,1]
-			animation = PLAYER.punch,
+			animation = PLAYER.kick,
 			speed = 2.3,
 			action = actionSpawnMeleAtPlayer,
 		},
@@ -126,10 +128,16 @@ updateGame :: proc(game: ^Game) {
 	}
 	// updateWaves(game)
 
+	// fmt.println(
+	// 	player.animState.current,
+	// 	player.animState.duration,
+	// 	animEnumToInt(player.animState.current),
+	// 	player.animState.duration * FPS_30,
+	// )
 	updateAnimation(player.model, &player.animState, player.animSet)
 	updatePlayerHitCollisions(enemyAbilities, player)
 	updateHealth(player)
-	updateStamina()
+	updateStamina(player)
 
 	updateEnemies(&enemies, player^, &objs, enemyAbilities)
 	updateEnemyAnimations(&enemies)
@@ -144,7 +152,8 @@ updateGame :: proc(game: ^Game) {
 	updateAudio()
 
 	updateFlipbookOneShot(&impact, 60)
-	updateFlipbookOneShot(&player.trail, 10)
+	updateFlipbookOneShot(&player.trailRight, 30)
+	updateFlipbookOneShot(&player.trailLeft, 30)
 }
 
 drawGame :: proc(game: ^Game) {
@@ -163,7 +172,8 @@ drawGame :: proc(game: ^Game) {
 
 	debugDrawGame(game)
 	drawFlipbook(camera^, impact, 3, {}, {})
-	drawMeleTrail(camera^, player.trail)
+	// drawMeleTrail(camera^, player.trailLeft)
+	// drawMeleTrail(camera^, player.trailRight)
 
 	drawCamera(camera)
 	// -------------------------------------------------
@@ -309,7 +319,7 @@ drawGameUI :: proc(game: ^Game) {
 				),
 				clay.Rectangle(testPannel),
 			) {
-				staminaBar(Stamina.currentCharge, Stamina.charges)
+				// staminaBar(Stamina.currentCharge, Stamina.charges)
 				// uiText("HELLO", .large)
 			}
 		}

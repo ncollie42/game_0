@@ -15,14 +15,15 @@ Player :: struct {
 	using spacial: Spacial,
 	using health:  Health,
 	state:         State,
-	trail:         Flipbook, // TODO: add left + right trail
+	trailLeft:     Flipbook,
+	trailRight:    Flipbook,
 	//Test :: Collision
 	point:         vec3,
 	normal:        vec3,
 	edge:          bool,
 }
 
-MOVE_SPEED :: 4.5
+MOVE_SPEED :: 7
 TURN_SPEED :: 10.0
 
 initPlayer :: proc() -> ^Player {
@@ -39,6 +40,7 @@ initPlayer :: proc() -> ^Player {
 		texture
 
 	player.animState.speed = 1
+	player.animState.current = PLAYER.idle
 
 	player.health = Health {
 		max     = 50,
@@ -49,8 +51,12 @@ initPlayer :: proc() -> ^Player {
 	player.model.materials[1].shader = shader
 	player.spacial.shape = .8 //radius
 
-	path: cstring = "/home/nico/Downloads/smear.png"
-	player.trail = initFlipbookPool(path, 240 / 5, 48, 5)
+	path: cstring = "/home/nico/Downloads/trail_1.png"
+	player.trailLeft = initFlipbookPool(path, 32, 32, 8)
+	path = "/home/nico/Downloads/trail_2.png"
+	player.trailRight = initFlipbookPool(path, 32, 32, 8)
+	// path: cstring = "/home/nico/Downloads/smear.png"
+	// player.trail = initFlipbookPool(path, 240 / 5, 48, 5)
 
 	player.scale = 5
 	return player
@@ -190,10 +196,15 @@ updatePlayerStateBase :: proc(player: ^Player, objs: [dynamic]EnvObj, enemies: ^
 		player.spacial.rot = lerpRAD(player.spacial.rot, r, getDelta() * TURN_SPEED)
 	}
 
-	speed := getRootMotionSpeed(&player.animState, player.animSet, player.scale)
-	moveAndSlide(player, dir * speed, objs, enemies)
+	// speed := getRootMotionSpeed(&player.animState, player.animSet, player.scale)
+	moveAndSlide(player, dir * MOVE_SPEED, objs, enemies)
 
-	player.animState.current = (dir != {}) ? PLAYER.run : PLAYER.idle
+	if dir == {} {
+		transitionAnimBlend(&player.animState, PLAYER.idle)
+	} else {
+		transitionAnimBlend(&player.animState, PLAYER.run)
+	}
+	// player.animState.current = (dir != {}) ? PLAYER.run : PLAYER.idle
 }
 
 updatePlayerStateDashing :: proc(
@@ -203,13 +214,14 @@ updatePlayerStateDashing :: proc(
 	enemies: ^EnemyDummyPool,
 	camera: ^rl.Camera3D,
 ) {
-	dashing.timer.left -= getDelta()
+	// dashing.timer.left -= getDelta()
 	dir := getForwardPoint(player)
 
 	speed := getRootMotionSpeed(&player.animState, player.animSet, player.scale)
 	moveAndSlide(player, dir * speed * 2, objs, enemies)
 
-	if dashing.timer.left <= 0 {
+	// if dashing.timer.left <= 0 {
+	if player.animState.finished {
 		enterPlayerState(player, playerStateBase{}, camera)
 	}
 }
@@ -221,40 +233,53 @@ updatePlayerStateAttack1 :: proc(
 	objs: [dynamic]EnvObj,
 	enemies: ^EnemyDummyPool,
 ) {
+	// Go back to idle if finished full animation
+	if player.animState.finished {
+		enterPlayerState(player, playerStateBase{}, camera)
+		return
+	}
+
 	attack.timer.left -= getDelta()
 
+	// Use root motion
 	speed := getRootMotionSpeed(&player.animState, player.animSet, player.scale)
 	dir := getForwardPoint(player)
 	moveAndSlide(player, dir * speed, objs, enemies)
 
+	frame := i32(math.floor(player.animState.duration * FPS_30))
+
 	// Action
-	progress := getAnimationProgress(player.animState, player.animSet)
-	if progress >= attack.trigger && !attack.hasTriggered {
+	if frame >= attack.action_frame && !attack.hasTriggered {
 		attack.hasTriggered = true
 		doAction(attack.action)
+		pos := getForwardPoint(player)
+		if attack.isRight do spawnFlipbook(&player.trailRight, player.pos + pos, player.rot)
+		if !attack.isRight do spawnFlipbook(&player.trailLeft, player.pos + pos, player.rot)
 	}
 
-	// Use animation legth for now, later go back to attack.timer
-	if player.animState.finished {
-		// if attack.timer.left <= 0 {
-		if attack.comboInput && attack.comboCount < 1 {
-			attack.comboInput = false
-			attack.comboCount += 1
-			attack.hasTriggered = false
+	if frame >= attack.cancel_frame && attack.comboInput {
+		// Enter state again
+		attack.comboInput = false
+		attack.isRight = !attack.isRight
+		attack.hasTriggered = false
+		player.animState.duration = 0
+		// Update cacel_frame if different and action_frame
 
-			playSoundWhoosh()
-			// attack.timer.left = attack.timer.max
-			// Snap to mouse direction before next attack
-			r := lookAtVec3(mouseInWorld(camera), player.spacial.pos)
-			player.spacial.rot = lerpRAD(player.spacial.rot, r, 1)
+		playSoundWhoosh()
 
-			pos := getForwardPoint(player)
-			spawnFlipbook(&player.trail, player.pos + pos, player.rot)
+		// Snap to mouse direction before next attack
+		r := lookAtVec3(mouseInWorld(camera), player.spacial.pos)
+		player.spacial.rot = lerpRAD(player.spacial.rot, r, 1)
 
-			player.animState.current = PLAYER.punch2
-			return
-		}
+		if attack.isRight do player.animState.current = PLAYER.punch2
+		if !attack.isRight do player.animState.current = PLAYER.punch
+		return
+	}
+
+	// Go back to idle if WASD past the given frame
+	if frame >= attack.cancel_frame && getVector() != {} {
 		enterPlayerState(player, playerStateBase{}, camera)
+		return
 	}
 }
 
@@ -313,9 +338,7 @@ enterPlayerState :: proc(player: ^Player, state: State, camera: ^rl.Camera3D) {
 
 	switch &s in player.state {
 	case playerStateBase:
-		// Look at movemment
 		player.animState.speed = 1
-		player.animState.current = PLAYER.idle
 	case playerStateDashing:
 		playSoundGrunt()
 		// Snap to player movement or forward dir if not moving
@@ -331,6 +354,7 @@ enterPlayerState :: proc(player: ^Player, state: State, camera: ^rl.Camera3D) {
 	case playerStateAttack1:
 		if !stateChange {
 			progress := 1 - (s.timer.left / s.timer.max)
+			// TODO: change to animation frame
 			if progress < .5 {return} 	// Only combo if past 70%
 			s.comboInput = true
 			return
@@ -342,11 +366,8 @@ enterPlayerState :: proc(player: ^Player, state: State, camera: ^rl.Camera3D) {
 		r := lookAtVec3(mouseInWorld(camera), player.spacial.pos)
 		player.spacial.rot = lerpRAD(player.spacial.rot, r, 1)
 
-		pos := getForwardPoint(player)
-		spawnFlipbook(&player.trail, player.pos + pos, player.rot)
-
 		player.animState.speed = s.speed
-		player.animState.current = s.animation
+		transitionAnim(&player.animState, s.animation)
 	case playerStateAttackLong:
 		// playSOundChARGEc
 		// playSoundWhoosh() -> playSoundCharge
@@ -384,12 +405,15 @@ playerStateAttack1 :: struct {
 	speed:        f32,
 	// Action Data TODO: Move into its own struct, take in array
 	hasTriggered: bool,
-	trigger:      f32, // between 0 and 1
+	// trigger:       f32, // between 0 and 1 -- Sub for frame in future
+	action_frame: i32,
 	action:       Action,
+	cancel_frame: i32,
 	// CanChainTo?
 	// combo
 	comboInput:   bool,
-	comboCount:   i32,
+	// comboCount:   i32,
+	isRight:      bool,
 }
 
 playerStateAttackLong :: struct {
