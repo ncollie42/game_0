@@ -15,7 +15,7 @@ updatePlayerInput :: proc(game: ^Game) {
 	// :: SM Input
 	playerInputDash(player, dash, camera)
 	// TODO: Put into func swap with 'Hand' logic stuff
-	if rl.IsMouseButtonPressed(.LEFT) {
+	if rl.IsMouseButtonDown(.LEFT) {
 		enterPlayerState(player, normalAttack.state, camera)
 	}
 	if rl.IsMouseButtonPressed(.RIGHT) {

@@ -5,7 +5,7 @@ import "core:math/linalg"
 import rl "vendor:raylib"
 
 PUSH_BACK_SPEED: f32 = 2.5
-ENEMY_SPEED :: 5
+ENEMY_SPEED :: 5 / 2
 ENEMY_TURN_SPEED :: 4
 ATTACK_RANGE_MELE :: (2 - .2) // Attack range == ability spawn point + radius, 1 unit away w/ 1 unit radius == 2 - some distance to hit
 // linalg.cos(rl.PI / 8) == .92 // PI / 8 == 22.5 Degree, PI / 4 -> 45%
@@ -65,7 +65,19 @@ updateEnemyMovement :: proc(targetOption: enum {
 
 		r := lookAtVec3(target, {})
 		enemy.spacial.rot = lerpRAD(enemy.spacial.rot, r, getDelta() * ENEMY_TURN_SPEED)
-		enemy.spacial.pos += directionFromRotation(enemy.rot) * getDelta() * ENEMY_SPEED
+
+		animSet: AnimationSet
+		switch &s in enemy.type {
+		case DummyEnemy:
+			animSet = enemies.animSetDummy
+		case MeleEnemy:
+			animSet = enemies.animSetMele
+		case RangeEnemy:
+			animSet = enemies.animSetRange
+		}
+		speed := getRootMotionSpeed(&enemy.animState, animSet, enemy.size)
+		enemy.spacial.pos += directionFromRotation(enemy.rot) * getDelta() * speed
+		// enemy.spacial.pos += directionFromRotation(enemy.rot) * getDelta() * ENEMY_SPEED
 	}
 }
 
@@ -94,7 +106,7 @@ boidSeperation :: proc(boid: ^Enemy, other: Spacial) -> vec3 { 	// boidData ; sp
 }
 
 boidSeperation2 :: proc(boid: ^Enemy, enemies: ^EnemyDummyPool) -> vec3 {
-	range := boid.shape.(Sphere) * 2
+	range := boid.shape.(Sphere) * 4
 
 	force := vec3{}
 	for &other, index in enemies.active {

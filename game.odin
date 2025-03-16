@@ -21,6 +21,7 @@ Game :: struct {
 	impact:          Flipbook,
 }
 
+discardShader: rl.Shader
 initGame :: proc() -> Game {
 	game := Game {
 		camera          = newCamera(),
@@ -47,9 +48,9 @@ initGame :: proc() -> Game {
 			cancellable = true,
 			timer = Timer{max = .3},
 			animation = PLAYER.punch,
-			// trigger = .55,
 			action_frame = 10,
-			cancel_frame = 16,
+			// TODO: add a transition_frame? different than cancel_frame
+			cancel_frame = 16, //10 - attack quicker with lower transition frame [10,16]
 			speed = 1,
 			action = actionSpawnMeleAtPlayer,
 		},
@@ -69,6 +70,7 @@ initGame :: proc() -> Game {
 	}
 	game.dash = newPlayerDashAbility(game.player, game.camera)
 
+	discardShader = rl.LoadShader(nil, "shaders/alphaDiscard.fs")
 	// For pixel look
 	rl.SetTextureFilter(game.screen.texture, rl.TextureFilter.POINT)
 
@@ -100,6 +102,7 @@ resetGame :: proc(game: ^Game) {
 	// Enemies
 	despawnAllEnemies(&enemies)
 
+	initWarnings()
 	// spawnXDummyEnemies(game, 10)
 }
 
@@ -128,12 +131,6 @@ updateGame :: proc(game: ^Game) {
 	}
 	// updateWaves(game)
 
-	// fmt.println(
-	// 	player.animState.current,
-	// 	player.animState.duration,
-	// 	animEnumToInt(player.animState.current),
-	// 	player.animState.duration * FPS_30,
-	// )
 	updateAnimation(player.model, &player.animState, player.animSet)
 	updatePlayerHitCollisions(enemyAbilities, player)
 	updateHealth(player)
@@ -154,6 +151,7 @@ updateGame :: proc(game: ^Game) {
 	updateFlipbookOneShot(&impact, 60)
 	updateFlipbookOneShot(&player.trailRight, 30)
 	updateFlipbookOneShot(&player.trailLeft, 30)
+	updateWarning()
 }
 
 drawGame :: proc(game: ^Game) {
@@ -163,17 +161,25 @@ drawGame :: proc(game: ^Game) {
 	rl.ClearBackground({})
 	rl.BeginMode3D(camera^)
 
+	// Draw Env first
+	drawEnv(&objs)
+
 	drawAbilityInstances(playerAbilities, color1)
 	drawAbilityInstances(enemyAbilities, color4)
 
-	drawPlayer(player^)
+	drawPlayer(player^, camera)
 	drawEnemies(&enemies)
-	drawEnv(&objs)
 
 	debugDrawGame(game)
-	drawFlipbook(camera^, impact, 3, {}, {})
-	// drawMeleTrail(camera^, player.trailLeft)
-	// drawMeleTrail(camera^, player.trailRight)
+	{
+		rl.BeginShaderMode(discardShader) // For billboard
+		drawFlipbook(camera^, impact, 3, {}, {})
+		drawMeleTrail(camera^, player.trailLeft)
+		drawMeleTrail(camera^, player.trailRight)
+		rl.EndShaderMode()
+	}
+	drawWarnings()
+
 
 	drawCamera(camera)
 	// -------------------------------------------------

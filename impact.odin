@@ -27,6 +27,7 @@ Particle :: struct {
 }
 
 spawnFlipbook :: proc(pool: ^Flipbook, pos: vec3, rot: f32) {
+	assert(pool != nil, "flipbook is nil")
 	if len(pool.active) == cap(pool.active) {
 		// Do nothing if there isn't space for a new one.
 		return
@@ -82,8 +83,7 @@ drawFlipbook :: proc(
 	offsetPos: vec3,
 	offsetDeg: f32,
 ) {
-	// NOTE: draw order matters, I might want to make a pass and sort based on z. OR do in insert
-	for impact in pool.active {
+	for &impact in pool.active {
 		current := i32(math.floor(impact.frame))
 
 		down := current / pool.rows
@@ -118,6 +118,5 @@ drawFireFlipbook :: proc(camera: rl.Camera, pool: Flipbook) {
 	drawFlipbook(camera, pool, 4, {0, 0, 0}, 0)
 }
 drawMeleTrail :: proc(camera: rl.Camera, pool: Flipbook) {
-	// drawFlipbook(camera, pool, 3, {0, 0, 0}, 90)
 	drawFlipbook(camera, pool, 3, {0, 0, 0}, 180)
 }

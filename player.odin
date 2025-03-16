@@ -17,6 +17,7 @@ Player :: struct {
 	state:         State,
 	trailLeft:     Flipbook,
 	trailRight:    Flipbook,
+	viewCircle:    rl.Model,
 	//Test :: Collision
 	point:         vec3,
 	normal:        vec3,
@@ -29,8 +30,8 @@ TURN_SPEED :: 10.0
 initPlayer :: proc() -> ^Player {
 	player := new(Player)
 
-	modelPath: cstring = "/home/nico/Downloads/warrior/base.m3d"
-	texturePath: cstring = "/home/nico/Downloads/warrior/95_p.png"
+	modelPath: cstring = "resources/warrior/base.m3d"
+	texturePath: cstring = "resources/warrior/95_p.png"
 
 	player.model = loadModel(modelPath)
 	player.animSet = loadM3DAnimationsWithRootMotion(modelPath)
@@ -48,15 +49,24 @@ initPlayer :: proc() -> ^Player {
 	}
 
 	shader := rl.LoadShader(nil, "shaders/flash.fs")
-	player.model.materials[1].shader = shader
+	player.model.materials[player.model.materialCount - 1].shader = shader
 	player.spacial.shape = .8 //radius
 
-	path: cstring = "/home/nico/Downloads/trail_1.png"
+	path: cstring = "resources/trail_1.png"
 	player.trailLeft = initFlipbookPool(path, 32, 32, 8)
-	path = "/home/nico/Downloads/trail_2.png"
+	path = "resources/trail_2.png"
 	player.trailRight = initFlipbookPool(path, 32, 32, 8)
 	// path: cstring = "/home/nico/Downloads/smear.png"
 	// player.trail = initFlipbookPool(path, 240 / 5, 48, 5)
+
+	// Camera half circle 
+	mesh := rl.GenMeshPlane(1, 1, 1, 1)
+	player.viewCircle = rl.LoadModelFromMesh(mesh)
+	texturePath = "resources/half_circle.png"
+	texture = rl.LoadTexture(texturePath)
+	player.viewCircle.materials[0].maps[rl.MaterialMapIndex.ALBEDO].texture = texture
+	discardShader := rl.LoadShader(nil, "shaders/alphaDiscard.fs")
+	player.viewCircle.materials[0].shader = discardShader
 
 	player.scale = 5
 	return player
@@ -214,13 +224,11 @@ updatePlayerStateDashing :: proc(
 	enemies: ^EnemyDummyPool,
 	camera: ^rl.Camera3D,
 ) {
-	// dashing.timer.left -= getDelta()
 	dir := getForwardPoint(player)
 
 	speed := getRootMotionSpeed(&player.animState, player.animSet, player.scale)
-	moveAndSlide(player, dir * speed * 2, objs, enemies)
+	moveAndSlide(player, dir * speed, objs, enemies)
 
-	// if dashing.timer.left <= 0 {
 	if player.animState.finished {
 		enterPlayerState(player, playerStateBase{}, camera)
 	}
@@ -247,6 +255,7 @@ updatePlayerStateAttack1 :: proc(
 	moveAndSlide(player, dir * speed, objs, enemies)
 
 	frame := i32(math.floor(player.animState.duration * FPS_30))
+	fmt.println(frame)
 
 	// Action
 	if frame >= attack.action_frame && !attack.hasTriggered {
@@ -339,6 +348,7 @@ enterPlayerState :: proc(player: ^Player, state: State, camera: ^rl.Camera3D) {
 	switch &s in player.state {
 	case playerStateBase:
 		player.animState.speed = 1
+		transitionAnim(&player.animState, PLAYER.idle)
 	case playerStateDashing:
 		playSoundGrunt()
 		// Snap to player movement or forward dir if not moving
@@ -350,12 +360,12 @@ enterPlayerState :: proc(player: ^Player, state: State, camera: ^rl.Camera3D) {
 		player.spacial.rot = lerpRAD(player.spacial.rot, r, 1)
 
 		player.animState.speed = s.speed
-		player.animState.current = s.animation
+		transitionAnim(&player.animState, s.animation)
 	case playerStateAttack1:
 		if !stateChange {
-			progress := 1 - (s.timer.left / s.timer.max)
-			// TODO: change to animation frame
-			if progress < .5 {return} 	// Only combo if past 70%
+			frame := i32(math.floor(player.animState.duration * FPS_30))
+			// if frame < s.cancel_frame do return
+			if frame < 10 do return
 			s.comboInput = true
 			return
 		}
@@ -432,7 +442,7 @@ playerStateAttackLong :: struct {
 
 
 // Draw
-drawPlayer :: proc(player: Player) {
+drawPlayer :: proc(player: Player, camera: ^rl.Camera3D) {
 	drawHitFlash(player.model, player.health)
 
 	color := player.edge ? color1 : color2
@@ -446,6 +456,9 @@ drawPlayer :: proc(player: Player) {
 
 	// Draw player
 	assert(player.scale != 0, "Scale is 0")
+	if isDashing, ok := player.state.(playerStateDashing); ok {
+		// Change dashing color using shader for player
+	}
 	rl.DrawModelEx(
 		player.model,
 		player.spacial.pos,
@@ -455,4 +468,6 @@ drawPlayer :: proc(player: Player) {
 		rl.WHITE,
 	)
 
+	r := lookAtVec3(mouseInWorld(camera), player.spacial.pos) + rl.PI
+	rl.DrawModelEx(player.viewCircle, player.pos + {0, .1, 0}, UP, rl.RAD2DEG * r, 2, rl.WHITE)
 }

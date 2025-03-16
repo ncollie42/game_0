@@ -111,7 +111,7 @@ initEnv :: proc() -> [dynamic]EnvObj {
 drawEnv :: proc(objs: ^[dynamic]EnvObj) {
 	// Floor
 	rad := MapGround.shape.(Sphere)
-	rl.DrawCylinder({0, -1, 0}, rad, rad, 1, 25, color5)
+	rl.DrawCylinder({0, -1, 0}, rad, rad, 1, 25, color3)
 	// Objs
 	for obj in objs {
 		rl.DrawModelEx(obj.model, obj.spacial.pos, UP, rl.RAD2DEG * obj.spacial.rot, 1, rl.WHITE)

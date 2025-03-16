@@ -1,10 +1,11 @@
 package main
 
 import "core:fmt"
+import "core:math"
 import "core:math/linalg"
 import rl "vendor:raylib"
 
-rangeEnemy :: struct {
+RangeEnemy :: struct {
 	state: union {
 		EnemyStateIdle,
 		EnemyStateRunning,
@@ -22,7 +23,7 @@ updateEnemyRange :: proc(
 	pool: ^AbilityPool,
 ) {
 	enemy.attackCD.left -= getDelta()
-	range := &enemy.type.(rangeEnemy) or_else panic("Not the type we want here")
+	range := &enemy.type.(RangeEnemy) or_else panic("Not the type we want here")
 
 	switch &s in range.state {
 	case EnemyStateRunning:
@@ -50,7 +51,7 @@ updateEnemyRange :: proc(
 			enemy.attackCD.left = enemy.attackCD.max // Start timer again
 			enterEnemyRangeState(
 				enemy,
-				EnemyAttack1{duration = 1, trigger = .3, animation = SKELE.attack, animSpeed = 1},
+				EnemyAttack1{action_frame = 30, animation = SKELE.attack, animSpeed = 1},
 			)
 		}
 
@@ -62,15 +63,21 @@ updateEnemyRange :: proc(
 
 	// if in range of player attack? Idle animation and running animation
 	case EnemyAttack1:
-		s.duration -= getDelta()
-		if s.duration <= 0 {
+		// Face player :: 
+		target := normalize(player.pos - enemy.pos)
+		r := lookAtVec3(target, {})
+		enemy.spacial.rot = lerpRAD(enemy.spacial.rot, r, getDelta() * ENEMY_TURN_SPEED)
+
+		if enemy.animState.finished {
 			enterEnemyRangeState(enemy, EnemyStateIdle{})
 			return
 		}
 
+		frame := i32(math.floor(enemy.animState.duration * FPS_30))
+
 		if s.hasTriggered do return
 
-		if s.duration <= s.trigger {
+		if frame >= s.action_frame {
 			s.hasTriggered = true
 			spawnRangeInstanceFrontOfLocation(pool, enemy)
 		}
@@ -95,19 +102,28 @@ enterEnemyRangeState :: proc(enemy: ^Enemy, state: union {
 	enemy.animState.duration = 0
 	enemy.animState.speed = 1
 
-	range := &enemy.type.(rangeEnemy) or_else panic("Invalid enemy type")
-	range.state = state
+	range := &enemy.type.(RangeEnemy) or_else panic("Invalid enemy type")
 
-	switch &s in range.state {
+	switch &s in state {
 	case EnemyStateRunning:
-		enemy.animState.current = SKELE.run
+		transitionAnimBlend(&enemy.animState, SKELE.run)
+		enemy.animState.speed = .5
+		range.state = state
 	case EnemyStateIdle:
 		enemy.animState.current = SKELE.idle
+		range.state = state
 	case EnemyPushback:
+		// Don't interrupt if attacking
+		_, isAttacking := range.state.(EnemyAttack1)
+		if isAttacking do return
+
+		range.state = state
 		enemy.animState.speed = s.animSpeed
 		enemy.animState.current = s.animation
 	case EnemyAttack1:
 		enemy.animState.speed = s.animSpeed
 		enemy.animState.current = s.animation
+		range.state = state
+		spawnWarning(enemy.pos + {0, 3, 0})
 	}
 }

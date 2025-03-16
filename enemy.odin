@@ -11,20 +11,21 @@ Enemy :: struct {
 	using health:  Health,
 	attackCD:      Timer, // CD for attacking
 	type:          union {
-		meleEnemy,
-		rangeEnemy,
-		dummyEnemy,
+		MeleEnemy,
+		RangeEnemy,
+		DummyEnemy,
 	},
+	size:          f32,
 }
 
 EnemyDummyPool :: struct {
-	active:    [dynamic]Enemy,
-	freeDummy: [dynamic]Enemy,
-	animSet:   AnimationSet,
-	freeMele:  [dynamic]Enemy,
-	// animSet:   AnimationSet,
-	freeRange: [dynamic]Enemy,
-	// animSet:   AnimationSet,
+	active:       [dynamic]Enemy,
+	freeDummy:    [dynamic]Enemy,
+	animSetDummy: AnimationSet,
+	freeMele:     [dynamic]Enemy,
+	animSetMele:  AnimationSet,
+	freeRange:    [dynamic]Enemy,
+	animSetRange: AnimationSet,
 }
 
 EnemyState :: union {
@@ -39,8 +40,7 @@ EnemyStateBase :: struct {}
 EnemyAttack1 :: struct {
 	animation:    ANIMATION_NAMES,
 	animSpeed:    f32,
-	duration:     f32, // Duration of state, player uses a timer, trying this instead.
-	trigger:      f32, // different than player to see how this works, trigger is time not [0,1]
+	action_frame: i32,
 	hasTriggered: bool,
 }
 EnemyPushback :: struct {
@@ -56,6 +56,7 @@ EnemyHurt :: struct {
 
 // ---- ---- ---- ---- Init ---- ---- ---- ---- 
 enemyPoolSize := 100
+ENEMY_CD_ATTACK_VARIANT: f32 = 1
 initEnemyDummies :: proc() -> EnemyDummyPool {
 	// It looks like we can share the same shader for all enemies
 	// shader := rl.LoadShader(nil, "shaders/grayScale.fs")
@@ -69,17 +70,27 @@ initEnemyDummies :: proc() -> EnemyDummyPool {
 	}
 	// modelPath: cstring = "/home/nico/Downloads/Human2/base.m3d"
 	// texturePath := loadTexture("/home/nico/Downloads/Human2/base.png")
-	modelPath: cstring = "resources/Human2/base.m3d"
-	texturePath: cstring = "resources/Human2/base.png"
 
-	pool.animSet = loadModelAnimations(modelPath)
+	// modelPath: cstring = "resources/Human2/base.m3d"
+	// texturePath: cstring = "resources/Human2/base.png"
+
+	// modelPath: cstring = "/home/nico/Downloads/golem_small_round/base.m3d"
+	// texturePath: cstring = "/home/nico/Downloads/golem_small_round/95_p2.png"
+
+	// -------- Mele -------- 
+	// Texture + Model + animation
+	modelPath: cstring = "resources/golem_large/base.m3d"
+	texturePath: cstring = "resources/golem_large/base.png"
+	// pool.animSet = loadModelAnimations(modelPath)
+	pool.animSetDummy = loadM3DAnimationsWithRootMotion(modelPath)
 	texture := loadTexture(texturePath)
 
 	for &enemy in pool.freeDummy {
 		// Note: is loadModel slow? can I load once and dup memory for every model after?
 		enemy.model = loadModel(modelPath)
-		enemy.model.materials[1].maps[rl.MaterialMapIndex.ALBEDO].texture = texture
-		enemy.model.materials[1].shader = shader
+		count := enemy.model.materialCount - 1
+		enemy.model.materials[count].maps[rl.MaterialMapIndex.ALBEDO].texture = texture
+		enemy.model.materials[count].shader = shader
 		enemy.health = Health {
 			max     = 15,
 			current = 15,
@@ -89,41 +100,61 @@ initEnemyDummies :: proc() -> EnemyDummyPool {
 		}
 		enemy.shape = .8
 		enemy.animState.speed = 1
-		enemy.type = dummyEnemy{}
+		enemy.type = DummyEnemy{}
+		enemy.size = 3
 	}
+
+	// -------- Mele -------- 
+	// Texture + Model + animation
+	modelPath = "resources/golem_small_mele/base.m3d"
+	texturePath = "resources/golem_small_mele/base.png"
+	// pool.animSet = loadModelAnimations(modelPath)
+	pool.animSetMele = loadM3DAnimationsWithRootMotion(modelPath)
+	texture = loadTexture(texturePath)
 
 	for &enemy in pool.freeMele {
-		// Note: is loadModel slow? can I load once and dup memory for every model after?
 		enemy.model = loadModel(modelPath)
-		enemy.model.materials[1].maps[rl.MaterialMapIndex.ALBEDO].texture = texture
-		enemy.model.materials[1].shader = shader
+		count := enemy.model.materialCount - 1
+		enemy.model.materials[count].maps[rl.MaterialMapIndex.ALBEDO].texture = texture
+		enemy.model.materials[count].shader = shader
 		enemy.health = Health {
 			max     = 4,
 			current = 4,
 		}
 		enemy.attackCD = Timer {
-			max = 2.0,
+			max = 5.0,
 		}
 		enemy.shape = .8
 		enemy.animState.speed = 1
-		enemy.type = meleEnemy{}
+		enemy.type = MeleEnemy{}
+		enemy.size = 3
 	}
 
+
+	// -------- Range -------- 
+	// Texture + Model + animation
+	modelPath = "resources/golem_small_range/base.m3d"
+	texturePath = "resources/golem_small_range/base.png"
+	// pool.animSet = loadModelAnimations(modelPath)
+	pool.animSetRange = loadM3DAnimationsWithRootMotion(modelPath)
+	texture = loadTexture(texturePath)
+
 	for &enemy in pool.freeRange {
-		// Note: is loadModel slow? can I load once and dup memory for every model after?
 		enemy.model = loadModel(modelPath)
-		enemy.model.materials[1].maps[rl.MaterialMapIndex.ALBEDO].texture = texture
-		enemy.model.materials[1].shader = shader
+		count := enemy.model.materialCount - 1
+		enemy.model.materials[count].maps[rl.MaterialMapIndex.ALBEDO].texture = texture
+		enemy.model.materials[count].shader = shader
 		enemy.health = Health {
 			max     = 4,
 			current = 4,
 		}
 		enemy.attackCD = Timer {
-			max = 2.0,
+			max = 8.0,
 		}
 		enemy.shape = .8
 		enemy.animState.speed = 1
-		enemy.type = rangeEnemy{}
+		enemy.type = RangeEnemy{}
+		enemy.size = 2
 	}
 
 	return pool
@@ -174,11 +205,11 @@ spawnEnemyMele :: proc(pool: ^EnemyDummyPool, pos: vec3) {
 despawnAllEnemies :: proc(pool: ^EnemyDummyPool) {
 	for enemy, ii in pool.active {
 		switch v in enemy.type {
-		case meleEnemy:
+		case MeleEnemy:
 			append(&pool.freeMele, enemy)
-		case rangeEnemy:
+		case RangeEnemy:
 			append(&pool.freeRange, enemy)
-		case dummyEnemy:
+		case DummyEnemy:
 			append(&pool.freeDummy, enemy)
 		}
 	}
@@ -194,11 +225,11 @@ updateEnemies :: proc(
 ) {
 	for &enemy, index in enemies.active {
 		switch &s in enemy.type {
-		case meleEnemy:
+		case MeleEnemy:
 			updateEnemyMele(&enemy, player, enemies, objs, pool)
-		case rangeEnemy:
+		case RangeEnemy:
 			updateEnemyRange(&enemy, player, enemies, objs, pool)
-		case dummyEnemy:
+		case DummyEnemy:
 			updateEnemyDummy(&enemy, player, enemies, objs, pool)
 		}
 	}
@@ -216,9 +247,19 @@ updateEnemyHealth :: proc(enemies: ^$T) {
 }
 
 // ---- ---- ---- ---- Animations ---- ---- ---- ---- 
-updateEnemyAnimations :: proc(enemies: $T) {
+updateEnemyAnimations :: proc(enemies: ^EnemyDummyPool) {
+	// updateEnemyAnimations :: proc(enemies: $T) {
 	for &enemy, index in enemies.active {
-		updateAnimation(enemy.model, &enemy.animState, enemies.animSet)
+		animSet: AnimationSet
+		switch &s in enemy.type {
+		case DummyEnemy:
+			animSet = enemies.animSetDummy
+		case MeleEnemy:
+			animSet = enemies.animSetMele
+		case RangeEnemy:
+			animSet = enemies.animSetRange
+		}
+		updateAnimation(enemy.model, &enemy.animState, animSet)
 	}
 }
 
@@ -233,7 +274,14 @@ drawEnemy :: proc(enemy: Enemy) {
 	// Apply hit flash
 	drawHitFlash(enemy.model, enemy.health)
 
-	rl.DrawModelEx(enemy.model, enemy.spacial.pos, UP, rl.RAD2DEG * enemy.spacial.rot, 3, rl.WHITE)
+	rl.DrawModelEx(
+		enemy.model,
+		enemy.spacial.pos,
+		UP,
+		rl.RAD2DEG * enemy.spacial.rot,
+		enemy.size,
+		rl.WHITE,
+	)
 
 	// Collision shape
 	// rl.DrawCylinderWires(enemy.pos, enemy.shape.(Sphere), enemy.shape.(Sphere), 2, 10, rl.BLACK)

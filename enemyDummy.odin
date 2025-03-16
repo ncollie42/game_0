@@ -4,7 +4,7 @@ import "core:fmt"
 import "core:math/linalg"
 import rl "vendor:raylib"
 
-dummyEnemy :: struct {
+DummyEnemy :: struct {
 	state: union {
 		EnemyStateIdle,
 		EnemyPushback,
@@ -22,7 +22,7 @@ updateEnemyDummy :: proc(
 	objs: ^[dynamic]EnvObj,
 	pool: ^AbilityPool,
 ) {
-	dummy := &enemy.type.(dummyEnemy) or_else panic("Invalid enemy type")
+	dummy := &enemy.type.(DummyEnemy) or_else panic("Invalid enemy type")
 	switch &s in dummy.state {
 	case EnemyStateRunning:
 		updateEnemyMovement(.FORWARD, enemy, player, enemies, objs) // Boids
@@ -55,16 +55,18 @@ enterEnemyDummyState :: proc(enemy: ^Enemy, state: union {
 	enemy.animState.duration = 0
 	enemy.animState.speed = 1
 
-	dummy := &enemy.type.(dummyEnemy) or_else panic("Invalid enemy type")
-	dummy.state = state
+	dummy := &enemy.type.(DummyEnemy) or_else panic("Invalid enemy type")
 
-	switch &s in dummy.state {
+	switch &s in state {
 	case EnemyStateRunning:
 		enemy.animState.current = SKELE.run
+		dummy.state = state
 	case EnemyStateIdle:
 		enemy.animState.current = SKELE.idle
+		dummy.state = state
 	case EnemyPushback:
 		enemy.animState.speed = s.animSpeed
 		enemy.animState.current = s.animation
+		dummy.state = state
 	}
 }

@@ -51,7 +51,7 @@ main :: proc() {
 		rl.BeginDrawing()
 		defer rl.EndDrawing()
 		rl.ClearBackground({123, 121, 126, 255})
-		rl.ClearBackground(color2)
+		rl.ClearBackground(color0)
 
 		switch app {
 		case .HOME:

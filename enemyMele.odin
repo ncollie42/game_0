@@ -1,10 +1,12 @@
 package main
 
 import "core:fmt"
+import "core:math"
 import "core:math/linalg"
+import "core:math/rand"
 import rl "vendor:raylib"
 
-meleEnemy :: struct {
+MeleEnemy :: struct {
 	state: union {
 		EnemyStateIdle,
 		EnemyStateRunning,
@@ -21,12 +23,12 @@ updateEnemyMele :: proc(
 	pool: ^AbilityPool,
 ) {
 	enemy.attackCD.left -= getDelta()
-	mele := &enemy.type.(meleEnemy) // or else panic
+	mele := &enemy.type.(MeleEnemy) // or else panic
 
 	switch &s in mele.state {
 	case EnemyStateRunning:
 		updateEnemyMovement(.PLAYER, enemy, player, enemies, objs) // Boids
-		if linalg.distance(enemy.pos, player.pos) > ATTACK_RANGE_MELE {return}
+		if linalg.distance(enemy.pos, player.pos) > ATTACK_RANGE_MELE do return
 
 		enterEnemyMeleState(enemy, EnemyStateIdle{})
 	case EnemyStateIdle:
@@ -46,10 +48,11 @@ updateEnemyMele :: proc(
 		facing := linalg.dot(forward, toPlayer) >= ATTACK_FOV
 
 		if inRange && canAttack && facing {
-			enemy.attackCD.left = enemy.attackCD.max // Start timer again
+			CD_variant := rand.float32_range(0, ENEMY_CD_ATTACK_VARIANT)
+			enemy.attackCD.left = enemy.attackCD.max + CD_variant // Start timer again
 			enterEnemyMeleState(
 				enemy,
-				EnemyAttack1{duration = 1, trigger = .3, animation = SKELE.attack, animSpeed = 1},
+				EnemyAttack1{action_frame = 30, animation = SKELE.attack, animSpeed = 1},
 			)
 		}
 
@@ -61,20 +64,30 @@ updateEnemyMele :: proc(
 
 	// if in range of player attack? Idle animation and running animation
 	case EnemyAttack1:
-		s.duration -= getDelta()
-		if s.duration <= 0 {
+		// Face player :: 
+		target := normalize(player.pos - enemy.pos)
+		r := lookAtVec3(target, {})
+		enemy.spacial.rot = lerpRAD(enemy.spacial.rot, r, getDelta() * ENEMY_TURN_SPEED)
+		// Move
+		speed := getRootMotionSpeed(&enemy.animState, enemies.animSetMele, 3)
+		enemy.spacial.pos += directionFromRotation(enemy.rot) * getDelta() * speed
+
+		if enemy.animState.finished {
 			enterEnemyMeleState(enemy, EnemyStateIdle{})
 			return
 		}
 
+		frame := i32(math.floor(enemy.animState.duration * FPS_30))
+
 		if s.hasTriggered do return
 
-		if s.duration <= s.trigger {
+		if frame >= s.action_frame {
 			s.hasTriggered = true
 			spawnInstanceFrontOfLocation(pool, enemy)
 		}
 	case EnemyPushback:
 		dir := getBackwardPoint(enemy)
+		// speed := getRootMotionSpeed(&enemy.animState, enemies.animSet, 3)
 		enemy.spacial.pos += dir * getDelta() * PUSH_BACK_SPEED
 
 		if enemy.animState.finished {
@@ -92,21 +105,32 @@ enterEnemyMeleState :: proc(enemy: ^Enemy, state: union {
 		EnemyAttack1,
 	}) {
 	enemy.animState.duration = 0
-	enemy.animState.speed = 1
 
-	mele := &enemy.type.(meleEnemy) or_else panic("Invalid enemy type")
-	mele.state = state
+	mele := &enemy.type.(MeleEnemy) or_else panic("Invalid enemy type")
 
-	switch &s in mele.state {
+	switch &s in state {
 	case EnemyStateRunning:
-		enemy.animState.current = SKELE.run
+		transitionAnimBlend(&enemy.animState, SKELE.run)
+		enemy.animState.speed = 1
+		mele.state = state
 	case EnemyStateIdle:
 		enemy.animState.current = SKELE.idle
+		enemy.animState.speed = 1
+		mele.state = state
 	case EnemyPushback:
+		// Don't interrupt if attacking
+		_, isAttacking := mele.state.(EnemyAttack1)
+		if isAttacking do return
+		enemy.animState.speed = 1
+
+		mele.state = state
 		enemy.animState.speed = s.animSpeed
 		enemy.animState.current = s.animation
 	case EnemyAttack1:
+		enemy.animState.speed = 1
 		enemy.animState.speed = s.animSpeed
 		enemy.animState.current = s.animation
+		mele.state = state
+		spawnWarning(enemy.pos + {0, 3, 0})
 	}
 }

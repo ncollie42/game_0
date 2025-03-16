@@ -154,11 +154,11 @@ updateAbilityRange :: proc(
 			}
 
 			switch v in enemy.type {
-			case meleEnemy:
+			case MeleEnemy:
 				enterEnemyMeleState(&enemy, state)
-			case rangeEnemy:
+			case RangeEnemy:
 				enterEnemyRangeState(&enemy, state)
-			case dummyEnemy:
+			case DummyEnemy:
 				enterEnemyDummyState(&enemy, state)
 			}
 			playSoundPunch()
@@ -210,11 +210,11 @@ updateAbilityMele :: proc(
 			}
 
 			switch v in enemy.type {
-			case meleEnemy:
+			case MeleEnemy:
 				enterEnemyMeleState(&enemy, state)
-			case rangeEnemy:
+			case RangeEnemy:
 				enterEnemyRangeState(&enemy, state)
-			case dummyEnemy:
+			case DummyEnemy:
 				enterEnemyDummyState(&enemy, state)
 			}
 			playSoundPunch()

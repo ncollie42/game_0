@@ -8,26 +8,23 @@ import "core:prof/spall"
 import "core:strings"
 import "core:time"
 //https://github.com/cr1sth0fer/odin-m3d
-import m3d "odin-m3d"
+import m3d "m3d-odin"
 import rl "vendor:raylib"
 // Stores all animations for the asset pack
 PLAYER :: enum {
+	idle,
 	kick,
 	punch,
 	punch2,
-	run_fast,
 	run,
-	// run_fast,
-	idle,
-	// roll,
+	run_fast,
 }
 
 // enum is 1 shifted down from what they are in the file
+// TODO: range this from skele to something more appropriate
 SKELE :: enum {
-	idle2,
-	idle,
 	hurt,
-	hurt2,
+	idle,
 	run,
 	attack,
 }
@@ -93,6 +90,8 @@ updateAnimation :: proc(model: rl.Model, state: ^AnimationState, set: AnimationS
 	)
 	current: i32 = animEnumToInt(state.current)
 	anim := set.anims[current]
+
+	assert(anim.boneCount == model.boneCount, "?")
 
 	frame := i32(math.floor(state.duration * FPS_30))
 	actualFrame := frame % anim.frameCount
@@ -655,7 +654,8 @@ loadM3DAnimationsWithRootMotion :: proc(path: cstring) -> AnimationSet {
 
 	data_size: i32
 	file_data := rl.LoadFileData(path, &data_size)
-	assert(file_data != nil, "File data is nil, could not laod m3d animations")
+	msg := fmt.tprint("File data is nil, could not load m3d animations", path)
+	assert(file_data != nil, msg)
 	defer rl.UnloadFileData(file_data)
 
 	m3d_t = m3d.load(file_data, nil, nil, nil) // TODO: Add in loader/free callbacks 
