@@ -255,7 +255,6 @@ updatePlayerStateAttack1 :: proc(
 	moveAndSlide(player, dir * speed, objs, enemies)
 
 	frame := i32(math.floor(player.animState.duration * FPS_30))
-	fmt.println(frame)
 
 	// Action
 	if frame >= attack.action_frame && !attack.hasTriggered {

@@ -505,6 +505,14 @@ when ODIN_OS == .Windows && ODIN_ARCH == .amd64
 	foreign import m3d "m3d_windows_amd64.lib"
 } else when ODIN_OS == .Linux && ODIN_ARCH == .amd64 {
 	foreign import m3d "libm3d.so"
+} else when ODIN_OS == .Darwin {
+	// foreign import m3d "libm3dMac.so"
+	foreign import m3d "libm3d.dylib"
+
+	// when ODIN_ARCH == .arm64 {
+	// } else {
+		// foreign import Clay "macos/clay.a"
+	// }
 }
 
 @(default_calling_convention = "c")
