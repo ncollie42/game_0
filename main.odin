@@ -25,6 +25,7 @@ P_H :: SCREEN_H
 App :: enum {
 	HOME,
 	PLAYING,
+	PAUSE,
 	STATS,
 	OTHER,
 }
@@ -66,9 +67,18 @@ main :: proc() {
 				app = .STATS
 				// reset values
 			}
+			if rl.IsKeyPressed(.P) {
+				app = .PAUSE
+			}
 			updateGame(&game)
 			drawGame(&game)
 			drawGameUI(&game)
+		case .PAUSE:
+			if rl.IsKeyPressed(.P) {
+				app = .PLAYING
+			}
+			// TODO: pause UI
+			drawGame(&game)
 		case .STATS:
 			if rl.IsKeyPressed(.SPACE) {
 				app = .HOME
@@ -95,17 +105,27 @@ isGameOver :: proc(player: ^Player) -> bool {
 
 // Juice :: https://www.youtube.com/watch?v=3Omb5exWpd4
 // TODO:
-
 // Playable Demo
-// -[]Game over screen with Clay
-// Improve V1
-// -[X]Body block
-// -[]Partcle
-// -[]Combo
-// -[]VFX
-// -[]Juice
-// -[]New character with animations
-// -[]Better enemy AI
+// - Enemy heavy | Small mele | small range
+//    - Animations : attack, walk, idle, hurt, maybe dead
+// - How do Enemy spawn in?
+// - Gameover screen
+// - Auto target enemy
+//    - Around mouse
+//
+//  - Rogue lite
+//    - Perks + upgrades
+//    - UI
+//
+//  - Add lighting...
+// 
+//  - Maybe ::
+//    - stat screen at end
+//    - New flipbook for:
+//       - Swing attack
+//       - Hurt vfx
+//    - Fully auto target, require no targeting?
+// 
 
 // How many pools will I need to have, for sure 1 for player 1 for enemy and same for abilities. At least 4.
 //   I might also make different kinds of ability pools or enemy pools if I don't group them together.
@@ -116,6 +136,3 @@ isGameOver :: proc(player: ^Player) -> bool {
 // abilitesPlayer2 := InitAbilities2 // Type 2 for player
 // abilitesPlayer3 := InitAbilities3 // Type 3 for player
 // abilitesEnemies := InitAbilities  // Type 1 for Enemy
-
-
-// TODO: change impact from timebased and not fps check
