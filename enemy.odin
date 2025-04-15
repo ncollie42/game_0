@@ -33,7 +33,6 @@ EnemyState :: union {
 	EnemyStateBase,
 	EnemyPushback,
 	EnemyAttack1,
-	EnemyHurt,
 }
 
 EnemyStateBase :: struct {}
@@ -43,16 +42,12 @@ EnemyAttack1 :: struct {
 	action_frame: i32,
 	hasTriggered: bool,
 }
+// TODO: change to 'hurt'
 EnemyPushback :: struct {
-	duration:  f32,
 	animation: SKELE,
 	animSpeed: f32,
 }
-EnemyHurt :: struct {
-	duration:  f32,
-	animation: SKELE,
-	animSpeed: f32,
-}
+
 
 // ---- ---- ---- ---- Init ---- ---- ---- ---- 
 enemyPoolSize := 100
@@ -77,11 +72,11 @@ initEnemyDummies :: proc() -> EnemyDummyPool {
 	// modelPath: cstring = "/home/nico/Downloads/golem_small_round/base.m3d"
 	// texturePath: cstring = "/home/nico/Downloads/golem_small_round/95_p2.png"
 
-	// -------- Mele -------- 
+	// -------- Dummy -------- 
 	// Texture + Model + animation
 	modelPath: cstring = "resources/golem_large/base.m3d"
 	texturePath: cstring = "resources/golem_large/base.png"
-	// pool.animSet = loadModelAnimations(modelPath)
+
 	pool.animSetDummy = loadM3DAnimationsWithRootMotion(modelPath)
 	texture := loadTexture(texturePath)
 
@@ -92,8 +87,7 @@ initEnemyDummies :: proc() -> EnemyDummyPool {
 		enemy.model.materials[count].maps[rl.MaterialMapIndex.ALBEDO].texture = texture
 		enemy.model.materials[count].shader = shader
 		enemy.health = Health {
-			max     = 15,
-			current = 15,
+			max = 15,
 		}
 		enemy.attackCD = Timer {
 			max = 2.0,
@@ -101,14 +95,13 @@ initEnemyDummies :: proc() -> EnemyDummyPool {
 		enemy.shape = .8
 		enemy.animState.speed = 1
 		enemy.type = DummyEnemy{}
-		enemy.size = 3
+		enemy.size = 5
 	}
 
 	// -------- Mele -------- 
-	// Texture + Model + animation
 	modelPath = "resources/golem_small_mele/base.m3d"
 	texturePath = "resources/golem_small_mele/base.png"
-	// pool.animSet = loadModelAnimations(modelPath)
+
 	pool.animSetMele = loadM3DAnimationsWithRootMotion(modelPath)
 	texture = loadTexture(texturePath)
 
@@ -118,11 +111,11 @@ initEnemyDummies :: proc() -> EnemyDummyPool {
 		enemy.model.materials[count].maps[rl.MaterialMapIndex.ALBEDO].texture = texture
 		enemy.model.materials[count].shader = shader
 		enemy.health = Health {
-			max     = 4,
-			current = 4,
+			max = 4,
 		}
 		enemy.attackCD = Timer {
-			max = 5.0,
+			left = 5.0,
+			max  = 10.0,
 		}
 		enemy.shape = .8
 		enemy.animState.speed = 1
@@ -132,10 +125,9 @@ initEnemyDummies :: proc() -> EnemyDummyPool {
 
 
 	// -------- Range -------- 
-	// Texture + Model + animation
 	modelPath = "resources/golem_small_range/base.m3d"
 	texturePath = "resources/golem_small_range/base.png"
-	// pool.animSet = loadModelAnimations(modelPath)
+
 	pool.animSetRange = loadM3DAnimationsWithRootMotion(modelPath)
 	texture = loadTexture(texturePath)
 
@@ -145,8 +137,7 @@ initEnemyDummies :: proc() -> EnemyDummyPool {
 		enemy.model.materials[count].maps[rl.MaterialMapIndex.ALBEDO].texture = texture
 		enemy.model.materials[count].shader = shader
 		enemy.health = Health {
-			max     = 4,
-			current = 4,
+			max = 4,
 		}
 		enemy.attackCD = Timer {
 			max = 8.0,

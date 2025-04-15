@@ -23,17 +23,20 @@ updateEnemyDummy :: proc(
 	pool: ^AbilityPool,
 ) {
 	dummy := &enemy.type.(DummyEnemy) or_else panic("Invalid enemy type")
+
 	switch &s in dummy.state {
 	case EnemyStateRunning:
 		updateEnemyMovement(.FORWARD, enemy, player, enemies, objs) // Boids
-	// if linalg.distance(enemy.pos, player.pos) > ATTACK_RANGE_DUMMY {return}
 
-	// enterEnemyDummyState(enemy, EnemyStateIdle{})
 	case EnemyStateIdle:
 		// Face player :: 
 		target := normalize(player.pos - enemy.pos)
 		r := lookAtVec3(target, {})
 		enemy.spacial.rot = lerpRAD(enemy.spacial.rot, r, getDelta() * ENEMY_TURN_SPEED)
+
+		if rl.Vector3Length(player.pos - enemy.pos) > 6 {
+			enterEnemyDummyState(enemy, EnemyStateRunning{})
+		}
 	case EnemyPushback:
 		dir := getBackwardPoint(enemy)
 		enemy.spacial.pos += dir * getDelta() * PUSH_BACK_SPEED

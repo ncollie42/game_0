@@ -10,7 +10,7 @@ import "core:time"
 //https://github.com/cr1sth0fer/odin-m3d
 import m3d "m3d-odin"
 import rl "vendor:raylib"
-// Stores all animations for the asset pack
+
 PLAYER :: enum {
 	idle,
 	kick,
@@ -22,6 +22,7 @@ PLAYER :: enum {
 
 // enum is 1 shifted down from what they are in the file
 // TODO: range this from skele to something more appropriate
+// TODO: change to golem, mele + range
 SKELE :: enum {
 	hurt,
 	idle,
@@ -29,15 +30,9 @@ SKELE :: enum {
 	attack,
 }
 
-RM :: enum {
-	idle,
-	forward,
-}
-
 ANIMATION_NAMES :: union {
 	PLAYER,
 	SKELE,
-	RM,
 }
 
 // Export maximo at 30 fps -> blender at 60 -> render FPS at 30 here
@@ -91,7 +86,10 @@ updateAnimation :: proc(model: rl.Model, state: ^AnimationState, set: AnimationS
 	current: i32 = animEnumToInt(state.current)
 	anim := set.anims[current]
 
-	assert(anim.boneCount == model.boneCount, "?")
+	assert(
+		anim.boneCount == model.boneCount,
+		fmt.tprint("bone count", anim.boneCount, model.boneCount),
+	)
 
 	frame := i32(math.floor(state.duration * FPS_30))
 	actualFrame := frame % anim.frameCount
@@ -461,8 +459,6 @@ animEnumToInt :: proc(current: ANIMATION_NAMES) -> i32 {
 		return i32(v)
 	case SKELE:
 		return i32(v)
-	case RM:
-		return i32(v)
 	case:
 		panic("Anim isn't set.")
 	}
@@ -647,6 +643,7 @@ loadM3DAnimationsWithRootMotion :: proc(path: cstring) -> AnimationSet {
 		strings.has_suffix(string(path), ".m3d"),
 		fmt.tprint("[loadM3DAnimation] Not an .m3d file :", path),
 	)
+	fmt.println("Animation: ", path)
 
 	anim := AnimationSet{}
 	animations: [^]rl.ModelAnimation = nil
@@ -673,6 +670,7 @@ loadM3DAnimationsWithRootMotion :: proc(path: cstring) -> AnimationSet {
 	animations = raw_data(make([]rl.ModelAnimation, m3d_t.numaction))
 
 	for a in 0 ..< int(m3d_t.numaction) {
+		fmt.println(m3d_t.action[a].name)
 		animations[a].frameCount = i32(m3d_t.action[a].durationmsec / M3D_ANIMDELAY)
 		animations[a].boneCount = i32(m3d_t.numbone + 1)
 

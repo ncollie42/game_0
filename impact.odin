@@ -60,7 +60,7 @@ updateFlipbookOneShot :: proc(pool: ^Flipbook, FPS: f32) {
 	#reverse for &impact, index in pool.active {
 		impact.frame += rl.GetFrameTime() * FPS
 		current := i32(math.floor(impact.frame))
-		if current == pool.total {
+		if current >= pool.total {
 			unordered_remove(&pool.active, index)
 		}
 	}

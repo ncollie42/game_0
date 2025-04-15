@@ -148,7 +148,6 @@ updateAbilityRange :: proc(
 			addTrauma(.large)
 			// TODO : add to the ability? as enum or full struct
 			state := EnemyPushback {
-				duration  = .4,
 				animation = SKELE.hurt,
 				animSpeed = 1,
 			}
@@ -204,7 +203,6 @@ updateAbilityMele :: proc(
 			addTrauma(.large)
 			// TODO : add to the ability? as enum or full struct
 			state := EnemyPushback {
-				duration  = .4,
 				animation = SKELE.hurt,
 				animSpeed = 1,
 			}

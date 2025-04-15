@@ -99,8 +99,6 @@ enterEnemyRangeState :: proc(enemy: ^Enemy, state: union {
 		EnemyPushback,
 		EnemyAttack1,
 	}) {
-	enemy.animState.duration = 0
-	enemy.animState.speed = 1
 
 	range := &enemy.type.(RangeEnemy) or_else panic("Invalid enemy type")
 
@@ -110,6 +108,7 @@ enterEnemyRangeState :: proc(enemy: ^Enemy, state: union {
 		enemy.animState.speed = .5
 		range.state = state
 	case EnemyStateIdle:
+		enemy.animState.speed = 1
 		enemy.animState.current = SKELE.idle
 		range.state = state
 	case EnemyPushback:
@@ -118,9 +117,11 @@ enterEnemyRangeState :: proc(enemy: ^Enemy, state: union {
 		if isAttacking do return
 
 		range.state = state
+		enemy.animState.duration = 0
 		enemy.animState.speed = s.animSpeed
 		enemy.animState.current = s.animation
 	case EnemyAttack1:
+		enemy.animState.duration = 0
 		enemy.animState.speed = s.animSpeed
 		enemy.animState.current = s.animation
 		range.state = state

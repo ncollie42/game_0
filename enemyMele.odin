@@ -23,6 +23,7 @@ updateEnemyMele :: proc(
 	pool: ^AbilityPool,
 ) {
 	enemy.attackCD.left -= getDelta()
+	canAttack := enemy.attackCD.left <= 0
 	mele := &enemy.type.(MeleEnemy) // or else panic
 
 	switch &s in mele.state {
@@ -42,7 +43,6 @@ updateEnemyMele :: proc(
 		enemy.spacial.rot = lerpRAD(enemy.spacial.rot, r, getDelta() * ENEMY_TURN_SPEED)
 
 		inRange := linalg.distance(enemy.pos, player.pos) < ATTACK_RANGE_MELE
-		canAttack := enemy.attackCD.left <= 0
 		toPlayer := normalize(player.pos - enemy.pos)
 		forward := getForwardPoint(enemy)
 		facing := linalg.dot(forward, toPlayer) >= ATTACK_FOV
@@ -104,7 +104,6 @@ enterEnemyMeleState :: proc(enemy: ^Enemy, state: union {
 		EnemyPushback,
 		EnemyAttack1,
 	}) {
-	enemy.animState.duration = 0
 
 	mele := &enemy.type.(MeleEnemy) or_else panic("Invalid enemy type")
 
@@ -121,13 +120,13 @@ enterEnemyMeleState :: proc(enemy: ^Enemy, state: union {
 		// Don't interrupt if attacking
 		_, isAttacking := mele.state.(EnemyAttack1)
 		if isAttacking do return
-		enemy.animState.speed = 1
 
 		mele.state = state
+		enemy.animState.duration = 0
 		enemy.animState.speed = s.animSpeed
 		enemy.animState.current = s.animation
 	case EnemyAttack1:
-		enemy.animState.speed = 1
+		enemy.animState.duration = 0
 		enemy.animState.speed = s.animSpeed
 		enemy.animState.current = s.animation
 		mele.state = state
