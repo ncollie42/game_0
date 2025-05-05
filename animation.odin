@@ -23,7 +23,7 @@ PLAYER :: enum {
 // enum is 1 shifted down from what they are in the file
 // TODO: range this from skele to something more appropriate
 // TODO: change to golem, mele + range
-SKELE :: enum {
+ENEMY :: enum {
 	hurt,
 	idle,
 	run,
@@ -32,7 +32,7 @@ SKELE :: enum {
 
 ANIMATION_NAMES :: union {
 	PLAYER,
-	SKELE,
+	ENEMY,
 }
 
 // Export maximo at 30 fps -> blender at 60 -> render FPS at 30 here
@@ -457,7 +457,7 @@ animEnumToInt :: proc(current: ANIMATION_NAMES) -> i32 {
 	switch v in current {
 	case PLAYER:
 		return i32(v)
-	case SKELE:
+	case ENEMY:
 		return i32(v)
 	case:
 		panic("Anim isn't set.")
@@ -670,7 +670,7 @@ loadM3DAnimationsWithRootMotion :: proc(path: cstring) -> AnimationSet {
 	animations = raw_data(make([]rl.ModelAnimation, m3d_t.numaction))
 
 	for a in 0 ..< int(m3d_t.numaction) {
-		fmt.println(m3d_t.action[a].name)
+		fmt.println(m3d_t.action[a].name, "Frames:", m3d_t.action[a].durationmsec / M3D_ANIMDELAY)
 		animations[a].frameCount = i32(m3d_t.action[a].durationmsec / M3D_ANIMDELAY)
 		animations[a].boneCount = i32(m3d_t.numbone + 1)
 

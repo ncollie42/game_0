@@ -75,12 +75,9 @@ spawnEnemySpawner :: proc(pool: ^EnemySpanwerPool) {
 		return
 	}
 
-	// Get random spawn point
-	x := noise.noise_2d(0, {rl.GetTime(), rl.GetTime()})
-	z := noise.noise_2d(1, {rl.GetTime(), rl.GetTime()})
-	spawn := MapGround.shape.(Sphere) * normalize({x, 0, z})
-	x = noise.noise_2d(1, {rl.GetTime(), rl.GetTime()})
-	z = noise.noise_2d(2, {rl.GetTime(), rl.GetTime()})
+	spawn := pointAtEdgeOfMap()
+	x := noise.noise_2d(1, {rl.GetTime(), rl.GetTime()})
+	z := noise.noise_2d(2, {rl.GetTime(), rl.GetTime()})
 	target := rand.float32_range(3, 6) * normalize({x, 0, z})
 
 	enemy := pop(&pool.free)
@@ -91,6 +88,12 @@ spawnEnemySpawner :: proc(pool: ^EnemySpanwerPool) {
 	append(&pool.active, enemy)
 }
 
+pointAtEdgeOfMap :: proc() -> vec3 {
+	// Get random point at edge of map
+	x := noise.noise_2d(0, {rl.GetTime(), rl.GetTime()})
+	z := noise.noise_2d(1, {rl.GetTime(), rl.GetTime()})
+	return MapGround.shape.(Sphere) * normalize({x, 0, z})
+}
 // ---- Despawn
 
 // despawnAllEnemies :: proc(pool: ^EnemySpanwerPool) {

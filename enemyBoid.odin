@@ -7,7 +7,8 @@ import rl "vendor:raylib"
 PUSH_BACK_SPEED: f32 = 2.5
 ENEMY_SPEED :: 5 / 2
 ENEMY_TURN_SPEED :: 4
-ATTACK_RANGE_MELE :: (2 - .2) // Attack range == ability spawn point + radius, 1 unit away w/ 1 unit radius == 2 - some distance to hit
+// Attack range == ability spawn point + radius, 1 unit away w/ 1 unit radius == 2 - some distance to hit
+ATTACK_RANGE_MELE :: (2 - .2)
 // linalg.cos(rl.PI / 8) == .92 // PI / 8 == 22.5 Degree, PI / 4 -> 45%
 ATTACK_FOV: f32 = .95
 
@@ -37,7 +38,7 @@ updateEnemyMovement :: proc(targetOption: enum {
 		}
 		// enemy.seperationDir = seperationForce
 	}
-	// Env Avoidance
+	// Env Avoidance + map edges
 	clearPath := vec3{}
 	{
 		clearPath += findClearPath(enemy, objs)
@@ -74,6 +75,8 @@ updateEnemyMovement :: proc(targetOption: enum {
 			animSet = enemies.animSetMele
 		case RangeEnemy:
 			animSet = enemies.animSetRange
+		case GiantEnemy:
+			animSet = enemies.animSetGiant
 		}
 		speed := getRootMotionSpeed(&enemy.animState, animSet, enemy.size)
 		enemy.spacial.pos += directionFromRotation(enemy.rot) * getDelta() * speed

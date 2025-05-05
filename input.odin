@@ -22,7 +22,7 @@ updatePlayerInput :: proc(game: ^Game) {
 		enterPlayerState(player, chargeAttack.state, camera)
 	}
 	if rl.IsKeyPressed(.ONE) {
-		rl.ToggleBorderlessWindowed() // Less hassle
+		rl.ToggleBorderlessWindowed() // Less hassle, full screen breaks
 	}
 }
 

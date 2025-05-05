@@ -5,17 +5,19 @@ import "core:math/linalg"
 import rl "vendor:raylib"
 
 Enemy :: struct {
-	model:         rl.Model,
-	animState:     AnimationState,
-	using spacial: Spacial,
-	using health:  Health,
-	attackCD:      Timer, // CD for attacking
-	type:          union {
+	model:              rl.Model,
+	animState:          AnimationState,
+	using spacial:      Spacial,
+	using health:       Health,
+	dmgIndicatorOffset: vec3, // Offset over pos - TODO: move out with animSet | it's shared.
+	attackCD:           Timer, // CD for attacking
+	type:               union {
 		MeleEnemy,
 		RangeEnemy,
 		DummyEnemy,
+		GiantEnemy,
 	},
-	size:          f32,
+	size:               f32,
 }
 
 EnemyDummyPool :: struct {
@@ -26,6 +28,8 @@ EnemyDummyPool :: struct {
 	animSetMele:  AnimationSet,
 	freeRange:    [dynamic]Enemy,
 	animSetRange: AnimationSet,
+	freeGiant:    [dynamic]Enemy,
+	animSetGiant: AnimationSet,
 }
 
 EnemyState :: union {
@@ -44,7 +48,7 @@ EnemyAttack1 :: struct {
 }
 // TODO: change to 'hurt'
 EnemyPushback :: struct {
-	animation: SKELE,
+	animation: ENEMY,
 	animSpeed: f32,
 }
 
@@ -62,6 +66,7 @@ initEnemyDummies :: proc() -> EnemyDummyPool {
 		freeDummy = make([dynamic]Enemy, enemyPoolSize, enemyPoolSize),
 		freeMele  = make([dynamic]Enemy, enemyPoolSize, enemyPoolSize),
 		freeRange = make([dynamic]Enemy, enemyPoolSize, enemyPoolSize),
+		freeGiant = make([dynamic]Enemy, enemyPoolSize, enemyPoolSize),
 	}
 	// modelPath: cstring = "/home/nico/Downloads/Human2/base.m3d"
 	// texturePath := loadTexture("/home/nico/Downloads/Human2/base.png")
@@ -96,6 +101,7 @@ initEnemyDummies :: proc() -> EnemyDummyPool {
 		enemy.animState.speed = 1
 		enemy.type = DummyEnemy{}
 		enemy.size = 5
+		enemy.dmgIndicatorOffset = {0, 2, 0}
 	}
 
 	// -------- Mele -------- 
@@ -120,7 +126,8 @@ initEnemyDummies :: proc() -> EnemyDummyPool {
 		enemy.shape = .8
 		enemy.animState.speed = 1
 		enemy.type = MeleEnemy{}
-		enemy.size = 3
+		enemy.size = 4
+		enemy.dmgIndicatorOffset = {0, 2, 0}
 	}
 
 
@@ -145,7 +152,34 @@ initEnemyDummies :: proc() -> EnemyDummyPool {
 		enemy.shape = .8
 		enemy.animState.speed = 1
 		enemy.type = RangeEnemy{}
-		enemy.size = 2
+		enemy.size = 4
+		enemy.dmgIndicatorOffset = {0, 2.5, 0}
+	}
+
+	// -------- Giant -------- 
+	modelPath = "resources/golem_large/base.m3d"
+	texturePath = "resources/golem_large/base.png"
+
+	pool.animSetGiant = loadM3DAnimationsWithRootMotion(modelPath)
+	texture = loadTexture(texturePath)
+
+	for &enemy in pool.freeGiant {
+		enemy.model = loadModel(modelPath)
+		count := enemy.model.materialCount - 1
+		enemy.model.materials[count].maps[rl.MaterialMapIndex.ALBEDO].texture = texture
+		enemy.model.materials[count].shader = shader
+		enemy.health = Health {
+			max = 4,
+		}
+		enemy.attackCD = Timer {
+			left = 5.0,
+			max  = 10.0,
+		}
+		enemy.shape = .8 // TODO: change, but also add attack range
+		enemy.animState.speed = 1
+		enemy.type = GiantEnemy{}
+		enemy.size = 3
+		enemy.dmgIndicatorOffset = {0, 2, 0}
 	}
 
 	return pool
@@ -192,16 +226,31 @@ spawnEnemyMele :: proc(pool: ^EnemyDummyPool, pos: vec3) {
 	append(&pool.active, enemy)
 }
 
+spawnEnemyGiant :: proc(pool: ^EnemyDummyPool, pos: vec3) {
+	if len(pool.freeGiant) == 0 {
+		// Do nothing if there isn't space for a new one.
+		return
+	}
+	enemy := pop(&pool.freeGiant)
+	enemy.health.current = enemy.health.max
+	enemy.health.hitFlash = 0
+	enemy.spacial.pos = pos
+	enemy.spacial.rot = f32(rl.GetRandomValue(0, 6))
+	append(&pool.active, enemy)
+}
+
 // ---- ---- ---- ---- Despawn ---- ---- ---- ---- 
 despawnAllEnemies :: proc(pool: ^EnemyDummyPool) {
 	for enemy, ii in pool.active {
 		switch v in enemy.type {
+		case DummyEnemy:
+			append(&pool.freeDummy, enemy)
 		case MeleEnemy:
 			append(&pool.freeMele, enemy)
 		case RangeEnemy:
 			append(&pool.freeRange, enemy)
-		case DummyEnemy:
-			append(&pool.freeDummy, enemy)
+		case GiantEnemy:
+			append(&pool.freeGiant, enemy)
 		}
 	}
 	clear(&pool.active)
@@ -216,12 +265,14 @@ updateEnemies :: proc(
 ) {
 	for &enemy, index in enemies.active {
 		switch &s in enemy.type {
+		case DummyEnemy:
+			updateEnemyDummy(&enemy, player, enemies, objs, pool)
 		case MeleEnemy:
 			updateEnemyMele(&enemy, player, enemies, objs, pool)
 		case RangeEnemy:
 			updateEnemyRange(&enemy, player, enemies, objs, pool)
-		case DummyEnemy:
-			updateEnemyDummy(&enemy, player, enemies, objs, pool)
+		case GiantEnemy:
+			updateEnemyGiant(&enemy, player, enemies, objs, pool)
 		}
 	}
 }
@@ -249,6 +300,8 @@ updateEnemyAnimations :: proc(enemies: ^EnemyDummyPool) {
 			animSet = enemies.animSetMele
 		case RangeEnemy:
 			animSet = enemies.animSetRange
+		case GiantEnemy:
+			animSet = enemies.animSetGiant
 		}
 		updateAnimation(enemy.model, &enemy.animState, animSet)
 	}
@@ -273,6 +326,8 @@ drawEnemy :: proc(enemy: Enemy) {
 		enemy.size,
 		rl.WHITE,
 	)
+	// Damage indicator spot
+	// rl.DrawCube(enemy.pos + enemy.dmgIndicatorOffset, .1, .1, .1, rl.WHITE)
 
 	// Collision shape
 	// rl.DrawCylinderWires(enemy.pos, enemy.shape.(Sphere), enemy.shape.(Sphere), 2, 10, rl.BLACK)

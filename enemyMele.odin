@@ -52,7 +52,7 @@ updateEnemyMele :: proc(
 			enemy.attackCD.left = enemy.attackCD.max + CD_variant // Start timer again
 			enterEnemyMeleState(
 				enemy,
-				EnemyAttack1{action_frame = 30, animation = SKELE.attack, animSpeed = 1},
+				EnemyAttack1{action_frame = 17, animation = ENEMY.attack, animSpeed = 1},
 			)
 		}
 
@@ -72,12 +72,12 @@ updateEnemyMele :: proc(
 		speed := getRootMotionSpeed(&enemy.animState, enemies.animSetMele, 3)
 		enemy.spacial.pos += directionFromRotation(enemy.rot) * getDelta() * speed
 
+		frame := i32(math.floor(enemy.animState.duration * FPS_30))
 		if enemy.animState.finished {
 			enterEnemyMeleState(enemy, EnemyStateIdle{})
 			return
 		}
 
-		frame := i32(math.floor(enemy.animState.duration * FPS_30))
 
 		if s.hasTriggered do return
 
@@ -109,11 +109,11 @@ enterEnemyMeleState :: proc(enemy: ^Enemy, state: union {
 
 	switch &s in state {
 	case EnemyStateRunning:
-		transitionAnimBlend(&enemy.animState, SKELE.run)
+		transitionAnimBlend(&enemy.animState, ENEMY.run)
 		enemy.animState.speed = 1
 		mele.state = state
 	case EnemyStateIdle:
-		enemy.animState.current = SKELE.idle
+		enemy.animState.current = ENEMY.idle
 		enemy.animState.speed = 1
 		mele.state = state
 	case EnemyPushback:

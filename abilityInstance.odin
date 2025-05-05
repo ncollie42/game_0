@@ -5,6 +5,7 @@ import rl "vendor:raylib"
 
 // MeleInstance 
 AbilityInstance :: struct {
+	power:         f32,
 	using spacial: Spacial,
 	type:          union {
 		range,
@@ -45,8 +46,8 @@ initAbilityPool :: proc() -> ^AbilityPool {
 	return pool
 }
 
-newMeleInstance :: proc(pos: vec3) -> AbilityInstance {
-	return AbilityInstance{spacial = Spacial{pos = pos, shape = 1.0}, type = mele{}}
+newMeleInstance :: proc(pos: vec3, power: f32) -> AbilityInstance {
+	return AbilityInstance{power = power, spacial = Spacial{pos = pos, shape = 1.0}, type = mele{}}
 }
 
 newRangeInstance :: proc(pos: vec3, rot: f32) -> AbilityInstance {
@@ -56,8 +57,9 @@ newRangeInstance :: proc(pos: vec3, rot: f32) -> AbilityInstance {
 	}
 }
 // ---- Spawn
+// TODO: add power when spawning ability + add extra arg in callback
 spawnMeleInstance :: proc(pool: ^AbilityPool, pos: vec3) {
-	append(&pool.active, newMeleInstance(pos))
+	append(&pool.active, newMeleInstance(pos, 1))
 }
 
 spawnRangeInstance :: proc(pool: ^AbilityPool, pos: vec3, rot: f32) {
@@ -71,7 +73,7 @@ spawnMeleInstanceAtPlayer :: proc(pool: ^AbilityPool, player: ^Player) {
 	mat = mat * rl.MatrixTranslate(0, 0, 1)
 	p := rl.Vector3Transform({}, mat)
 
-	append(&pool.active, newMeleInstance(p))
+	append(&pool.active, newMeleInstance(p, 1))
 }
 
 spawnRangeInstanceAtPlayer :: proc(pool: ^AbilityPool, player: ^Player) {
@@ -88,7 +90,7 @@ spawnRangeInstanceAtPlayer :: proc(pool: ^AbilityPool, player: ^Player) {
 spawnInstanceFrontOfLocation :: proc(pool: ^AbilityPool, loc: ^Spacial) {
 	forward := getForwardPoint(loc^)
 
-	append(&pool.active, newMeleInstance(forward + loc.pos))
+	append(&pool.active, newMeleInstance(forward + loc.pos, 1))
 }
 
 spawnRangeInstanceFrontOfLocation :: proc(pool: ^AbilityPool, loc: ^Spacial) {
@@ -142,26 +144,30 @@ updateAbilityRange :: proc(
 		// on hit
 		{
 
-			hurt(&enemy, 1)
+			hurt(&enemy, obj.power)
 			// At hitflash -> move out of hurt
 			startHitStop() // TODO: only apply from some abilities, like mele - else it feels off. IE a dot would be bad
 			addTrauma(.large)
 			// TODO : add to the ability? as enum or full struct
 			state := EnemyPushback {
-				animation = SKELE.hurt,
+				animation = ENEMY.hurt,
 				animSpeed = 1,
 			}
 
 			switch v in enemy.type {
+			case DummyEnemy:
+				enterEnemyDummyState(&enemy, state)
 			case MeleEnemy:
 				enterEnemyMeleState(&enemy, state)
 			case RangeEnemy:
 				enterEnemyRangeState(&enemy, state)
-			case DummyEnemy:
-				enterEnemyDummyState(&enemy, state)
+			case GiantEnemy:
+				enterEnemyGiantState(&enemy, state)
 			}
 			playSoundPunch()
-			spawnFlipbook(impact, enemy.pos, 0)
+			spawnFlipbook(impact, enemy.pos, 0) // TODO replace with impact based on ability used
+			// TODO: add hurt VFX :: blood or dust or rocks.
+			// spawnFlipbook(impact, enemy.pos, 0) enemy.hurtVFX
 		}
 		hitUnit = true
 		// enterEnemyState
@@ -173,7 +179,7 @@ updateAbilityRange :: proc(
 		if !hit do continue
 		// on hit
 		{
-			hurt(&enemy, 1)
+			hurt(&enemy, obj.power)
 			// At hitflash -> move out of hurt
 			startHitStop() // TODO: only apply from some abilities, like mele - else it feels off. IE a dot would be bad
 			addTrauma(.large)
@@ -197,23 +203,26 @@ updateAbilityMele :: proc(
 		// on hit
 		{
 
-			hurt(&enemy, 1)
+			hurt(&enemy, obj.power)
+			spawnDamangeNumber(enemy.pos + enemy.dmgIndicatorOffset, obj.power)
 			// At hitflash -> move out of hurt
 			startHitStop() // TODO: only apply from some abilities, like mele - else it feels off. IE a dot would be bad
 			addTrauma(.large)
 			// TODO : add to the ability? as enum or full struct
 			state := EnemyPushback {
-				animation = SKELE.hurt,
+				animation = ENEMY.hurt,
 				animSpeed = 1,
 			}
 
 			switch v in enemy.type {
+			case DummyEnemy:
+				enterEnemyDummyState(&enemy, state)
 			case MeleEnemy:
 				enterEnemyMeleState(&enemy, state)
 			case RangeEnemy:
 				enterEnemyRangeState(&enemy, state)
-			case DummyEnemy:
-				enterEnemyDummyState(&enemy, state)
+			case GiantEnemy:
+				enterEnemyGiantState(&enemy, state)
 			}
 			playSoundPunch()
 			spawnFlipbook(impact, enemy.pos, 0)
@@ -227,7 +236,7 @@ updateAbilityMele :: proc(
 		if !hit do continue
 		// on hit
 		{
-			hurt(&enemy, 1)
+			hurt(&enemy, obj.power)
 			// At hitflash -> move out of hurt
 			startHitStop() // TODO: only apply from some abilities, like mele - else it feels off. IE a dot would be bad
 			addTrauma(.large)
@@ -246,7 +255,7 @@ updatePlayerHitCollisions :: proc(pool: ^AbilityPool, player: ^Player) {
 			defer removeAbility(pool, index)
 			hit := checkCollision(obj, player)
 			if !hit do continue
-			hurt(player, 1)
+			hurt(player, obj.power)
 		// startHitStop()
 		// addTrauma(.large)
 		case range:
@@ -258,7 +267,7 @@ updatePlayerHitCollisions :: proc(pool: ^AbilityPool, player: ^Player) {
 			obj.spacial.pos += getForwardPoint(obj) * getDelta() * v.speed
 			hit := checkCollision(obj, player)
 			if !hit do continue
-			hurt(player, 1)
+			hurt(player, obj.power)
 			removeAbility(pool, index)
 		case:
 			panic("Ability has no type")
@@ -268,8 +277,16 @@ updatePlayerHitCollisions :: proc(pool: ^AbilityPool, player: ^Player) {
 
 // ---- Draw
 drawAbilityInstances :: proc(pool: ^AbilityPool, color: rl.Color) {
-	for instance in pool.active {
-		rl.DrawSphereWires(instance.spacial.pos, instance.spacial.shape.(Sphere), 8, 8, color)
+	for obj in pool.active {
+		switch &v in obj.type {
+		case mele:
+			rl.DrawSphereWires(obj.spacial.pos, obj.spacial.shape.(Sphere), 8, 8, color)
+		case range:
+			// rl.DrawSphereWires(obj.spacial.pos, obj.spacial.shape.(Sphere), 8, 8, color)
+			rl.DrawModel(model, obj.spacial.pos, .11, rl.WHITE)
+		case:
+			panic("Ability has no type")
+		}
 	}
 }
 

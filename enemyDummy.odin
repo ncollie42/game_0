@@ -62,10 +62,10 @@ enterEnemyDummyState :: proc(enemy: ^Enemy, state: union {
 
 	switch &s in state {
 	case EnemyStateRunning:
-		enemy.animState.current = SKELE.run
+		enemy.animState.current = ENEMY.run
 		dummy.state = state
 	case EnemyStateIdle:
-		enemy.animState.current = SKELE.idle
+		enemy.animState.current = ENEMY.idle
 		dummy.state = state
 	case EnemyPushback:
 		enemy.animState.speed = s.animSpeed

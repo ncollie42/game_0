@@ -18,6 +18,8 @@ if not fbx_files:
     exit(1)
 print(f"[CONVERT] Found {len(fbx_files)} FBX files: {[os.path.basename(f) for f in fbx_files]}")
 
+fbx_files.sort()
+
 # Import first FBX file (this will establish the mesh and armature)
 bpy.ops.import_scene.fbx(filepath=fbx_files[0])
 print(f"[CONVERT] Imported base model: {fbx_files[0]}")
@@ -83,12 +85,12 @@ if base_armature:
             strip.frame_start = int(i * 50)
             strip.frame_end = int(i * 50 + (action.frame_range[1] - action.frame_range[0]))
 
-# Output path for the combined model
-output_path = f"{current_dir}/base.m3d"
-
 # Set up the M3D exporter
 addon_path = "/home/nico/.config/blender/4.3/scripts/addons/io_scene_m3d.py"
 exec(open(addon_path).read())
+
+# Output path for the combined model
+output_path = f"{current_dir}/base.m3d"
 
 # Export to M3D format
 try:
@@ -110,3 +112,21 @@ try:
     print(f"[CONVERT] Successfully exported to {output_path}")
 except Exception as e:
     print(f"[CONVERT] Export error: {e}")
+
+
+# output_path = f"{current_dir}/base.glb"
+# # Export to GLB format
+# try:
+#     bpy.ops.export_scene.gltf(
+#         filepath=output_path,
+#         export_format='GLB',
+#         use_selection=False,
+#         export_animations=True,
+#         export_nla_strips=True,
+#         export_current_frame=False,
+#         export_skins=True,
+#         export_morph=True
+#     )
+#     print(f"[CONVERT] Successfully exported to {output_path}")
+# except Exception as e:
+#     print(f"[CONVERT] Export error: {e}")

@@ -4,26 +4,34 @@ import "core:fmt"
 import "core:math"
 import rl "vendor:raylib"
 
+model: rl.Model
+// animState: AnimationState = {
+// 	current = ENEMY.hurt,
+// 	speed   = 1,
+// }
+// animSet: AnimationSet
 debugInit :: proc(game: ^Game) {
 	using game
-
+	model = rl.LoadModel("/home/nico/Downloads/rock.glb")
 }
 
 debugUpdateGame :: proc(game: ^Game) {
 	using game
 
+	// spawnEnemySpawner(&spawners)
+	// spawnXDummyEnemies(game, 10)
 	if rl.IsKeyPressed(.F) {
-		// spawnEnemySpawner(&spawners)
-		// spawnXDummyEnemies(game, 10)
-		spawnEnemyMele(&enemies, {})
+		spawn := pointAtEdgeOfMap()
+		spawnEnemyMele(&enemies, spawn * 1.4)
 	}
-	if rl.IsKeyPressed(.H) {
-		spawnEnemyDummy(&enemies, {})
-		// spawnEnemyRange(&enemies, {})
-	}
-	// TODO: add range small guy in next
 	if rl.IsKeyPressed(.G) {
 		spawnEnemyRange(&enemies, {})
+	}
+	if rl.IsKeyPressed(.H) {
+		spawnEnemyGiant(&enemies, {})
+	}
+	if rl.IsKeyPressed(.J) {
+		spawnEnemyDummy(&enemies, {})
 	}
 
 	if rl.IsKeyPressed(.UP) {
@@ -45,5 +53,6 @@ debugUpdateGame :: proc(game: ^Game) {
 debugDrawGame :: proc(game: ^Game) {
 	using game
 
+	drawHealthbar(player.health, camera, player.pos + {0, 2.8, 0})
 	drawEnemySpanwers(&spawners)
 }

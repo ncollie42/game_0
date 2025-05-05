@@ -44,8 +44,8 @@ initPlayer :: proc() -> ^Player {
 	player.animState.current = PLAYER.idle
 
 	player.health = Health {
-		max     = 50,
-		current = 50,
+		max     = 10,
+		current = 10,
 	}
 
 	shader := rl.LoadShader(nil, "shaders/flash.fs")

@@ -189,8 +189,6 @@ getBoundingBox :: proc(obj: Spacial) -> Box {
 }
 
 applyBoundaryForces :: proc(enemies: ^EnemyDummyPool, objs: ^[dynamic]EnvObj) {
-
-
 	for &boid in enemies.active {
 		projected := boid.spacial
 		projected.pos += getForwardPoint(boid) * getDelta() * ENEMY_SPEED
@@ -202,6 +200,14 @@ applyBoundaryForces :: proc(enemies: ^EnemyDummyPool, objs: ^[dynamic]EnvObj) {
 				break
 			}
 		}
+	}
+}
+
+// Might not want to use if we're spawning enemies outside of the ring
+applyBoundaryForcesFromMap :: proc(enemies: ^EnemyDummyPool, objs: ^[dynamic]EnvObj) {
+	for &boid in enemies.active {
+		projected := boid.spacial
+		projected.pos += getForwardPoint(boid) * getDelta() * ENEMY_SPEED
 
 		// Bounds check with map
 		dist := linalg.distance(boid.pos, vec3{})

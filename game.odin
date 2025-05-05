@@ -22,6 +22,7 @@ Game :: struct {
 }
 
 discardShader: rl.Shader
+whiteTexture: rl.Texture2D
 initGame :: proc() -> Game {
 	game := Game {
 		camera          = newCamera(),
@@ -73,6 +74,10 @@ initGame :: proc() -> Game {
 	discardShader = rl.LoadShader(nil, "shaders/alphaDiscard.fs")
 	// For pixel look
 	rl.SetTextureFilter(game.screen.texture, rl.TextureFilter.POINT)
+
+	whiteImage := rl.GenImageColor(1, 1, rl.WHITE)
+	whiteTexture = rl.LoadTextureFromImage(whiteImage)
+	rl.UnloadImage(whiteImage)
 
 	debugInit(&game)
 	return game
@@ -140,6 +145,7 @@ updateGame :: proc(game: ^Game) {
 	updateEnemyAnimations(&enemies)
 	updateEnemyHealth(&enemies) //Add other enemies here too
 	applyBoundaryForces(&enemies, &objs)
+	applyBoundaryForcesFromMap(&enemies, &objs)
 	updateEnemyHitCollisions(playerAbilities, &enemies, &spawners, &impact)
 
 	updateHitStop()
@@ -152,6 +158,7 @@ updateGame :: proc(game: ^Game) {
 	updateFlipbookOneShot(&player.trailRight, 30)
 	updateFlipbookOneShot(&player.trailLeft, 30)
 	updateWarning()
+	updateDamageNumbers()
 }
 
 drawGame :: proc(game: ^Game) {
@@ -179,7 +186,7 @@ drawGame :: proc(game: ^Game) {
 		rl.EndShaderMode()
 	}
 	drawWarnings()
-
+	drawHealthbars(camera, &enemies)
 
 	drawCamera(camera)
 	// -------------------------------------------------
@@ -192,6 +199,8 @@ drawGame :: proc(game: ^Game) {
 
 	// https://github.com/raysan5/raylib/wiki/Frequently-Asked-Questions#why-is-my-render-texture-upside-down
 	rl.DrawTexturePro(screen.texture, {0, 0, -P_W, P_H}, {0, 0, w, h}, {w, h}, 180, rl.WHITE)
+
+	// drawDamageNumbersUI(camera)
 }
 
 @(private = "file")
@@ -215,6 +224,8 @@ drawGameUI :: proc(game: ^Game) {
 		UI.debug = !UI.debug
 	}
 	if UI.hideAll do return
+
+	drawDamageNumbersUI(camera)
 	// Start UI
 	if clay.UI(clay.ID("root"), clay.Layout(layoutRoot)) {
 		if clay.UI(
@@ -328,6 +339,26 @@ drawGameUI :: proc(game: ^Game) {
 				// staminaBar(Stamina.currentCharge, Stamina.charges)
 				// uiText("HELLO", .large)
 			}
+		}
+	}
+}
+
+drawPauseUI :: proc(game: ^Game) {
+	using game
+
+	clayFrameSetup()
+	clay.BeginLayout()
+	defer {
+		layout := clay.EndLayout()
+		clayRaylibRender(&layout)
+	}
+
+	rl.DrawFPS(10, 10)
+	// Start UI
+	if clay.UI(clay.ID("root"), clay.Layout(layoutRoot)) {
+		pos := rl.GetWorldToScreen({}, camera^)
+		if clay.UI(clay.Floating(clay.FloatingElementConfig{offset = pos})) {
+			uiText("hello", .large)
 		}
 	}
 }

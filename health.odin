@@ -25,7 +25,7 @@ updateHealth :: proc(hp: ^Health) {
 
 hurt :: proc(hp: ^Health, amount: f32) {
 	hp.current -= amount
-	fmt.println("Hurt:", hp.max, hp.current)
+	fmt.println("Hurt:", hp.max, hp.current, amount)
 	hp.hitFlash = 1
 }
 
@@ -41,4 +41,30 @@ drawHitFlash :: proc(model: rl.Model, hp: Health) {
 
 	data := hp.hitFlash
 	rl.SetShaderValue(shader, flashIndex, &data, .FLOAT)
+}
+
+drawHealthbars :: proc(camera: ^rl.Camera, enemies: ^EnemyDummyPool) {
+	for enemy in enemies.active {
+		if enemy.health.current == enemy.health.max {
+			continue
+		}
+		drawHealthbar(enemy.health, camera, enemy.pos + enemy.dmgIndicatorOffset)
+	}
+}
+
+drawHealthbar :: proc(hp: Health, camera: ^rl.Camera, pos: vec3) {
+	// TODO: - set width based on hp max
+	width: f32 = 1
+	height: f32 = .15
+	rl.DrawBillboardRec(camera^, whiteTexture, {}, pos, {width, height}, rl.BLACK)
+	percent := hp.showing / hp.max
+	whitePos := pos + {0, 0, -.003} // Bring forward from black
+	whitePos += {-percent / 2 + .5, 0, 0} // Center left
+	rl.DrawBillboardRec(camera^, whiteTexture, {}, whitePos, {width * percent, height}, rl.WHITE)
+	percent = hp.current / hp.max
+	redPos := pos + {0, 0, -.006} // Bring forward from white
+	redPos += {-percent / 2 + .5, 0, 0} // Center left
+	//Make 1.1 bigger, to prevent forground issues with white and black
+	rl.DrawBillboardRec(camera^, whiteTexture, {}, redPos, {width * percent, height} * 1.1, rl.RED)
+	// We're using 3 billboards, maybe we can use a single billboard with a shader in the future?
 }

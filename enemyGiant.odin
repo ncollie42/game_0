@@ -3,9 +3,10 @@ package main
 import "core:fmt"
 import "core:math"
 import "core:math/linalg"
+import "core:math/rand"
 import rl "vendor:raylib"
 
-RangeEnemy :: struct {
+GiantEnemy :: struct {
 	state: union {
 		EnemyStateIdle,
 		EnemyStateRunning,
@@ -14,8 +15,7 @@ RangeEnemy :: struct {
 	},
 }
 
-ATTACK_RANGE_RANGE :: 7
-updateEnemyRange :: proc(
+updateEnemyGiant :: proc(
 	enemy: ^Enemy,
 	player: Player,
 	enemies: ^EnemyDummyPool,
@@ -23,17 +23,18 @@ updateEnemyRange :: proc(
 	pool: ^AbilityPool,
 ) {
 	enemy.attackCD.left -= getDelta()
-	range := &enemy.type.(RangeEnemy) or_else panic("Not the type we want here")
+	canAttack := enemy.attackCD.left <= 0
+	giant := &enemy.type.(GiantEnemy) // or else panic
 
-	switch &s in range.state {
+	switch &s in giant.state {
 	case EnemyStateRunning:
 		updateEnemyMovement(.PLAYER, enemy, player, enemies, objs) // Boids
-		if linalg.distance(enemy.pos, player.pos) > ATTACK_RANGE_RANGE {return}
+		if linalg.distance(enemy.pos, player.pos) > ATTACK_RANGE_MELE do return // TODO: replace with giant attack range
 
-		enterEnemyRangeState(enemy, EnemyStateIdle{})
+		enterEnemyGiantState(enemy, EnemyStateIdle{})
 	case EnemyStateIdle:
-		if linalg.distance(enemy.pos, player.pos) > ATTACK_RANGE_RANGE {
-			enterEnemyRangeState(enemy, EnemyStateRunning{})
+		if linalg.distance(enemy.pos, player.pos) > ATTACK_RANGE_MELE {
+			enterEnemyGiantState(enemy, EnemyStateRunning{})
 			return
 		}
 		// Face player :: 
@@ -41,17 +42,17 @@ updateEnemyRange :: proc(
 		r := lookAtVec3(target, {})
 		enemy.spacial.rot = lerpRAD(enemy.spacial.rot, r, getDelta() * ENEMY_TURN_SPEED)
 
-		inRange := linalg.distance(enemy.pos, player.pos) < ATTACK_RANGE_RANGE
-		canAttack := enemy.attackCD.left <= 0
+		inRange := linalg.distance(enemy.pos, player.pos) < ATTACK_RANGE_MELE
 		toPlayer := normalize(player.pos - enemy.pos)
 		forward := getForwardPoint(enemy)
 		facing := linalg.dot(forward, toPlayer) >= ATTACK_FOV
 
 		if inRange && canAttack && facing {
-			enemy.attackCD.left = enemy.attackCD.max // Start timer again
-			enterEnemyRangeState(
+			CD_variant := rand.float32_range(0, ENEMY_CD_ATTACK_VARIANT)
+			enemy.attackCD.left = enemy.attackCD.max + CD_variant // Start timer again
+			enterEnemyGiantState(
 				enemy,
-				EnemyAttack1{action_frame = 49, animation = ENEMY.attack, animSpeed = 1},
+				EnemyAttack1{action_frame = 34, animation = ENEMY.attack, animSpeed = 1},
 			)
 		}
 
@@ -67,56 +68,60 @@ updateEnemyRange :: proc(
 		target := normalize(player.pos - enemy.pos)
 		r := lookAtVec3(target, {})
 		enemy.spacial.rot = lerpRAD(enemy.spacial.rot, r, getDelta() * ENEMY_TURN_SPEED)
+		// Move
+		speed := getRootMotionSpeed(&enemy.animState, enemies.animSetGiant, 3)
+		enemy.spacial.pos += directionFromRotation(enemy.rot) * getDelta() * speed
 
+		frame := i32(math.floor(enemy.animState.duration * FPS_30))
 		if enemy.animState.finished {
-			enterEnemyRangeState(enemy, EnemyStateIdle{})
+			enterEnemyGiantState(enemy, EnemyStateIdle{})
 			return
 		}
 
-		frame := i32(math.floor(enemy.animState.duration * FPS_30))
 
 		if s.hasTriggered do return
 
 		if frame >= s.action_frame {
 			s.hasTriggered = true
-			spawnRangeInstanceFrontOfLocation(pool, enemy)
+			spawnInstanceFrontOfLocation(pool, enemy)
 		}
 	case EnemyPushback:
 		dir := getBackwardPoint(enemy)
+		// speed := getRootMotionSpeed(&enemy.animState, enemies.animSet, 3)
 		enemy.spacial.pos += dir * getDelta() * PUSH_BACK_SPEED
 
 		if enemy.animState.finished {
-			enterEnemyRangeState(enemy, EnemyStateIdle{})
+			enterEnemyGiantState(enemy, EnemyStateIdle{})
 		}
 	case:
-		enterEnemyRangeState(enemy, EnemyStateIdle{})
+		enterEnemyGiantState(enemy, EnemyStateIdle{})
 	}
 }
 
-enterEnemyRangeState :: proc(enemy: ^Enemy, state: union {
+enterEnemyGiantState :: proc(enemy: ^Enemy, state: union {
 		EnemyStateIdle,
 		EnemyStateRunning,
 		EnemyPushback,
 		EnemyAttack1,
 	}) {
 
-	range := &enemy.type.(RangeEnemy) or_else panic("Invalid enemy type")
+	giant := &enemy.type.(GiantEnemy) or_else panic("Invalid enemy type")
 
 	switch &s in state {
 	case EnemyStateRunning:
 		transitionAnimBlend(&enemy.animState, ENEMY.run)
 		enemy.animState.speed = 1
-		range.state = state
+		giant.state = state
 	case EnemyStateIdle:
-		enemy.animState.speed = 1
 		enemy.animState.current = ENEMY.idle
-		range.state = state
+		enemy.animState.speed = 1
+		giant.state = state
 	case EnemyPushback:
 		// Don't interrupt if attacking
-		_, isAttacking := range.state.(EnemyAttack1)
+		_, isAttacking := giant.state.(EnemyAttack1)
 		if isAttacking do return
 
-		range.state = state
+		giant.state = state
 		enemy.animState.duration = 0
 		enemy.animState.speed = s.animSpeed
 		enemy.animState.current = s.animation
@@ -124,7 +129,7 @@ enterEnemyRangeState :: proc(enemy: ^Enemy, state: union {
 		enemy.animState.duration = 0
 		enemy.animState.speed = s.animSpeed
 		enemy.animState.current = s.animation
-		range.state = state
+		giant.state = state
 		spawnWarning(enemy.pos + {0, 3, 0})
 	}
 }

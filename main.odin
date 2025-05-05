@@ -79,6 +79,7 @@ main :: proc() {
 			}
 			// TODO: pause UI
 			drawGame(&game)
+			drawPauseUI(&game)
 		case .STATS:
 			if rl.IsKeyPressed(.SPACE) {
 				app = .HOME
