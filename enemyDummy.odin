@@ -18,7 +18,7 @@ ATTACK_RANGE_DUMMY :: (2 - .2) // Attack range == ability spawn point + radius, 
 updateEnemyDummy :: proc(
 	enemy: ^Enemy,
 	player: Player,
-	enemies: ^EnemyDummyPool,
+	enemies: ^EnemyPool,
 	objs: ^[dynamic]EnvObj,
 	pool: ^AbilityPool,
 ) {
@@ -26,7 +26,8 @@ updateEnemyDummy :: proc(
 
 	switch &s in dummy.state {
 	case EnemyStateRunning:
-		updateEnemyMovement(.FORWARD, enemy, player, enemies, objs) // Boids
+		speed := getRootMotionSpeed(&enemy.animState, enemies.animSetDummy, enemy.size)
+		updateEnemyMovement(.FORWARD, enemy, player, enemies, objs, speed) // Boids
 
 	case EnemyStateIdle:
 		// Face player :: 

@@ -16,7 +16,7 @@ updateEnemyMovement :: proc(targetOption: enum {
 		CENTER,
 		FORWARD,
 		PLAYER,
-	}, enemy: ^Enemy, player: Player, enemies: ^EnemyDummyPool, objs: ^[dynamic]EnvObj) {
+	}, enemy: ^Enemy, player: Player, enemies: ^EnemyPool, objs: ^[dynamic]EnvObj, speed: f32) {
 	target: vec3
 	switch targetOption {
 	case .CENTER:
@@ -66,19 +66,6 @@ updateEnemyMovement :: proc(targetOption: enum {
 
 		r := lookAtVec3(target, {})
 		enemy.spacial.rot = lerpRAD(enemy.spacial.rot, r, getDelta() * ENEMY_TURN_SPEED)
-
-		animSet: AnimationSet
-		switch &s in enemy.type {
-		case DummyEnemy:
-			animSet = enemies.animSetDummy
-		case MeleEnemy:
-			animSet = enemies.animSetMele
-		case RangeEnemy:
-			animSet = enemies.animSetRange
-		case GiantEnemy:
-			animSet = enemies.animSetGiant
-		}
-		speed := getRootMotionSpeed(&enemy.animState, animSet, enemy.size)
 		enemy.spacial.pos += directionFromRotation(enemy.rot) * getDelta() * speed
 		// enemy.spacial.pos += directionFromRotation(enemy.rot) * getDelta() * ENEMY_SPEED
 	}
@@ -108,7 +95,7 @@ boidSeperation :: proc(boid: ^Enemy, other: Spacial) -> vec3 { 	// boidData ; sp
 	return seperation
 }
 
-boidSeperation2 :: proc(boid: ^Enemy, enemies: ^EnemyDummyPool) -> vec3 {
+boidSeperation2 :: proc(boid: ^Enemy, enemies: ^EnemyPool) -> vec3 {
 	range := boid.shape.(Sphere) * 4
 
 	force := vec3{}
@@ -141,7 +128,7 @@ boidSeperation2 :: proc(boid: ^Enemy, enemies: ^EnemyDummyPool) -> vec3 {
 // Alignment usually uses a larget distance than seperation
 alignmentRange: f32 = 1.75
 cohesionRange: f32 = 2.25
-boidAlignment :: proc(boid: ^Enemy, enemies: ^EnemyDummyPool) -> vec3 {
+boidAlignment :: proc(boid: ^Enemy, enemies: ^EnemyPool) -> vec3 {
 	range := boid.shape.(Sphere) * 2
 
 	force := vec3{}
@@ -166,7 +153,7 @@ boidAlignment :: proc(boid: ^Enemy, enemies: ^EnemyDummyPool) -> vec3 {
 }
 
 
-boidCohesion :: proc(boid: ^Enemy, enemies: ^EnemyDummyPool) -> vec3 {
+boidCohesion :: proc(boid: ^Enemy, enemies: ^EnemyPool) -> vec3 {
 	range := boid.shape.(Sphere) * 2
 
 	centerPos := vec3{}

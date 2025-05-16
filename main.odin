@@ -34,7 +34,7 @@ main :: proc() {
 	rl.SetTraceLogLevel(.ERROR)
 	// rl.SetConfigFlags({.WINDOW_RESIZABLE})
 	// rl.SetConfigFlags({.WINDOW_HIGHDPI, .MSAA_4X_HINT})
-	rl.SetConfigFlags({.VSYNC_HINT})
+	// rl.SetConfigFlags({.VSYNC_HINT})
 
 	rl.InitWindow(SCREEN_W, SCREEN_H, "Game")
 	defer rl.CloseWindow()
@@ -51,8 +51,7 @@ main :: proc() {
 	for !rl.WindowShouldClose() {
 		rl.BeginDrawing()
 		defer rl.EndDrawing()
-		rl.ClearBackground({123, 121, 126, 255})
-		rl.ClearBackground(color0)
+		rl.ClearBackground(color36)
 
 		switch app {
 		case .HOME:
@@ -79,19 +78,21 @@ main :: proc() {
 			}
 			// TODO: pause UI
 			drawGame(&game)
-			drawPauseUI(&game)
+			drawPauseUI(&game, &app)
 		case .STATS:
 			if rl.IsKeyPressed(.SPACE) {
 				app = .HOME
 			}
+			drawStatsUI(&game)
 		case .OTHER:
 		}
 	}
 }
 
 isGameOver :: proc(player: ^Player) -> bool {
-	// return false
-	return player.health.current <= 0 // Or TIME > 30
+	lastWave := curWave == len(waves2) - 1
+	// Or killed boss?
+	return player.health.current <= 0 || lastWave // Or TIME > 30
 }
 
 // EndTexture mode flushes any commands that are pending to the texture target. EndDrawing flushes the commands to the back buffer and then swaps the back with the front buffer

@@ -1,6 +1,7 @@
 package main
 
 import "core:fmt"
+import "core:math"
 import "core:math/linalg"
 import "core:math/noise"
 import "core:math/rand"
@@ -75,7 +76,7 @@ spawnEnemySpawner :: proc(pool: ^EnemySpanwerPool) {
 		return
 	}
 
-	spawn := pointAtEdgeOfMap()
+	spawn := getPointAtEdgeOfMap()
 	x := noise.noise_2d(1, {rl.GetTime(), rl.GetTime()})
 	z := noise.noise_2d(2, {rl.GetTime(), rl.GetTime()})
 	target := rand.float32_range(3, 6) * normalize({x, 0, z})
@@ -88,12 +89,69 @@ spawnEnemySpawner :: proc(pool: ^EnemySpanwerPool) {
 	append(&pool.active, enemy)
 }
 
-pointAtEdgeOfMap :: proc() -> vec3 {
-	// Get random point at edge of map
+// Get random point at edge of map
+getPointAtEdgeOfMap :: proc() -> vec3 {
 	x := noise.noise_2d(0, {rl.GetTime(), rl.GetTime()})
 	z := noise.noise_2d(1, {rl.GetTime(), rl.GetTime()})
 	return MapGround.shape.(Sphere) * normalize({x, 0, z})
 }
+
+getSafePointInGrid :: proc(enemies: ^EnemyPool) -> vec3 {
+	// upper bound check
+	for ii in 0 ..< 15 {
+		pos := getPointInGrid(ii, 1.5)
+		safe := !isUnsafeSpawn(enemies, pos)
+		if safe do return pos
+	}
+	fmt.println("Could not find safe spawn")
+	return getPointAtEdgeOfMap()
+}
+
+// Get randomPointInGridWithoutOverlap
+getPointInGrid :: proc(seed: int, grid: f32) -> vec3 {
+	// TODO: Find an algo that is more reliable and evenly spred
+	x := noise.noise_2d(i64(seed), {rl.GetTime() * 1, rl.GetTime() * 1})
+	z := noise.noise_2d(i64(seed) * 2, {rl.GetTime() * 1, rl.GetTime() * 1})
+	dst := rand.float32_range(0, MapGround.shape.(Sphere))
+	return roundVec((dst * vec3{x, 0, z}) / grid) * grid
+}
+
+// We are using a check against thorn and monolith. In the future we might want to swap safe search with some
+// different data structure that keeps track of whats placed in a grid? so we don't have to keep sampling.
+isUnsafeSpawn :: proc(enemies: ^EnemyPool, pos: vec3) -> bool {
+	for enemy in enemies.active {
+		#partial switch v in enemy.type {
+		case ThornEnemy:
+			if enemy.pos == pos do return true
+		case MonolithEnemy:
+			if enemy.pos == pos do return true
+		}
+	}
+	for spawn in enemies.spawning {
+		#partial switch v in spawn.enemy.type {
+		case ThornEnemy:
+			if spawn.pos == pos do return true
+		case MonolithEnemy:
+			if spawn.pos == pos do return true
+		}
+	}
+	return false
+}
+
+roundVec :: proc(vec: vec3) -> vec3 {
+	return vec3{math.round(vec.x), math.round(vec.y), math.round(vec.z)}
+}
+// spapToGrid :: proc(pos: vec3, size: f32) {
+// 	pos = math.round(pos / size) * size
+
+// }
+// // For half-grid snapping
+// Vector2 SnapToHalfGrid(Vector2 position, float gridSize) {
+//     Vector2 result;
+//     result.x = roundf(position.x / (gridSize * 0.5f)) * (gridSize * 0.5f);
+//     result.y = roundf(position.y / (gridSize * 0.5f)) * (gridSize * 0.5f);
+//     return result;
+// }
 // ---- Despawn
 
 // despawnAllEnemies :: proc(pool: ^EnemySpanwerPool) {
@@ -116,7 +174,7 @@ despawnSpawner :: proc(pool: ^EnemySpanwerPool, index: int) {
 // ---- Update
 updateEnemySpanwers :: proc(
 	spawners: ^EnemySpanwerPool,
-	enemies: ^EnemyDummyPool,
+	enemies: ^EnemyPool,
 	objs: ^[dynamic]EnvObj,
 ) {
 	for &spawner, index in spawners.active {
@@ -129,7 +187,7 @@ updateEnemySpanwers :: proc(
 	}
 }
 
-updateSpawner :: proc(spawner: ^Spawner, enemies: ^EnemyDummyPool) {
+updateSpawner :: proc(spawner: ^Spawner, enemies: ^EnemyPool) {
 	spawner.duration -= getDelta()
 	switch &s in spawner.state {
 	case SpawnerBase:

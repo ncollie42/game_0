@@ -108,7 +108,7 @@ removeAbility :: proc(pool: ^AbilityPool, activeIndex: int) {
 
 updateEnemyHitCollisions :: proc(
 	pool: ^AbilityPool,
-	enemies: ^EnemyDummyPool,
+	enemies: ^EnemyPool,
 	spawners: ^EnemySpanwerPool,
 	impact: ^Flipbook,
 ) {
@@ -133,7 +133,7 @@ updateEnemyHitCollisions :: proc(
 
 updateAbilityRange :: proc(
 	obj: ^AbilityInstance,
-	enemies: ^EnemyDummyPool,
+	enemies: ^EnemyPool,
 	spawners: ^EnemySpanwerPool,
 	impact: ^Flipbook,
 ) -> bool {
@@ -163,6 +163,10 @@ updateAbilityRange :: proc(
 				enterEnemyRangeState(&enemy, state)
 			case GiantEnemy:
 				enterEnemyGiantState(&enemy, state)
+			case ThornEnemy:
+			// Do nothing, no state
+			case MonolithEnemy:
+			// Do nothing, no state
 			}
 			playSoundPunch()
 			spawnFlipbook(impact, enemy.pos, 0) // TODO replace with impact based on ability used
@@ -193,7 +197,7 @@ updateAbilityRange :: proc(
 
 updateAbilityMele :: proc(
 	obj: ^AbilityInstance,
-	enemies: ^EnemyDummyPool,
+	enemies: ^EnemyPool,
 	spawners: ^EnemySpanwerPool,
 	impact: ^Flipbook,
 ) {
@@ -223,6 +227,10 @@ updateAbilityMele :: proc(
 				enterEnemyRangeState(&enemy, state)
 			case GiantEnemy:
 				enterEnemyGiantState(&enemy, state)
+			case ThornEnemy:
+			// Do nothing no enemy
+			case MonolithEnemy:
+			// Do nothing no enemy
 			}
 			playSoundPunch()
 			spawnFlipbook(impact, enemy.pos, 0)
@@ -280,7 +288,7 @@ drawAbilityInstances :: proc(pool: ^AbilityPool, color: rl.Color) {
 	for obj in pool.active {
 		switch &v in obj.type {
 		case mele:
-			rl.DrawSphereWires(obj.spacial.pos, obj.spacial.shape.(Sphere), 8, 8, color)
+		// rl.DrawSphereWires(obj.spacial.pos, obj.spacial.shape.(Sphere), 8, 8, color)
 		case range:
 			// rl.DrawSphereWires(obj.spacial.pos, obj.spacial.shape.(Sphere), 8, 8, color)
 			rl.DrawModel(model, obj.spacial.pos, .11, rl.WHITE)

@@ -37,13 +37,14 @@ drawHitFlash :: proc(model: rl.Model, hp: Health) {
 	index := model.materialCount - 1 // imported models are 2, generated are 1
 	assert(index >= 0, "index is not right")
 	shader := model.materials[index].shader
+	// TODO: set inside shader.locs :: or do it in the spot
 	flashIndex := rl.GetShaderLocation(shader, "flash")
 
 	data := hp.hitFlash
 	rl.SetShaderValue(shader, flashIndex, &data, .FLOAT)
 }
 
-drawHealthbars :: proc(camera: ^rl.Camera, enemies: ^EnemyDummyPool) {
+drawHealthbars :: proc(camera: ^rl.Camera, enemies: ^EnemyPool) {
 	for enemy in enemies.active {
 		if enemy.health.current == enemy.health.max {
 			continue

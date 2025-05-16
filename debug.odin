@@ -12,28 +12,28 @@ model: rl.Model
 // animSet: AnimationSet
 debugInit :: proc(game: ^Game) {
 	using game
-	model = rl.LoadModel("/home/nico/Downloads/rock.glb")
+
 }
 
 debugUpdateGame :: proc(game: ^Game) {
 	using game
 
-	// spawnEnemySpawner(&spawners)
-	// spawnXDummyEnemies(game, 10)
+	if rl.IsKeyPressed(.Q) {
+		spawnGem(&gems, mouseInWorld(camera))
+	}
 	if rl.IsKeyPressed(.F) {
-		spawn := pointAtEdgeOfMap()
-		spawnEnemyMele(&enemies, spawn * 1.4)
+		spawn := getSafePointInGrid(&game.enemies)
+		spawnEnemy(&enemies, spawn, .Thorn)
 	}
 	if rl.IsKeyPressed(.G) {
-		spawnEnemyRange(&enemies, {})
+		spawn := getSafePointInGrid(&game.enemies)
+		spawnEnemy(&enemies, spawn, .Monolith)
 	}
 	if rl.IsKeyPressed(.H) {
 		spawnEnemyGiant(&enemies, {})
 	}
 	if rl.IsKeyPressed(.J) {
-		spawnEnemyDummy(&enemies, {})
 	}
-
 	if rl.IsKeyPressed(.UP) {
 		timeScale += .25
 		fmt.println(timeScale)
@@ -42,7 +42,7 @@ debugUpdateGame :: proc(game: ^Game) {
 		timeScale -= .25
 		fmt.println(timeScale)
 	}
-	// updateEnemiesRange(&enemiesRange, player^, &objs, enemyAbilities)
+
 	updateEnemySpanwers(&spawners, &enemies, &objs)
 }
 
@@ -53,6 +53,5 @@ debugUpdateGame :: proc(game: ^Game) {
 debugDrawGame :: proc(game: ^Game) {
 	using game
 
-	drawHealthbar(player.health, camera, player.pos + {0, 2.8, 0})
 	drawEnemySpanwers(&spawners)
 }

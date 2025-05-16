@@ -288,3 +288,40 @@ loadTexture :: proc(path: cstring) -> rl.Texture2D {
 	assert(rl.IsTextureReady(texture), fmt.tprint(path))
 	return texture
 }
+
+loadModelWithTexture :: proc(modelPath: cstring, texturePath: cstring) -> rl.Model {
+	model := loadModel(modelPath)
+	texture := loadTexture(texturePath)
+
+	count := model.materialCount - 1
+	model.materials[count].maps[rl.MaterialMapIndex.ALBEDO].texture = texture
+
+	return model
+}
+
+drawShadow :: proc(model: rl.Model, spacial: Spacial, scale: f32, camera: ^rl.Camera) {
+	count := model.materialCount - 1
+	prevShader := model.materials[count].shader
+	modelMtrix := getSpacialMatrix(spacial, scale)
+
+	// TODO: pull out and save into shadow.locs ?
+	// Shaderloc :: enum {
+	// 	modelMatrix,
+	// 	projectionMatrix,
+	// 	viewMatrix,
+	// }
+	l1 := rl.GetShaderLocation(shadow, "modelMatrix")
+	l2 := rl.GetShaderLocation(shadow, "viewMatrix") // Camera
+	l3 := rl.GetShaderLocation(shadow, "projectionMatrix")
+
+	rl.SetShaderValueMatrix(shadow, l1, modelMtrix)
+	rl.SetShaderValueMatrix(shadow, l2, rl.GetCameraViewMatrix(camera))
+	// NOTE: we can optimize later, these don't change often. can move out to a global?
+	aspect := f32(rl.GetScreenWidth()) / f32(rl.GetScreenHeight())
+	rl.SetShaderValueMatrix(shadow, l3, rl.GetCameraProjectionMatrix(camera, aspect))
+
+	model.materials[count].shader = shadow
+	rl.DrawModel(model, spacial.pos, scale, rl.WHITE)
+
+	model.materials[count].shader = prevShader
+}

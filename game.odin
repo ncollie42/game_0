@@ -9,7 +9,7 @@ Game :: struct {
 	camera:          ^rl.Camera,
 	player:          ^Player,
 	objs:            [dynamic]EnvObj,
-	enemies:         EnemyDummyPool,
+	enemies:         EnemyPool,
 	spawners:        EnemySpanwerPool,
 	playerAbilities: ^AbilityPool,
 	enemyAbilities:  ^AbilityPool,
@@ -19,9 +19,11 @@ Game :: struct {
 	dash:            State,
 	screen:          rl.RenderTexture2D,
 	impact:          Flipbook,
+	gems:            Gems,
 }
 
 discardShader: rl.Shader
+shadow: rl.Shader
 whiteTexture: rl.Texture2D
 initGame :: proc() -> Game {
 	game := Game {
@@ -34,6 +36,7 @@ initGame :: proc() -> Game {
 		enemyAbilities  = initAbilityPool(),
 		screen          = rl.LoadRenderTexture(P_W, P_H),
 		impact          = initFlipbookPool("resources/impact.png", 305, 383, 27),
+		gems            = initGems(),
 	}
 
 	actionSpawnMeleAtPlayer := ActionSpawnMeleAtPlayer {
@@ -72,6 +75,7 @@ initGame :: proc() -> Game {
 	game.dash = newPlayerDashAbility(game.player, game.camera)
 
 	discardShader = rl.LoadShader(nil, "shaders/alphaDiscard.fs")
+	shadow = rl.LoadShader("shaders/shadow.vs", "shaders/shadow.fs")
 	// For pixel look
 	rl.SetTextureFilter(game.screen.texture, rl.TextureFilter.POINT)
 
@@ -83,14 +87,53 @@ initGame :: proc() -> Game {
 	return game
 }
 
-color0 := rl.GetColor(0x495435ff)
-color1 := rl.GetColor(0x8a8e48ff)
-color2 := rl.GetColor(0xdebf89ff)
-color3 := rl.GetColor(0xa4653eff)
-color4 := rl.GetColor(0x902e29ff)
-color5 := rl.GetColor(0x24171bff)
-color6 := rl.GetColor(0x5d453eff)
-color7 := rl.GetColor(0x907c68ff)
+//https://lospec.com/palette-list/apollo
+color0 := rl.GetColor(0x172038ff)
+color1 := rl.GetColor(0x253a5eff)
+color2 := rl.GetColor(0x3c5e8bff)
+color3 := rl.GetColor(0x4f8fbaff)
+color4 := rl.GetColor(0x73bed3ff)
+color5 := rl.GetColor(0xa4dddbff)
+color6 := rl.GetColor(0x19332dff)
+color7 := rl.GetColor(0x25562eff)
+color8 := rl.GetColor(0x468232ff)
+color9 := rl.GetColor(0x75a743ff)
+color10 := rl.GetColor(0xa8ca58ff)
+color11 := rl.GetColor(0xd0da91ff)
+color12 := rl.GetColor(0x4d2b32ff)
+color13 := rl.GetColor(0x7a4841ff)
+color14 := rl.GetColor(0xad7757ff)
+color15 := rl.GetColor(0xc09473ff)
+color16 := rl.GetColor(0xd7b594ff)
+color17 := rl.GetColor(0xe7d5b3ff)
+color18 := rl.GetColor(0x341c27ff)
+color19 := rl.GetColor(0x602c2cff)
+color20 := rl.GetColor(0x884b2bff)
+color21 := rl.GetColor(0xbe772bff)
+color22 := rl.GetColor(0xde9e41ff)
+color23 := rl.GetColor(0xe8c170ff)
+color24 := rl.GetColor(0x241527ff)
+color25 := rl.GetColor(0x411d31ff)
+color26 := rl.GetColor(0x752438ff)
+color27 := rl.GetColor(0xa53030ff)
+color28 := rl.GetColor(0xcf573cff)
+color29 := rl.GetColor(0xda863eff)
+color30 := rl.GetColor(0x1e1d39ff)
+color31 := rl.GetColor(0x402751ff)
+color32 := rl.GetColor(0x7a367bff)
+color33 := rl.GetColor(0xa23e8cff)
+color34 := rl.GetColor(0xc65197ff)
+color35 := rl.GetColor(0xdf84a5ff)
+color36 := rl.GetColor(0x090a14ff)
+color37 := rl.GetColor(0x10141fff)
+color38 := rl.GetColor(0x151d28ff)
+color39 := rl.GetColor(0x202e37ff)
+color40 := rl.GetColor(0x394a50ff)
+color41 := rl.GetColor(0x577277ff)
+color42 := rl.GetColor(0x819796ff)
+color43 := rl.GetColor(0xa8b5b2ff)
+color44 := rl.GetColor(0xc7cfccff)
+color45 := rl.GetColor(0xebede9ff)
 
 spawnXDummyEnemies :: proc(game: ^Game, amount: int) {
 	for ii in 0 ..< amount {
@@ -108,6 +151,10 @@ resetGame :: proc(game: ^Game) {
 	despawnAllEnemies(&enemies)
 
 	initWarnings()
+	initWaves()
+	// TODO: Reset spawners
+	// TODO: Reset Signs
+	// 
 	// spawnXDummyEnemies(game, 10)
 }
 
@@ -142,6 +189,7 @@ updateGame :: proc(game: ^Game) {
 	updateStamina(player)
 
 	updateEnemies(&enemies, player^, &objs, enemyAbilities)
+	updateSpawningEnemies(&enemies)
 	updateEnemyAnimations(&enemies)
 	updateEnemyHealth(&enemies) //Add other enemies here too
 	applyBoundaryForces(&enemies, &objs)
@@ -175,7 +223,8 @@ drawGame :: proc(game: ^Game) {
 	drawAbilityInstances(enemyAbilities, color4)
 
 	drawPlayer(player^, camera)
-	drawEnemies(&enemies)
+	drawEnemies(&enemies, camera)
+	drawGems(&gems, camera)
 
 	debugDrawGame(game)
 	{
@@ -185,7 +234,7 @@ drawGame :: proc(game: ^Game) {
 		drawMeleTrail(camera^, player.trailRight)
 		rl.EndShaderMode()
 	}
-	drawWarnings()
+	drawWarnings(camera^)
 	drawHealthbars(camera, &enemies)
 
 	drawCamera(camera)
@@ -343,7 +392,7 @@ drawGameUI :: proc(game: ^Game) {
 	}
 }
 
-drawPauseUI :: proc(game: ^Game) {
+drawPauseUI :: proc(game: ^Game, app: ^App) {
 	using game
 
 	clayFrameSetup()
@@ -358,7 +407,32 @@ drawPauseUI :: proc(game: ^Game) {
 	if clay.UI(clay.ID("root"), clay.Layout(layoutRoot)) {
 		pos := rl.GetWorldToScreen({}, camera^)
 		if clay.UI(clay.Floating(clay.FloatingElementConfig{offset = pos})) {
-			uiText("hello", .large)
+			if buttonText("Resume") {
+				app^ = .PLAYING
+			}
+			if buttonText("Main Menu") {
+				app^ = .HOME
+			}
+		}
+	}
+}
+
+drawStatsUI :: proc(game: ^Game) {
+	using game
+
+	clayFrameSetup()
+	clay.BeginLayout()
+	defer {
+		layout := clay.EndLayout()
+		clayRaylibRender(&layout)
+	}
+
+	rl.DrawFPS(10, 10)
+	// Start UI
+	if clay.UI(clay.ID("root"), clay.Layout(layoutRoot)) {
+		pos := rl.GetWorldToScreen({}, camera^)
+		if clay.UI(clay.Floating(clay.FloatingElementConfig{offset = pos})) {
+			uiText("STATS", .large)
 		}
 	}
 }

@@ -11,14 +11,14 @@ GiantEnemy :: struct {
 		EnemyStateIdle,
 		EnemyStateRunning,
 		EnemyPushback,
-		EnemyAttack1,
+		EnemyAttack,
 	},
 }
 
 updateEnemyGiant :: proc(
 	enemy: ^Enemy,
 	player: Player,
-	enemies: ^EnemyDummyPool,
+	enemies: ^EnemyPool,
 	objs: ^[dynamic]EnvObj,
 	pool: ^AbilityPool,
 ) {
@@ -28,7 +28,8 @@ updateEnemyGiant :: proc(
 
 	switch &s in giant.state {
 	case EnemyStateRunning:
-		updateEnemyMovement(.PLAYER, enemy, player, enemies, objs) // Boids
+		speed := getRootMotionSpeed(&enemy.animState, enemies.animSetGiant, enemy.size)
+		updateEnemyMovement(.PLAYER, enemy, player, enemies, objs, speed) // Boids
 		if linalg.distance(enemy.pos, player.pos) > ATTACK_RANGE_MELE do return // TODO: replace with giant attack range
 
 		enterEnemyGiantState(enemy, EnemyStateIdle{})
@@ -52,7 +53,7 @@ updateEnemyGiant :: proc(
 			enemy.attackCD.left = enemy.attackCD.max + CD_variant // Start timer again
 			enterEnemyGiantState(
 				enemy,
-				EnemyAttack1{action_frame = 34, animation = ENEMY.attack, animSpeed = 1},
+				EnemyAttack{action_frame = 34, animation = ENEMY.attack, animSpeed = 1},
 			)
 		}
 
@@ -63,7 +64,7 @@ updateEnemyGiant :: proc(
 	// enemy.animation.current = .WALKING_B
 
 	// if in range of player attack? Idle animation and running animation
-	case EnemyAttack1:
+	case EnemyAttack:
 		// Face player :: 
 		target := normalize(player.pos - enemy.pos)
 		r := lookAtVec3(target, {})
@@ -102,7 +103,7 @@ enterEnemyGiantState :: proc(enemy: ^Enemy, state: union {
 		EnemyStateIdle,
 		EnemyStateRunning,
 		EnemyPushback,
-		EnemyAttack1,
+		EnemyAttack,
 	}) {
 
 	giant := &enemy.type.(GiantEnemy) or_else panic("Invalid enemy type")
@@ -118,14 +119,14 @@ enterEnemyGiantState :: proc(enemy: ^Enemy, state: union {
 		giant.state = state
 	case EnemyPushback:
 		// Don't interrupt if attacking
-		_, isAttacking := giant.state.(EnemyAttack1)
+		_, isAttacking := giant.state.(EnemyAttack)
 		if isAttacking do return
 
 		giant.state = state
 		enemy.animState.duration = 0
 		enemy.animState.speed = s.animSpeed
 		enemy.animState.current = s.animation
-	case EnemyAttack1:
+	case EnemyAttack:
 		enemy.animState.duration = 0
 		enemy.animState.speed = s.animSpeed
 		enemy.animState.current = s.animation

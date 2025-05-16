@@ -29,8 +29,6 @@ newCamera :: proc() -> ^rl.Camera3D {
 		position   = camDist,
 		target     = {}, // what the camera is looking at
 		up         = {0, 1, 0},
-		// fovy       = 30,
-		// projection = .ORTHOGRAPHIC,
 		fovy       = 60,
 		projection = .PERSPECTIVE,
 	}

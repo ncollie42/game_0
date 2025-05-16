@@ -42,3 +42,11 @@ directionFromRotation :: proc(rotation: f32) -> vec3 {
 	point = normalize(point)
 	return point
 }
+
+getSpacialMatrix :: proc(obj: Spacial, scale: f32) -> rl.Matrix {
+	pos := obj.pos
+	mat := rl.MatrixTranslate(pos.x, pos.y, pos.z)
+	mat = mat * rl.MatrixScale(scale, scale, scale)
+	mat = mat * rl.MatrixRotateY(obj.rot)
+	return mat
+}

@@ -111,7 +111,10 @@ initEnv :: proc() -> [dynamic]EnvObj {
 drawEnv :: proc(objs: ^[dynamic]EnvObj) {
 	// Floor
 	rad := MapGround.shape.(Sphere)
-	rl.DrawCylinder({0, -1, 0}, rad, rad, 1, 25, color3)
+	rl.DrawCylinder({0, -1, 0}, rad, rad, 1, 25, color13)
+	// rl.DrawCylinder({0, -1, 0}, rad, rad, 1, 25, color36)
+	// rl.DrawSphereWires({}, rad, 1, 25, rl.WHITE)
+
 	// Objs
 	for obj in objs {
 		rl.DrawModelEx(obj.model, obj.spacial.pos, UP, rl.RAD2DEG * obj.spacial.rot, 1, rl.WHITE)
@@ -188,7 +191,7 @@ getBoundingBox :: proc(obj: Spacial) -> Box {
 	return Box{min = box.min + origin, max = box.max + origin}
 }
 
-applyBoundaryForces :: proc(enemies: ^EnemyDummyPool, objs: ^[dynamic]EnvObj) {
+applyBoundaryForces :: proc(enemies: ^EnemyPool, objs: ^[dynamic]EnvObj) {
 	for &boid in enemies.active {
 		projected := boid.spacial
 		projected.pos += getForwardPoint(boid) * getDelta() * ENEMY_SPEED
@@ -204,7 +207,7 @@ applyBoundaryForces :: proc(enemies: ^EnemyDummyPool, objs: ^[dynamic]EnvObj) {
 }
 
 // Might not want to use if we're spawning enemies outside of the ring
-applyBoundaryForcesFromMap :: proc(enemies: ^EnemyDummyPool, objs: ^[dynamic]EnvObj) {
+applyBoundaryForcesFromMap :: proc(enemies: ^EnemyPool, objs: ^[dynamic]EnvObj) {
 	for &boid in enemies.active {
 		projected := boid.spacial
 		projected.pos += getForwardPoint(boid) * getDelta() * ENEMY_SPEED

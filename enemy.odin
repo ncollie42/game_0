@@ -11,16 +11,28 @@ Enemy :: struct {
 	using health:       Health,
 	dmgIndicatorOffset: vec3, // Offset over pos - TODO: move out with animSet | it's shared.
 	attackCD:           Timer, // CD for attacking
-	type:               union {
-		MeleEnemy,
-		RangeEnemy,
-		DummyEnemy,
-		GiantEnemy,
-	},
+	type:               EnemyTypes,
 	size:               f32,
 }
 
-EnemyDummyPool :: struct {
+// TODO: swap with the enum
+EnemyTypes :: union {
+	MeleEnemy,
+	RangeEnemy,
+	DummyEnemy,
+	GiantEnemy,
+	ThornEnemy,
+	MonolithEnemy,
+}
+
+Spawning :: struct {
+	enemy:    Enemy,
+	pos:      vec3,
+	duration: f32,
+}
+
+EnemyPool :: struct {
+	spawning:     [dynamic]Spawning,
 	active:       [dynamic]Enemy,
 	freeDummy:    [dynamic]Enemy,
 	animSetDummy: AnimationSet,
@@ -30,17 +42,19 @@ EnemyDummyPool :: struct {
 	animSetRange: AnimationSet,
 	freeGiant:    [dynamic]Enemy,
 	animSetGiant: AnimationSet,
+	freeThorn:    [dynamic]Enemy,
+	freeMonolith: [dynamic]Enemy,
 }
 
 EnemyState :: union {
 	EnemyStateIdle,
 	EnemyStateBase,
 	EnemyPushback,
-	EnemyAttack1,
+	EnemyAttack,
 }
 
 EnemyStateBase :: struct {}
-EnemyAttack1 :: struct {
+EnemyAttack :: struct {
 	animation:    ANIMATION_NAMES,
 	animSpeed:    f32,
 	action_frame: i32,
@@ -53,29 +67,27 @@ EnemyPushback :: struct {
 }
 
 
+SpawningTexture: rl.Texture2D
+
 // ---- ---- ---- ---- Init ---- ---- ---- ---- 
 enemyPoolSize := 100
 ENEMY_CD_ATTACK_VARIANT: f32 = 1
-initEnemyDummies :: proc() -> EnemyDummyPool {
+initEnemyDummies :: proc() -> EnemyPool {
 	// It looks like we can share the same shader for all enemies
 	// shader := rl.LoadShader(nil, "shaders/grayScale.fs")
 	shader := rl.LoadShader(nil, "shaders/flash.fs")
+	SpawningTexture = loadTexture("resources/mark_2.png")
 
-	pool := EnemyDummyPool {
-		active    = make([dynamic]Enemy, 0, 0),
-		freeDummy = make([dynamic]Enemy, enemyPoolSize, enemyPoolSize),
-		freeMele  = make([dynamic]Enemy, enemyPoolSize, enemyPoolSize),
-		freeRange = make([dynamic]Enemy, enemyPoolSize, enemyPoolSize),
-		freeGiant = make([dynamic]Enemy, enemyPoolSize, enemyPoolSize),
+	pool := EnemyPool {
+		spawning     = make([dynamic]Spawning, 0, 0),
+		active       = make([dynamic]Enemy, 0, 0),
+		freeDummy    = make([dynamic]Enemy, enemyPoolSize, enemyPoolSize),
+		freeMele     = make([dynamic]Enemy, enemyPoolSize, enemyPoolSize),
+		freeRange    = make([dynamic]Enemy, enemyPoolSize, enemyPoolSize),
+		freeGiant    = make([dynamic]Enemy, enemyPoolSize, enemyPoolSize),
+		freeThorn    = make([dynamic]Enemy, enemyPoolSize, enemyPoolSize),
+		freeMonolith = make([dynamic]Enemy, enemyPoolSize, enemyPoolSize),
 	}
-	// modelPath: cstring = "/home/nico/Downloads/Human2/base.m3d"
-	// texturePath := loadTexture("/home/nico/Downloads/Human2/base.png")
-
-	// modelPath: cstring = "resources/Human2/base.m3d"
-	// texturePath: cstring = "resources/Human2/base.png"
-
-	// modelPath: cstring = "/home/nico/Downloads/golem_small_round/base.m3d"
-	// texturePath: cstring = "/home/nico/Downloads/golem_small_round/95_p2.png"
 
 	// -------- Dummy -------- 
 	// Texture + Model + animation
@@ -117,13 +129,14 @@ initEnemyDummies :: proc() -> EnemyDummyPool {
 		enemy.model.materials[count].maps[rl.MaterialMapIndex.ALBEDO].texture = texture
 		enemy.model.materials[count].shader = shader
 		enemy.health = Health {
-			max = 4,
+			max = 2,
 		}
 		enemy.attackCD = Timer {
 			left = 5.0,
 			max  = 10.0,
 		}
 		enemy.shape = .8
+		enemy.animState.current = ENEMY.idle
 		enemy.animState.speed = 1
 		enemy.type = MeleEnemy{}
 		enemy.size = 4
@@ -150,6 +163,7 @@ initEnemyDummies :: proc() -> EnemyDummyPool {
 			max = 8.0,
 		}
 		enemy.shape = .8
+		enemy.animState.current = ENEMY.idle
 		enemy.animState.speed = 1
 		enemy.type = RangeEnemy{}
 		enemy.size = 4
@@ -182,10 +196,56 @@ initEnemyDummies :: proc() -> EnemyDummyPool {
 		enemy.dmgIndicatorOffset = {0, 2, 0}
 	}
 
+	// -------- Thorn -------- 
+	modelPath = "resources/thorn/base.m3d"
+	texturePath = "resources/thorn/base.png"
+	texture = loadTexture(texturePath)
+
+	for &enemy in pool.freeThorn {
+		enemy.model = loadModel(modelPath)
+		count := enemy.model.materialCount - 1
+		enemy.model.materials[count].maps[rl.MaterialMapIndex.ALBEDO].texture = texture
+		enemy.model.materials[count].shader = shader
+		enemy.health = Health {
+			max = 2,
+		}
+		enemy.attackCD = Timer {
+			left = .5,
+			max  = .5,
+		}
+		enemy.shape = .8 // TODO: change, but also add attack range
+		enemy.type = ThornEnemy{}
+		enemy.size = 3
+		enemy.dmgIndicatorOffset = {0, 3.2, 0}
+	}
+
+	// -------- Monolith -------- 
+	modelPath = "resources/monolith/base.m3d"
+	texturePath = "resources/monolith/base3.png"
+	texture = loadTexture(texturePath)
+
+	for &enemy in pool.freeMonolith {
+		enemy.model = loadModel(modelPath)
+		count := enemy.model.materialCount - 1
+		enemy.model.materials[count].maps[rl.MaterialMapIndex.ALBEDO].texture = texture
+		enemy.model.materials[count].shader = shader
+		enemy.health = Health {
+			max = 15,
+		}
+		enemy.attackCD = Timer {
+			left = .5,
+			max  = .5,
+		}
+		enemy.shape = .8 // TODO: change, but also add attack range
+		enemy.type = MonolithEnemy{}
+		enemy.size = 3
+		enemy.dmgIndicatorOffset = {0, 3.2, 0}
+	}
+
 	return pool
 }
 // ---- ---- ---- ---- Spawn ---- ---- ---- ---- 
-spawnEnemyDummy :: proc(pool: ^EnemyDummyPool, pos: vec3) {
+spawnEnemyDummy :: proc(pool: ^EnemyPool, pos: vec3) {
 	if len(pool.freeDummy) == 0 {
 		// Do nothing if there isn't space for a new one.
 		return
@@ -199,7 +259,7 @@ spawnEnemyDummy :: proc(pool: ^EnemyDummyPool, pos: vec3) {
 	append(&pool.active, enemy)
 }
 
-spawnEnemyRange :: proc(pool: ^EnemyDummyPool, pos: vec3) {
+spawnEnemyRange :: proc(pool: ^EnemyPool, pos: vec3) {
 	if len(pool.freeRange) == 0 {
 		// Do nothing if there isn't space for a new one.
 		return
@@ -213,7 +273,7 @@ spawnEnemyRange :: proc(pool: ^EnemyDummyPool, pos: vec3) {
 	append(&pool.active, enemy)
 }
 
-spawnEnemyMele :: proc(pool: ^EnemyDummyPool, pos: vec3) {
+spawnEnemyMele :: proc(pool: ^EnemyPool, pos: vec3) {
 	if len(pool.freeMele) == 0 {
 		// Do nothing if there isn't space for a new one.
 		return
@@ -226,7 +286,7 @@ spawnEnemyMele :: proc(pool: ^EnemyDummyPool, pos: vec3) {
 	append(&pool.active, enemy)
 }
 
-spawnEnemyGiant :: proc(pool: ^EnemyDummyPool, pos: vec3) {
+spawnEnemyGiant :: proc(pool: ^EnemyPool, pos: vec3) {
 	if len(pool.freeGiant) == 0 {
 		// Do nothing if there isn't space for a new one.
 		return
@@ -239,8 +299,42 @@ spawnEnemyGiant :: proc(pool: ^EnemyDummyPool, pos: vec3) {
 	append(&pool.active, enemy)
 }
 
+spawnEnemy :: proc(pool: ^EnemyPool, pos: vec3, type: EnemyType) {
+	freePool: ^[dynamic]Enemy
+	switch type {
+	case .Mele:
+		freePool = &pool.freeMele
+	case .Giant:
+		freePool = &pool.freeGiant
+	case .Dummy:
+		freePool = &pool.freeDummy
+	case .Range:
+		freePool = &pool.freeRange
+	case .Thorn:
+		freePool = &pool.freeThorn
+	case .Monolith:
+		freePool = &pool.freeMonolith
+	}
+	if len(freePool^) == 0 {
+		// Do nothing if there isn't space for a new one.
+		return
+	}
+	enemy := pop(freePool)
+	enemy.health.current = enemy.health.max
+	enemy.health.hitFlash = 0
+	enemy.spacial.pos = pos
+	// enemy.spacial.rot = f32(rl.GetRandomValue(0, 6))
+	spawn := Spawning {
+		enemy    = enemy,
+		pos      = pos,
+		duration = 1,
+	}
+	// append(&pool.active, enemy)
+	append(&pool.spawning, spawn)
+}
+
 // ---- ---- ---- ---- Despawn ---- ---- ---- ---- 
-despawnAllEnemies :: proc(pool: ^EnemyDummyPool) {
+despawnAllEnemies :: proc(pool: ^EnemyPool) {
 	for enemy, ii in pool.active {
 		switch v in enemy.type {
 		case DummyEnemy:
@@ -251,6 +345,10 @@ despawnAllEnemies :: proc(pool: ^EnemyDummyPool) {
 			append(&pool.freeRange, enemy)
 		case GiantEnemy:
 			append(&pool.freeGiant, enemy)
+		case ThornEnemy:
+			append(&pool.freeThorn, enemy)
+		case MonolithEnemy:
+			append(&pool.freeMonolith, enemy)
 		}
 	}
 	clear(&pool.active)
@@ -258,7 +356,7 @@ despawnAllEnemies :: proc(pool: ^EnemyDummyPool) {
 
 // ---- ---- ---- ---- Update ---- ---- ---- ---- 
 updateEnemies :: proc(
-	enemies: ^EnemyDummyPool,
+	enemies: ^EnemyPool,
 	player: Player,
 	objs: ^[dynamic]EnvObj,
 	pool: ^AbilityPool,
@@ -273,7 +371,23 @@ updateEnemies :: proc(
 			updateEnemyRange(&enemy, player, enemies, objs, pool)
 		case GiantEnemy:
 			updateEnemyGiant(&enemy, player, enemies, objs, pool)
+		case ThornEnemy:
+			updateEnemyThorn(&enemy, player, enemies, objs, pool)
+		case MonolithEnemy:
+			updateEnemyMonolith(&enemy, player, enemies, objs, pool)
 		}
+	}
+}
+
+updateSpawningEnemies :: proc(enemies: ^EnemyPool) {
+	// Loop in reverse and swap with last element on remove
+	#reverse for &spawn, index in enemies.spawning {
+		spawn.duration -= getDelta()
+		if spawn.duration >= 0 {
+			continue
+		}
+		append(&enemies.active, spawn.enemy)
+		unordered_remove(&enemies.spawning, index)
 	}
 }
 
@@ -289,7 +403,7 @@ updateEnemyHealth :: proc(enemies: ^$T) {
 }
 
 // ---- ---- ---- ---- Animations ---- ---- ---- ---- 
-updateEnemyAnimations :: proc(enemies: ^EnemyDummyPool) {
+updateEnemyAnimations :: proc(enemies: ^EnemyPool) {
 	// updateEnemyAnimations :: proc(enemies: $T) {
 	for &enemy, index in enemies.active {
 		animSet: AnimationSet
@@ -302,22 +416,51 @@ updateEnemyAnimations :: proc(enemies: ^EnemyDummyPool) {
 			animSet = enemies.animSetRange
 		case GiantEnemy:
 			animSet = enemies.animSetGiant
+		case ThornEnemy:
+			continue
+		case MonolithEnemy:
+			continue
+		case:
+			panic("Not set type")
 		}
 		updateAnimation(enemy.model, &enemy.animState, animSet)
 	}
 }
 
 // ---- ---- ---- ---- Draw ---- ---- ---- ---- 
-drawEnemies :: proc(enemies: ^EnemyDummyPool) {
+drawEnemies :: proc(enemies: ^EnemyPool, camera: ^rl.Camera) {
 	for enemy in enemies.active {
-		drawEnemy(enemy)
+		drawEnemy(enemy, camera)
+	}
+
+
+	// TODO: move to its on func?
+	scale: f32 = 1.5
+	for spawn in enemies.spawning {
+		// rl.DrawCube(spawn.pos, .1, .1, .1, rl.WHITE)
+
+		// rl.DrawBillboard(camera, SpawningTexture, spawn.pos + {0, 1, 0}, 1, rl.WHITE)
+
+		// Flat on ground
+		rl.DrawBillboardPro(
+			camera^,
+			SpawningTexture,
+			rl.Rectangle{0, 0, 64, 64},
+			spawn.pos + {.5, .05, -.5} * scale, //Center and scale 
+			{0, 0, 1},
+			scale,
+			{},
+			0,
+			rl.WHITE,
+		)
 	}
 }
 
-drawEnemy :: proc(enemy: Enemy) {
+drawEnemy :: proc(enemy: Enemy, camera: ^rl.Camera) {
 	// Apply hit flash
 	drawHitFlash(enemy.model, enemy.health)
 
+	drawShadow(enemy.model, enemy.spacial, enemy.size, camera)
 	rl.DrawModelEx(
 		enemy.model,
 		enemy.spacial.pos,
@@ -326,6 +469,7 @@ drawEnemy :: proc(enemy: Enemy) {
 		enemy.size,
 		rl.WHITE,
 	)
+	rl.EndShaderMode()
 	// Damage indicator spot
 	// rl.DrawCube(enemy.pos + enemy.dmgIndicatorOffset, .1, .1, .1, rl.WHITE)
 

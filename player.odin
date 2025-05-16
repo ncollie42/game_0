@@ -31,7 +31,8 @@ initPlayer :: proc() -> ^Player {
 	player := new(Player)
 
 	modelPath: cstring = "resources/warrior/base.m3d"
-	texturePath: cstring = "resources/warrior/95_p.png"
+	// texturePath: cstring = "resources/warrior/95_p.png"
+	texturePath: cstring = "resources/warrior/base.png"
 
 	player.model = loadModel(modelPath)
 	player.animSet = loadM3DAnimationsWithRootMotion(modelPath)
@@ -59,7 +60,7 @@ initPlayer :: proc() -> ^Player {
 	// path: cstring = "/home/nico/Downloads/smear.png"
 	// player.trail = initFlipbookPool(path, 240 / 5, 48, 5)
 
-	// Camera half circle 
+	// Camera half circle :: TODO: maybe replace with a billboardPro on {0,0,1}
 	mesh := rl.GenMeshPlane(1, 1, 1, 1)
 	player.viewCircle = rl.LoadModelFromMesh(mesh)
 	texturePath = "resources/half_circle.png"
@@ -72,12 +73,7 @@ initPlayer :: proc() -> ^Player {
 	return player
 }
 
-moveAndSlide :: proc(
-	player: ^Player,
-	velocity: vec3,
-	objs: [dynamic]EnvObj,
-	enemies: ^EnemyDummyPool,
-) {
+moveAndSlide :: proc(player: ^Player, velocity: vec3, objs: [dynamic]EnvObj, enemies: ^EnemyPool) {
 
 	// Projected movement
 	projected := player.spacial
@@ -150,12 +146,7 @@ moveAndSlide :: proc(
 	player.spacial.pos += velocity * getDelta()
 }
 
-moveAndStop :: proc(
-	player: ^Player,
-	velocity: vec3,
-	objs: [dynamic]EnvObj,
-	enemies: ^EnemyDummyPool,
-) {
+moveAndStop :: proc(player: ^Player, velocity: vec3, objs: [dynamic]EnvObj, enemies: ^EnemyPool) {
 
 	// Projected movement
 	projected := player.spacial
@@ -195,7 +186,7 @@ moveAndStop :: proc(
 	player.spacial.pos += velocity * getDelta()
 }
 
-updatePlayerStateBase :: proc(player: ^Player, objs: [dynamic]EnvObj, enemies: ^EnemyDummyPool) {
+updatePlayerStateBase :: proc(player: ^Player, objs: [dynamic]EnvObj, enemies: ^EnemyPool) {
 
 	// Add a sub state - Idle and moving
 	dir := getVector()
@@ -221,7 +212,7 @@ updatePlayerStateDashing :: proc(
 	dashing: ^playerStateDashing,
 	player: ^Player,
 	objs: [dynamic]EnvObj,
-	enemies: ^EnemyDummyPool,
+	enemies: ^EnemyPool,
 	camera: ^rl.Camera3D,
 ) {
 	dir := getForwardPoint(player)
@@ -239,7 +230,7 @@ updatePlayerStateAttack1 :: proc(
 	player: ^Player,
 	camera: ^rl.Camera3D,
 	objs: [dynamic]EnvObj,
-	enemies: ^EnemyDummyPool,
+	enemies: ^EnemyPool,
 ) {
 	// Go back to idle if finished full animation
 	if player.animState.finished {
@@ -296,7 +287,7 @@ updatePlayerStateAttackLong :: proc(
 	player: ^Player,
 	camera: ^rl.Camera3D,
 	objs: [dynamic]EnvObj,
-	enemies: ^EnemyDummyPool,
+	enemies: ^EnemyPool,
 ) {
 	// Input check
 	attack.timer.left -= getDelta()
@@ -396,6 +387,12 @@ State :: union {
 
 playerStateBase :: struct {}
 
+playerStateBlocking :: struct {
+	// TODO: maybe add Actions or other fields
+	timer:     Timer,
+	animation: ANIMATION_NAMES, // TODO group these 2
+}
+
 playerStateDashing :: struct {
 	// TODO: maybe add Actions or other fields
 	timer:     Timer,
@@ -443,6 +440,7 @@ playerStateAttackLong :: struct {
 // Draw
 drawPlayer :: proc(player: Player, camera: ^rl.Camera3D) {
 	drawHitFlash(player.model, player.health)
+	drawHealthbar(player.health, camera, player.pos + {0, 2.8, 0})
 
 	color := player.edge ? color1 : color2
 	// rl.DrawSphereWires(player.pos, player.shape.(Sphere), 10, 10, color)
@@ -458,6 +456,8 @@ drawPlayer :: proc(player: Player, camera: ^rl.Camera3D) {
 	if isDashing, ok := player.state.(playerStateDashing); ok {
 		// Change dashing color using shader for player
 	}
+
+	drawShadow(player.model, player.spacial, player.scale, camera)
 	rl.DrawModelEx(
 		player.model,
 		player.spacial.pos,

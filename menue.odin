@@ -24,13 +24,18 @@ drawMainMemu :: proc(app: ^App, game: ^Game) {
 	}
 
 	if clay.UI(clay.ID("root"), clay.Layout(layoutRoot2)) {
-		uiText("HELLO", .large)
-
+		uiText("Early Access", .large)
 		if buttonText("START") {
 			app^ = .PLAYING
 			resetGame(game)
 		}
+		if buttonText("Settings") {
 
+		}
+		if buttonText("Exit To Desktop") {
+			// TODO: add better exit
+			rl.CloseWindow()
+		}
 	}
 }
 
