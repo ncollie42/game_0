@@ -5,6 +5,7 @@ import rl "vendor:raylib"
 
 // MeleInstance 
 AbilityInstance :: struct {
+	// Can parry: bool, -> move to player list? if range swap Dir
 	power:         f32,
 	using spacial: Spacial,
 	type:          union {
@@ -46,8 +47,12 @@ initAbilityPool :: proc() -> ^AbilityPool {
 	return pool
 }
 
-newMeleInstance :: proc(pos: vec3, power: f32) -> AbilityInstance {
-	return AbilityInstance{power = power, spacial = Spacial{pos = pos, shape = 1.0}, type = mele{}}
+newMeleInstance :: proc(pos: vec3, power: f32, size: f32) -> AbilityInstance {
+	return AbilityInstance {
+		power = power,
+		spacial = Spacial{pos = pos, shape = size},
+		type = mele{},
+	}
 }
 
 newRangeInstance :: proc(pos: vec3, rot: f32) -> AbilityInstance {
@@ -58,8 +63,8 @@ newRangeInstance :: proc(pos: vec3, rot: f32) -> AbilityInstance {
 }
 // ---- Spawn
 // TODO: add power when spawning ability + add extra arg in callback
-spawnMeleInstance :: proc(pool: ^AbilityPool, pos: vec3) {
-	append(&pool.active, newMeleInstance(pos, 1))
+spawnMeleInstance :: proc(pool: ^AbilityPool, pos: vec3, size: f32) {
+	append(&pool.active, newMeleInstance(pos, 1, size))
 }
 
 spawnRangeInstance :: proc(pool: ^AbilityPool, pos: vec3, rot: f32) {
@@ -73,7 +78,16 @@ spawnMeleInstanceAtPlayer :: proc(pool: ^AbilityPool, player: ^Player) {
 	mat = mat * rl.MatrixTranslate(0, 0, 1)
 	p := rl.Vector3Transform({}, mat)
 
-	append(&pool.active, newMeleInstance(p, 1))
+	spawnMeleInstance(pool, pos, 1)
+}
+
+spawnBashingMeleAtPlayer :: proc(pool: ^AbilityPool, player: ^Player) {
+	pos := player.spacial.pos
+	mat := rl.MatrixTranslate(pos.x, pos.y, pos.z)
+	mat = mat * rl.MatrixRotateY(player.spacial.rot)
+	p := rl.Vector3Transform({}, mat)
+
+	spawnMeleInstance(pool, pos, 3)
 }
 
 spawnRangeInstanceAtPlayer :: proc(pool: ^AbilityPool, player: ^Player) {
@@ -90,7 +104,7 @@ spawnRangeInstanceAtPlayer :: proc(pool: ^AbilityPool, player: ^Player) {
 spawnInstanceFrontOfLocation :: proc(pool: ^AbilityPool, loc: ^Spacial) {
 	forward := getForwardPoint(loc^)
 
-	append(&pool.active, newMeleInstance(forward + loc.pos, 1))
+	append(&pool.active, newMeleInstance(forward + loc.pos, 1, 1))
 }
 
 spawnRangeInstanceFrontOfLocation :: proc(pool: ^AbilityPool, loc: ^Spacial) {
@@ -263,7 +277,15 @@ updatePlayerHitCollisions :: proc(pool: ^AbilityPool, player: ^Player) {
 			defer removeAbility(pool, index)
 			hit := checkCollision(obj, player)
 			if !hit do continue
-			hurt(player, obj.power)
+
+
+			if isBlocking(player) {
+				doBlock(&player.block)
+				// if block, take no damage? or take less damage?
+				hurt(player, obj.power * .5)
+			} else {
+				hurt(player, obj.power)
+			}
 		// startHitStop()
 		// addTrauma(.large)
 		case range:
@@ -275,7 +297,14 @@ updatePlayerHitCollisions :: proc(pool: ^AbilityPool, player: ^Player) {
 			obj.spacial.pos += getForwardPoint(obj) * getDelta() * v.speed
 			hit := checkCollision(obj, player)
 			if !hit do continue
-			hurt(player, obj.power)
+			if isBlocking(player) {
+				doBlock(&player.block)
+				// if block, take no damage? or take less damage?
+				hurt(player, obj.power * .5)
+			} else {
+				hurt(player, obj.power)
+			}
+
 			removeAbility(pool, index)
 		case:
 			panic("Ability has no type")

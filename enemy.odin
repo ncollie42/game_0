@@ -1,6 +1,7 @@
 package main
 
 import "core:fmt"
+import "core:math"
 import "core:math/linalg"
 import rl "vendor:raylib"
 
@@ -13,6 +14,7 @@ Enemy :: struct {
 	attackCD:           Timer, // CD for attacking
 	type:               EnemyTypes,
 	size:               f32,
+	box:                rl.BoundingBox, //For enemy select
 }
 
 // TODO: swap with the enum
@@ -54,6 +56,7 @@ EnemyState :: union {
 }
 
 EnemyStateBase :: struct {}
+EnemyDead :: struct {}
 EnemyAttack :: struct {
 	animation:    ANIMATION_NAMES,
 	animSpeed:    f32,
@@ -68,15 +71,16 @@ EnemyPushback :: struct {
 
 
 SpawningTexture: rl.Texture2D
+TargetCircleTexture: rl.Texture2D
+TargetCrossTexture: rl.Texture2D
 
 // ---- ---- ---- ---- Init ---- ---- ---- ---- 
 enemyPoolSize := 100
 ENEMY_CD_ATTACK_VARIANT: f32 = 1
 initEnemyDummies :: proc() -> EnemyPool {
-	// It looks like we can share the same shader for all enemies
-	// shader := rl.LoadShader(nil, "shaders/grayScale.fs")
-	shader := rl.LoadShader(nil, "shaders/flash.fs")
 	SpawningTexture = loadTexture("resources/mark_2.png")
+	TargetCircleTexture = loadTexture("resources/png/target_circle.png")
+	TargetCrossTexture = loadTexture("resources/png/target_lock.png")
 
 	pool := EnemyPool {
 		spawning     = make([dynamic]Spawning, 0, 0),
@@ -102,18 +106,20 @@ initEnemyDummies :: proc() -> EnemyPool {
 		enemy.model = loadModel(modelPath)
 		count := enemy.model.materialCount - 1
 		enemy.model.materials[count].maps[rl.MaterialMapIndex.ALBEDO].texture = texture
-		enemy.model.materials[count].shader = shader
+		enemy.model.materials[count].shader = S_flash
 		enemy.health = Health {
 			max = 15,
 		}
 		enemy.attackCD = Timer {
 			max = 2.0,
 		}
-		enemy.shape = .8
+		enemy.shape = 1
+		enemy.animState.current = ENEMY.idle
 		enemy.animState.speed = 1
 		enemy.type = DummyEnemy{}
 		enemy.size = 5
-		enemy.dmgIndicatorOffset = {0, 2, 0}
+		enemy.dmgIndicatorOffset = {0, 5, 0}
+		enemy.box = rl.BoundingBox{{-.2, 0, -.2}, {.2, .5, .2}}
 	}
 
 	// -------- Mele -------- 
@@ -127,7 +133,7 @@ initEnemyDummies :: proc() -> EnemyPool {
 		enemy.model = loadModel(modelPath)
 		count := enemy.model.materialCount - 1
 		enemy.model.materials[count].maps[rl.MaterialMapIndex.ALBEDO].texture = texture
-		enemy.model.materials[count].shader = shader
+		enemy.model.materials[count].shader = S_flash
 		enemy.health = Health {
 			max = 2,
 		}
@@ -140,6 +146,7 @@ initEnemyDummies :: proc() -> EnemyPool {
 		enemy.animState.speed = 1
 		enemy.type = MeleEnemy{}
 		enemy.size = 4
+		enemy.box = rl.BoundingBox{{-.2, 0, -.2}, {.2, .4, .2}}
 		enemy.dmgIndicatorOffset = {0, 2, 0}
 	}
 
@@ -155,7 +162,7 @@ initEnemyDummies :: proc() -> EnemyPool {
 		enemy.model = loadModel(modelPath)
 		count := enemy.model.materialCount - 1
 		enemy.model.materials[count].maps[rl.MaterialMapIndex.ALBEDO].texture = texture
-		enemy.model.materials[count].shader = shader
+		enemy.model.materials[count].shader = S_flash
 		enemy.health = Health {
 			max = 4,
 		}
@@ -167,6 +174,7 @@ initEnemyDummies :: proc() -> EnemyPool {
 		enemy.animState.speed = 1
 		enemy.type = RangeEnemy{}
 		enemy.size = 4
+		enemy.box = rl.BoundingBox{{-.2, 0, -.2}, {.2, .5, .2}}
 		enemy.dmgIndicatorOffset = {0, 2.5, 0}
 	}
 
@@ -181,7 +189,7 @@ initEnemyDummies :: proc() -> EnemyPool {
 		enemy.model = loadModel(modelPath)
 		count := enemy.model.materialCount - 1
 		enemy.model.materials[count].maps[rl.MaterialMapIndex.ALBEDO].texture = texture
-		enemy.model.materials[count].shader = shader
+		enemy.model.materials[count].shader = S_flash
 		enemy.health = Health {
 			max = 4,
 		}
@@ -193,6 +201,7 @@ initEnemyDummies :: proc() -> EnemyPool {
 		enemy.animState.speed = 1
 		enemy.type = GiantEnemy{}
 		enemy.size = 3
+		enemy.box = rl.BoundingBox{{-.3, 0, -.3}, {.3, .7, .3}}
 		enemy.dmgIndicatorOffset = {0, 2, 0}
 	}
 
@@ -205,7 +214,7 @@ initEnemyDummies :: proc() -> EnemyPool {
 		enemy.model = loadModel(modelPath)
 		count := enemy.model.materialCount - 1
 		enemy.model.materials[count].maps[rl.MaterialMapIndex.ALBEDO].texture = texture
-		enemy.model.materials[count].shader = shader
+		enemy.model.materials[count].shader = S_flash
 		enemy.health = Health {
 			max = 2,
 		}
@@ -216,6 +225,7 @@ initEnemyDummies :: proc() -> EnemyPool {
 		enemy.shape = .8 // TODO: change, but also add attack range
 		enemy.type = ThornEnemy{}
 		enemy.size = 3
+		enemy.box = rl.BoundingBox{{-.3, 0, -.3}, {.3, .7, .3}}
 		enemy.dmgIndicatorOffset = {0, 3.2, 0}
 	}
 
@@ -228,7 +238,7 @@ initEnemyDummies :: proc() -> EnemyPool {
 		enemy.model = loadModel(modelPath)
 		count := enemy.model.materialCount - 1
 		enemy.model.materials[count].maps[rl.MaterialMapIndex.ALBEDO].texture = texture
-		enemy.model.materials[count].shader = shader
+		enemy.model.materials[count].shader = S_flash
 		enemy.health = Health {
 			max = 15,
 		}
@@ -239,6 +249,7 @@ initEnemyDummies :: proc() -> EnemyPool {
 		enemy.shape = .8 // TODO: change, but also add attack range
 		enemy.type = MonolithEnemy{}
 		enemy.size = 3
+		enemy.box = rl.BoundingBox{{-.3, 0, -.3}, {.3, 1, .3}}
 		enemy.dmgIndicatorOffset = {0, 3.2, 0}
 	}
 
@@ -397,6 +408,7 @@ updateEnemyHealth :: proc(enemies: ^$T) {
 	#reverse for &enemy, index in enemies.active {
 		updateHealth(&enemy)
 		if enemy.health.current <= 0 {
+			// enterEnemyMeleState(&enemy, EnemyDead{}) -> TODO: Animation on death
 			unordered_remove(&enemies.active, index)
 		}
 	}
@@ -428,6 +440,54 @@ updateEnemyAnimations :: proc(enemies: ^EnemyPool) {
 }
 
 // ---- ---- ---- ---- Draw ---- ---- ---- ---- 
+drawChargeAbleEnemyMarks :: proc(enemies: ^EnemyPool, camera: ^rl.Camera, player: ^Player) {
+	if _, ok := player.state.(playerStateBlocking); !ok do return
+	// Use discard shader
+
+	// rl.BeginMode2D(rl.Camera2D{zoom = f32(rl.GetScreenHeight()) / f32(P_H)})
+	// zoom := f32(rl.GetScreenHeight()) / f32(P_H)
+	// for enemy in enemies.active {
+	// 	if linalg.length2(enemy.pos - player.pos) > 40 do continue
+	// 	pos := rl.GetWorldToScreen(enemy.pos, camera^)
+	// 	pos.x -= f32(TargetCircleTexture.width / 2)
+	// 	pos.y -= f32(TargetCircleTexture.height / 2)
+	// 	// rl.DrawText(number.text, i32(pos.x / zoom), i32(pos.y / zoom), i32(size), rl.WHITE)
+	// 	rl.DrawTexture(TargetCircleTexture, i32(pos.x / zoom), i32(pos.y / zoom), rl.WHITE)
+	// }
+	// rl.EndMode2D()
+
+
+	if !hasEnoughStamina() do return
+	red := vec4{230, 41, 55, 255} / 255
+	black := vec4{0, 0, 0, 1}
+	for enemy in enemies.active {
+		if linalg.length2(enemy.pos - player.pos) > 40 do continue
+
+		// Draw on top?
+		// rl.DrawBillboard(
+		// 	camera^,
+		// 	TargetCircleTexture,
+		// 	enemy.pos + enemy.dmgIndicatorOffset,
+		// 	1,
+		// 	rl.WHITE,
+		// )
+		// drawOutline(enemy.model, enemy.spacial, enemy.size, camera, black)
+		rl.DrawCube(enemy.pos + enemy.dmgIndicatorOffset, .25, .25, .25, rl.PURPLE)
+	}
+	hit := getEnemyHitResult(enemies, camera)
+	if hit.hit {
+		// box := getModelBoundingBox(hit.enemy, hit.enemy.size * 1.1)
+		// rl.DrawBoundingBox(box, rl.BLUE) // DEBUG
+
+		// Do we add it to the enemy? enemy.targeted
+		drawOutline(hit.enemy.model, hit.enemy.spacial, hit.enemy.size, camera, red)
+		// 
+		// Maybe change to a shader select?
+		// rl.DrawBillboard(camera^, TargetCrossTexture, hit.posOverhead, 2, rl.WHITE)
+		// rl.DrawCube(hit.posOverhead, .3, .3, .3, rl.DARKPURPLE)
+	}
+}
+
 drawEnemies :: proc(enemies: ^EnemyPool, camera: ^rl.Camera) {
 	for enemy in enemies.active {
 		drawEnemy(enemy, camera)
@@ -461,6 +521,7 @@ drawEnemy :: proc(enemy: Enemy, camera: ^rl.Camera) {
 	drawHitFlash(enemy.model, enemy.health)
 
 	drawShadow(enemy.model, enemy.spacial, enemy.size, camera)
+	drawOutline(enemy.model, enemy.spacial, enemy.size, camera, {0, 0, 0, 1})
 	rl.DrawModelEx(
 		enemy.model,
 		enemy.spacial.pos,
@@ -476,3 +537,80 @@ drawEnemy :: proc(enemy: Enemy, camera: ^rl.Camera) {
 	// Collision shape
 	// rl.DrawCylinderWires(enemy.pos, enemy.shape.(Sphere), enemy.shape.(Sphere), 2, 10, rl.BLACK)
 }
+
+// ----------------------------- Enemy Ray hit check -----------------------------
+
+performEnemyHitTest :: proc(enemies: ^EnemyPool, camera: ^rl.Camera, size: f32) -> EnemyHitResult {
+	hit: bool
+	enemyPos: vec3
+	enemyPosOverhead: vec3
+	distance: f32 = math.F32_MAX // Set high for now
+	count := 0
+	ray := rl.GetScreenToWorldRay(rl.GetMousePosition(), camera^)
+	ee: ^Enemy
+	for &enemy in enemies.active {
+		box := getModelBoundingBox(&enemy, enemy.size * size)
+		hitInfo := rl.GetRayCollisionBox(ray, box)
+		// rl.DrawBoundingBox(box, rl.BLUE) // DEBUG
+
+		if !hitInfo.hit do continue
+		count += 1
+		hit = true
+
+		// rl.DrawBoundingBox(box, rl.GREEN) // DEBUG
+
+		if hitInfo.distance >= distance do continue
+		distance = hitInfo.distance
+		enemyPosOverhead = enemy.pos + enemy.dmgIndicatorOffset
+		enemyPos = enemy.pos
+		ee = &enemy
+	}
+	hitInfo := EnemyHitResult{}
+	if !hit do return hitInfo
+	hitInfo.hit = true
+	hitInfo.pos = enemyPos
+	hitInfo.posOverhead = enemyPosOverhead
+	hitInfo.multipleHits = count > 1
+	hitInfo.enemy = ee
+	return hitInfo
+}
+
+getModelBoundingBox :: proc(enemy: ^Enemy, size: f32) -> rl.BoundingBox {
+	modelMatrix := getSpacialMatrixNoRot(enemy.spacial, size)
+	box := rl.BoundingBox{}
+	box.min = rl.Vector3Transform(enemy.box.min, modelMatrix)
+	box.max = rl.Vector3Transform(enemy.box.max, modelMatrix)
+	return box
+}
+
+getEnemyHitResult :: proc(enemies: ^EnemyPool, camera: ^rl.Camera) -> EnemyHitResult {
+	// TODO: Add priority on enemies - lower on monolith?
+	// First try with a wider hitbox
+	result := performEnemyHitTest(enemies, camera, 1.5)
+
+	// If we got multiple hits with the wide hitbox, try a more precise one
+	if result.hit && result.multipleHits {
+		preciseResult := performEnemyHitTest(enemies, camera, 1.2)
+		// Only use the precise result if it actually hit something
+		if preciseResult.hit {
+			// result.enemy.targeted = false // reset the targeted value
+			return preciseResult
+		}
+	}
+
+	return result
+}
+
+EnemyHitResult :: struct {
+	hit:          bool,
+	pos:          vec3,
+	posOverhead:  vec3,
+	multipleHits: bool,
+	enemy:        ^Enemy, // Only use imediately DONT save the pointer, maybe later when we use reference.
+}
+
+// 1. Enemy Attack Assist | on player get {bool | POS}
+// 2. Dash at pos    | {bool | POS}
+// 3. Show lock on while 'blocking'
+// Do we add field on enemy? or check twice per loop
+//  Check if within radious of mouse 1. Check if overlapping

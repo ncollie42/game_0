@@ -12,6 +12,7 @@ MeleEnemy :: struct {
 		EnemyStateRunning,
 		EnemyPushback,
 		EnemyAttack,
+		EnemyDead,
 	},
 }
 
@@ -94,6 +95,8 @@ updateEnemyMele :: proc(
 		if enemy.animState.finished {
 			enterEnemyMeleState(enemy, EnemyStateIdle{})
 		}
+	case EnemyDead:
+
 	case:
 		enterEnemyMeleState(enemy, EnemyStateIdle{})
 	}
@@ -104,25 +107,24 @@ enterEnemyMeleState :: proc(enemy: ^Enemy, state: union {
 		EnemyStateRunning,
 		EnemyPushback,
 		EnemyAttack,
+		EnemyDead,
 	}) {
 
 	mele := &enemy.type.(MeleEnemy) or_else panic("Invalid enemy type")
 
+	mele.state = state
 	switch &s in state {
 	case EnemyStateRunning:
 		transitionAnimBlend(&enemy.animState, ENEMY.run)
 		enemy.animState.speed = 1
-		mele.state = state
 	case EnemyStateIdle:
 		enemy.animState.current = ENEMY.idle
 		enemy.animState.speed = 1
-		mele.state = state
 	case EnemyPushback:
 		// Don't interrupt if attacking
 		_, isAttacking := mele.state.(EnemyAttack)
 		if isAttacking do return
 
-		mele.state = state
 		enemy.animState.duration = 0
 		enemy.animState.speed = s.animSpeed
 		enemy.animState.current = s.animation
@@ -130,7 +132,7 @@ enterEnemyMeleState :: proc(enemy: ^Enemy, state: union {
 		enemy.animState.duration = 0
 		enemy.animState.speed = s.animSpeed
 		enemy.animState.current = s.animation
-		mele.state = state
 		spawnWarning(enemy.pos + {0, 3, 0})
+	case EnemyDead:
 	}
 }

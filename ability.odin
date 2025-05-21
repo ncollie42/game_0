@@ -30,17 +30,19 @@ Action :: union {
 	ActionSpawnCubeAtLocation,
 	ActionSpawnCubeAtMouse,
 	ActionSpawnMeleAtPlayer,
+	SpawnBashingMeleAtPlayer,
 }
 
 doAction :: proc(action: Action) {
 	switch a in action {
 	case ActionSpawnCubeAtMouse:
-		spawnCubeAtMouse(a.pool, a.camera)
+	// spawnCubeAtMouse(a.pool, a.camera)
 	case ActionSpawnCubeAtLocation:
-		spawnCubeAtLocation(a.pool, a.location)
+	// spawnCubeAtLocation(a.pool, a.location)
 	case ActionSpawnMeleAtPlayer:
 		spawnMeleInstanceAtPlayer(a.pool, a.player)
-	// Spawn mele trail?
+	case SpawnBashingMeleAtPlayer:
+		spawnBashingMeleAtPlayer(a.pool, a.player)
 	}
 }
 

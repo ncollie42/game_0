@@ -24,5 +24,5 @@ updateEnemyThorn :: proc(
 		return
 	}
 	startTimer(&enemy.attackCD)
-	spawnMeleInstance(pool, enemy.pos)
+	spawnMeleInstance(pool, enemy.pos, 1)
 }

@@ -4,6 +4,7 @@ import clay "/clay-odin"
 import "core:fmt"
 import "core:reflect"
 import rl "vendor:raylib"
+import gl "vendor:raylib/rlgl"
 
 Game :: struct {
 	camera:          ^rl.Camera,
@@ -16,6 +17,7 @@ Game :: struct {
 	// Testing
 	normalAttack:    AbilityConfig,
 	chargeAttack:    AbilityConfig,
+	bashingAction:   Action, // We might not need AbilityConfig? 
 	dash:            State,
 	screen:          rl.RenderTexture2D,
 	impact:          Flipbook,
@@ -23,7 +25,6 @@ Game :: struct {
 }
 
 discardShader: rl.Shader
-shadow: rl.Shader
 whiteTexture: rl.Texture2D
 initGame :: proc() -> Game {
 	game := Game {
@@ -43,39 +44,31 @@ initGame :: proc() -> Game {
 		player = game.player,
 		pool   = game.playerAbilities,
 	}
+	game.bashingAction = SpawnBashingMeleAtPlayer {
+		player = game.player,
+		pool   = game.playerAbilities,
+	}
 	// NOTE: We could make this global, and not part of the game object
 	game.normalAttack = AbilityConfig {
 		cost = 1,
 		cd = Timer{max = 5},
 		usageLimit = Limited{2, 2},
-		state = playerStateAttack1 {
-			cancellable = true,
-			timer = Timer{max = .3},
-			animation = PLAYER.punch,
+		state = playerStateAttack {
+			cancellable  = true,
+			animation    = PLAYER.punch,
 			action_frame = 10,
 			// TODO: add a transition_frame? different than cancel_frame
 			cancel_frame = 16, //10 - attack quicker with lower transition frame [10,16]
-			speed = 1,
-			action = actionSpawnMeleAtPlayer,
+			speed        = 1,
+			action       = actionSpawnMeleAtPlayer,
 		},
 	}
-	game.chargeAttack = AbilityConfig {
-		cost = 1,
-		cd = Timer{max = 5},
-		usageLimit = Limited{2, 2},
-		state = playerStateAttackLong {
-			cancellable = true,
-			timer = Timer{max = .5},
-			trigger = 1, //[0,1]
-			animation = PLAYER.kick,
-			speed = 2.3,
-			action = actionSpawnMeleAtPlayer,
-		},
-	}
+
 	game.dash = newPlayerDashAbility(game.player, game.camera)
 
 	discardShader = rl.LoadShader(nil, "shaders/alphaDiscard.fs")
-	shadow = rl.LoadShader("shaders/shadow.vs", "shaders/shadow.fs")
+	S_shadow = rl.LoadShader("shaders/shadow.vs", "shaders/shadow.fs")
+	S_Black = rl.LoadShader(nil, "shaders/shadow.fs")
 	// For pixel look
 	rl.SetTextureFilter(game.screen.texture, rl.TextureFilter.POINT)
 
@@ -83,6 +76,7 @@ initGame :: proc() -> Game {
 	whiteTexture = rl.LoadTextureFromImage(whiteImage)
 	rl.UnloadImage(whiteImage)
 
+	gl.EnableBackfaceCulling()
 	debugInit(&game)
 	return game
 }
@@ -173,20 +167,26 @@ updateGame :: proc(game: ^Game) {
 		updatePlayerStateBase(player, objs, &enemies)
 	case playerStateDashing:
 		updatePlayerStateDashing(&s, player, objs, &enemies, camera)
-	case playerStateAttack1:
-		updatePlayerStateAttack1(&s, player, camera, objs, &enemies)
-	case playerStateAttackLong:
-		updatePlayerStateAttackLong(&s, player, camera, objs, &enemies)
+	case playerStateAttack:
+		updatePlayerStateAttack(&s, player, camera, objs, &enemies)
+	case playerStateAttackLeft:
+		updatePlayerStateAttackLeft(&s, player, camera, objs, &enemies)
+	case playerStateBlocking:
+		updatePlayerStateBlocking(&s, player, camera, objs, &enemies)
+	// updatePlayerStateBlockingParry(&s, abilities) // TODO: Add this 
+	case playerStateBlockBash:
+		updatePlayerStateBlockBashing(&s, player, camera, objs, &enemies)
 	case:
 		// Go straight to base state if not initialized.
-		enterPlayerState(player, playerStateBase{}, camera)
+		enterPlayerState(player, playerStateBase{}, camera, &enemies)
 	}
-	// updateWaves(game)
+	updateWaves(game)
 
 	updateAnimation(player.model, &player.animState, player.animSet)
 	updatePlayerHitCollisions(enemyAbilities, player)
 	updateHealth(player)
 	updateStamina(player)
+	updateBlock(&player.block)
 
 	updateEnemies(&enemies, player^, &objs, enemyAbilities)
 	updateSpawningEnemies(&enemies)
@@ -224,6 +224,7 @@ drawGame :: proc(game: ^Game) {
 
 	drawPlayer(player^, camera)
 	drawEnemies(&enemies, camera)
+	drawChargeAbleEnemyMarks(&enemies, camera, player)
 	drawGems(&gems, camera)
 
 	debugDrawGame(game)

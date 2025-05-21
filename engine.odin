@@ -7,6 +7,7 @@ import "core:math/ease"
 import "core:math/linalg"
 import "core:strings"
 import rl "vendor:raylib"
+import gl "vendor:raylib/rlgl"
 
 // https://bztsrc.gitlab.io/model3d/viewer/
 // Linear Algebra : https://www.youtube.com/watch?v=fNk_zzaMoSs&list=PLZHQObOWTQDPD3MizzM2xVFitgF8hE_ab&index=4
@@ -302,7 +303,7 @@ loadModelWithTexture :: proc(modelPath: cstring, texturePath: cstring) -> rl.Mod
 drawShadow :: proc(model: rl.Model, spacial: Spacial, scale: f32, camera: ^rl.Camera) {
 	count := model.materialCount - 1
 	prevShader := model.materials[count].shader
-	modelMtrix := getSpacialMatrix(spacial, scale)
+	modelMatrix := getSpacialMatrix(spacial, scale)
 
 	// TODO: pull out and save into shadow.locs ?
 	// Shaderloc :: enum {
@@ -310,18 +311,50 @@ drawShadow :: proc(model: rl.Model, spacial: Spacial, scale: f32, camera: ^rl.Ca
 	// 	projectionMatrix,
 	// 	viewMatrix,
 	// }
-	l1 := rl.GetShaderLocation(shadow, "modelMatrix")
-	l2 := rl.GetShaderLocation(shadow, "viewMatrix") // Camera
-	l3 := rl.GetShaderLocation(shadow, "projectionMatrix")
+	l1 := rl.GetShaderLocation(S_shadow, "modelMatrix")
+	l2 := rl.GetShaderLocation(S_shadow, "viewMatrix") // Camera
+	l3 := rl.GetShaderLocation(S_shadow, "projectionMatrix")
 
-	rl.SetShaderValueMatrix(shadow, l1, modelMtrix)
-	rl.SetShaderValueMatrix(shadow, l2, rl.GetCameraViewMatrix(camera))
+	rl.SetShaderValueMatrix(S_shadow, l1, modelMatrix)
+	rl.SetShaderValueMatrix(S_shadow, l2, rl.GetCameraViewMatrix(camera))
 	// NOTE: we can optimize later, these don't change often. can move out to a global?
 	aspect := f32(rl.GetScreenWidth()) / f32(rl.GetScreenHeight())
-	rl.SetShaderValueMatrix(shadow, l3, rl.GetCameraProjectionMatrix(camera, aspect))
+	rl.SetShaderValueMatrix(S_shadow, l3, rl.GetCameraProjectionMatrix(camera, aspect))
 
-	model.materials[count].shader = shadow
+	model.materials[count].shader = S_shadow
 	rl.DrawModel(model, spacial.pos, scale, rl.WHITE)
 
 	model.materials[count].shader = prevShader
+}
+
+drawOutline :: proc(
+	model: rl.Model,
+	spacial: Spacial,
+	scale: f32,
+	camera: ^rl.Camera,
+	color: vec4,
+) {
+	count := model.materialCount - 1
+	prevShader := model.materials[count].shader
+	modelMatrix := getSpacialMatrix(spacial, scale)
+
+	l1 := rl.GetShaderLocation(S_hull, "model")
+	l2 := rl.GetShaderLocation(S_hull, "view") // Camera
+	l3 := rl.GetShaderLocation(S_hull, "projection")
+	l4 := rl.GetShaderLocation(S_hull, "outlineColor")
+
+	rl.SetShaderValueMatrix(S_hull, l1, modelMatrix)
+	rl.SetShaderValueMatrix(S_hull, l2, rl.GetCameraViewMatrix(camera))
+	// NOTE: we can optimize later, these don't change often. can move out to a global?
+	aspect := f32(rl.GetScreenWidth()) / f32(rl.GetScreenHeight())
+	rl.SetShaderValueMatrix(S_hull, l3, rl.GetCameraProjectionMatrix(camera, aspect))
+
+	c := color
+	rl.SetShaderValue(S_hull, l4, &c, .VEC4)
+
+	gl.SetCullFace(.FRONT)
+	model.materials[count].shader = S_hull
+	rl.DrawModel(model, spacial.pos, scale, rl.WHITE)
+	model.materials[count].shader = prevShader
+	gl.SetCullFace(.BACK)
 }

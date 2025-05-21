@@ -26,8 +26,8 @@ updateEnemyDummy :: proc(
 
 	switch &s in dummy.state {
 	case EnemyStateRunning:
-		speed := getRootMotionSpeed(&enemy.animState, enemies.animSetDummy, enemy.size)
-		updateEnemyMovement(.FORWARD, enemy, player, enemies, objs, speed) // Boids
+	// speed := getRootMotionSpeed(&enemy.animState, enemies.animSetDummy, enemy.size)
+	// updateEnemyMovement(.FORWARD, enemy, player, enemies, objs, speed) // Boids
 
 	case EnemyStateIdle:
 		// Face player :: 

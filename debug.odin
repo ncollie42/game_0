@@ -18,21 +18,22 @@ debugInit :: proc(game: ^Game) {
 debugUpdateGame :: proc(game: ^Game) {
 	using game
 
+	spawn := getSafePointInGrid(&game.enemies)
 	if rl.IsKeyPressed(.Q) {
 		spawnGem(&gems, mouseInWorld(camera))
 	}
 	if rl.IsKeyPressed(.F) {
-		spawn := getSafePointInGrid(&game.enemies)
-		spawnEnemy(&enemies, spawn, .Thorn)
-	}
-	if rl.IsKeyPressed(.G) {
-		spawn := getSafePointInGrid(&game.enemies)
 		spawnEnemy(&enemies, spawn, .Monolith)
 	}
+	if rl.IsKeyPressed(.G) {
+		spawnEnemy(&enemies, spawn, .Mele)
+	}
 	if rl.IsKeyPressed(.H) {
-		spawnEnemyGiant(&enemies, {})
+		spawn = mouseInWorld(camera)
+		spawnEnemy(&enemies, spawn, .Range)
 	}
 	if rl.IsKeyPressed(.J) {
+		debug = !debug
 	}
 	if rl.IsKeyPressed(.UP) {
 		timeScale += .25
@@ -50,8 +51,10 @@ debugUpdateGame :: proc(game: ^Game) {
 // Need to render back to front, with my camera, back is positive.
 // Z:: [1,-1] 
 // Y:: [-1,1]
+debug := false
 debugDrawGame :: proc(game: ^Game) {
 	using game
 
-	drawEnemySpanwers(&spawners)
+	// if debug do getEnemyHitResult(&enemies, camera)
+
 }

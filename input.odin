@@ -11,18 +11,58 @@ updatePlayerInput :: proc(game: ^Game) {
 	if isDashing(player) {
 		return
 	}
+	// TODO: Put into func swap with 'Hand' logic stuff
 	// Player Actions
 	// :: SM Input
-	playerInputDash(player, dash, camera)
-	// TODO: Put into func swap with 'Hand' logic stuff
-	if rl.IsMouseButtonDown(.LEFT) {
-		enterPlayerState(player, normalAttack.state, camera)
-	}
-	if rl.IsMouseButtonPressed(.RIGHT) {
-		enterPlayerState(player, chargeAttack.state, camera)
-	}
+	playerInputDash(player, dash, camera, &enemies)
 	if rl.IsKeyPressed(.ONE) {
 		rl.ToggleBorderlessWindowed() // Less hassle, full screen breaks
+	}
+	switch &s in player.state {
+	case playerStateBase:
+		if rl.IsMouseButtonPressed(.LEFT) {
+			enterPlayerState(player, normalAttack.state, camera, &enemies)
+		}
+		if rl.IsMouseButtonDown(.RIGHT) && canBlock(&player.block) {
+			enterPlayerState(player, playerStateBlocking{}, camera, &enemies)
+		}
+	case playerStateDashing:
+	case playerStateAttack:
+		if !rl.IsMouseButtonDown(.LEFT) do break
+		frame := i32(math.floor(player.animState.duration * FPS_30))
+		if frame < s.cancel_frame do return
+		s.comboInput = true
+	case playerStateAttackLeft:
+		if !rl.IsMouseButtonDown(.LEFT) do break
+		frame := i32(math.floor(player.animState.duration * FPS_30))
+		if frame < s.cancel_frame do return
+		s.comboInput = true
+	case playerStateBlocking:
+		if rl.IsMouseButtonUp(.RIGHT) {
+			enterPlayerState(player, playerStateBase{}, camera, &enemies)
+		}
+
+		if !hasEnoughStamina() do break
+		fmt.println("Stamina", Stamina.currentCharge)
+
+		// if !isTimerReady(player.bashCD) do break
+		result := getEnemyHitResult(&enemies, camera)
+		// TODO: Check distance
+		// TODO: play sound if we can dash
+		if !result.hit do break
+		// Enter Dashing attack if inrange
+		if rl.IsMouseButtonDown(.LEFT) {
+			// startTimer(&player.bashCD)
+			consumeStamina()
+			enterPlayerState(
+				player,
+				playerStateBlockBash{target = result.pos, action = bashingAction},
+				camera,
+				&enemies,
+			)
+		}
+	case playerStateBlockBash:
+
 	}
 }
 
