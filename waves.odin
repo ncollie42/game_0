@@ -1,6 +1,7 @@
 package main
 
 import "core:fmt"
+import "core:math/rand"
 import rl "vendor:raylib"
 
 // Make global?  or put into game obj. we're only going to have 1.
@@ -19,13 +20,22 @@ Waves := struct {
 	tick = {max = 1},
 	waveTick = {left = 5, max = 5},
 }
+
+wave :: struct {
+	enemies:      []EnemyType,
+	spawnRate:    f32,
+	waveDuration: f32,
+}
+
 waves2 := []wave {
-	{enemies = {.Monolith}, spawnRate = .1, waveDuration = 1},
-	{enemies = {.Thorn}, spawnRate = .1, waveDuration = 1},
+	{enemies = {.Monolith}, spawnRate = .001, waveDuration = .02},
+	{enemies = {.Thorn}, spawnRate = .001, waveDuration = .02},
 	{enemies = {.Mele}, spawnRate = 2, waveDuration = 6},
 	{enemies = {.Thorn}, spawnRate = .1, waveDuration = 1},
 	{enemies = {.Range}, spawnRate = 2, waveDuration = 6},
-	{enemies = {.Monolith}, spawnRate = .1, waveDuration = 1},
+	{enemies = {}, spawnRate = 1, waveDuration = 30},
+	{enemies = {.Thorn}, spawnRate = .5, waveDuration = 60},
+	// {enemies = {.Monolith}, spawnRate = .1, waveDuration = 1},
 	// {enemies = {}, spawnRate = 1, waveDuration = 5},
 	// {enemies = {.Mele, .Range}, spawnRate = 1, waveDuration = 5},
 	{enemies = {}, spawnRate = 1, waveDuration = 10000},
@@ -40,6 +50,7 @@ initWaves :: proc() {
 	spawnTick = {}
 	waveTick = {}
 	curWave = -1
+	Waves.duration = 0
 }
 
 updateWaves :: proc(game: ^Game) {
@@ -61,13 +72,8 @@ updateWaves :: proc(game: ^Game) {
 	}
 	spawnTick.max = waves2[curWave].spawnRate
 	startTimer(&spawnTick)
-	spawnRandomEnemy(game, w.enemies)
-}
-
-wave :: struct {
-	enemies:      []EnemyType,
-	spawnRate:    f32,
-	waveDuration: f32,
+	now := (curWave == 0 || curWave == 1) // For now, later spawn all map stuff first before wave starts
+	spawnRandomEnemy(game, w.enemies, game.player, now)
 }
 // Scale based on how player is doing? hp + enemies out now
 // Scale enemy stats based on wave
@@ -84,30 +90,27 @@ EnemyType :: enum {
 	Monolith,
 }
 
-spawnRandomEnemy :: proc(game: ^Game, enemies: []EnemyType) {
+spawnRandomEnemy :: proc(game: ^Game, enemies: []EnemyType, player: ^Player, now: bool) {
 	if len(enemies) <= 0 {
 		return
 	}
 	index := rl.GetRandomValue(0, i32(len(enemies) - 1))
+
 	// spawn := pointAtEdgeOfMap()
-	spawn := getSafePointInGrid(&game.enemies)
+	spawn := getSafePointInGrid(&game.enemies, player)
 	switch enemies[index] {
 	case .Mele:
-		spawnEnemy(&game.enemies, spawn, .Mele)
-		spawnEnemy(&game.enemies, spawn, .Mele)
-	// spawnEnemyMele(&game.enemies, spawn)
-	// spawnEnemyMele(&game.enemies, spawn)
+		spawnEnemy(&game.enemies, spawn, .Mele, now)
 	case .Range:
-		spawnEnemy(&game.enemies, spawn, .Range)
-	// spawnEnemyRange(&game.enemies, spawn)
+		spawnEnemy(&game.enemies, spawn, .Range, now)
 	case .Dummy:
-	// spawnEnemyMele(&game.enemies, spawn, giantStats * waveMultiplier)
+	// spawnEnemyMele(&game.enemies, spawn, giantStats * waveMultiplier, now)
 	case .Giant:
 	case .Thorn:
 		// TODO: get spawn pattern
-		spawnEnemy(&game.enemies, spawn, .Thorn)
+		spawnEnemy(&game.enemies, spawn, .Thorn, now)
 	case .Monolith:
 		// TODO: get spawn pattern
-		spawnEnemy(&game.enemies, spawn, .Monolith)
+		spawnEnemy(&game.enemies, spawn, .Monolith, now)
 	}
 }

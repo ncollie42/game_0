@@ -28,6 +28,9 @@ updatePlayerInput :: proc(game: ^Game) {
 		}
 	case playerStateDashing:
 	case playerStateAttack:
+		if rl.IsMouseButtonDown(.RIGHT) && canBlock(&player.block) {
+			enterPlayerState(player, playerStateBlocking{}, camera, &enemies)
+		}
 		if !rl.IsMouseButtonDown(.LEFT) do break
 		frame := i32(math.floor(player.animState.duration * FPS_30))
 		if frame < s.cancel_frame do return
@@ -43,7 +46,6 @@ updatePlayerInput :: proc(game: ^Game) {
 		}
 
 		if !hasEnoughStamina() do break
-		fmt.println("Stamina", Stamina.currentCharge)
 
 		// if !isTimerReady(player.bashCD) do break
 		result := getEnemyHitResult(&enemies, camera)
@@ -51,7 +53,7 @@ updatePlayerInput :: proc(game: ^Game) {
 		// TODO: play sound if we can dash
 		if !result.hit do break
 		// Enter Dashing attack if inrange
-		if rl.IsMouseButtonDown(.LEFT) {
+		if rl.IsMouseButtonPressed(.LEFT) {
 			// startTimer(&player.bashCD)
 			consumeStamina()
 			enterPlayerState(

@@ -15,13 +15,13 @@ EnvObj :: struct {
 MapGround := Spacial {
 	rot   = 0,
 	pos   = {},
-	shape = 15,
+	shape = 20,
 }
 
 initEnv :: proc() -> [dynamic]EnvObj {
 	pool := [dynamic]EnvObj{}
 
-	checked := rl.GenImageChecked(4, 4, 1, 1, color0, color4)
+	checked := rl.GenImageChecked(4, 4, 1, 1, blue_0, blue_4)
 	texture := rl.LoadTextureFromImage(checked)
 
 	// Stuff
@@ -108,12 +108,25 @@ initEnv :: proc() -> [dynamic]EnvObj {
 	return pool
 }
 
+drawFlatGround :: proc(img: rl.Texture2D, camera: ^rl.Camera, pos: vec3, scale: f32) {
+	rl.DrawBillboardPro(
+		camera^,
+		img,
+		rl.Rectangle{0, 0, f32(img.width), f32(img.height)},
+		pos + {.5, .0001, -.5} * scale, //Center and scale 
+		{0, 0, 1},
+		scale,
+		{},
+		0,
+		rl.WHITE,
+	)
+}
+
 drawEnv :: proc(objs: ^[dynamic]EnvObj) {
 	// Floor
 	rad := MapGround.shape.(Sphere)
-	rl.DrawCylinder({0, -1, 0}, rad, rad, 1, 25, color13)
-	// rl.DrawCylinder({0, -1, 0}, rad, rad, 1, 25, color36)
-	// rl.DrawSphereWires({}, rad, 1, 25, rl.WHITE)
+	// rl.DrawCylinder({0, -1, 0}, rad, rad, 1, 25, color13) // Floor
+	rl.DrawCircle3D({0, .1, 0}, rad, {1, 0, 0}, 90, rl.WHITE) // Outline
 
 	// Objs
 	for obj in objs {

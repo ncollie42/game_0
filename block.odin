@@ -8,23 +8,23 @@ import rl "vendor:raylib"
 
 // Part of blocking state, but needs to update outside of that state.
 Block :: struct {
-	charges:               f32, // showing
-	maxCharges:            f32, // max
+	current:               f32, // showing
+	max:                   f32,
 	timeSinceLastBlockHit: f32,
 }
 
 
 // Player isBlocking on ability hurt
 doBlock :: proc(block: ^Block) {
-	block.charges -= 1
+	block.current -= 1
 	block.timeSinceLastBlockHit = 0
 }
 
 updateBlock :: proc(block: ^Block) {
 	block.timeSinceLastBlockHit += getDelta()
 	if block.timeSinceLastBlockHit < 3 do return // Start recharge after X amount of time not being hit
-	block.charges += getDelta() * 1
-	block.charges = clamp(block.charges, 0, block.maxCharges)
+	block.current += getDelta() * 1
+	block.current = clamp(block.current, 0, block.max)
 }
 
 isBlocking :: proc(player: ^Player) -> bool {
@@ -35,7 +35,7 @@ isBlocking :: proc(player: ^Player) -> bool {
 // Break out of block if <= 0
 // Check before going into block
 canBlock :: proc(block: ^Block) -> bool {
-	return block.charges >= 1
+	return block.current >= 1
 }
 
 // showing, max, pos, barwidth, height, 
@@ -48,12 +48,12 @@ drawBlockbar :: proc(block: Block, camera: ^rl.Camera, pos: vec3) {
 	pos2 += {-width / 2, 0, 0} // Move All the way to the right
 	pos2 += {height / 2, 0, 0} // center
 
-	for charge in 0 ..< block.maxCharges {
-		amount := math.max(0, math.min(1, block.charges - f32(charge)))
+	for charge in 0 ..< block.max {
+		amount := math.max(0, math.min(1, block.current - f32(charge)))
 
 		pos3 := pos2 + {height * 1.5 * charge, 0, 0}
 		color := rl.BLACK
-		if amount == 1 do color = rl.WHITE
+		if amount == 1 do color = rl.BLUE
 
 		rl.DrawBillboardRec(camera^, whiteTexture, {}, pos3, {height, height}, color)
 	}

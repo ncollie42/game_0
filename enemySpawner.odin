@@ -51,7 +51,7 @@ initEnemySpawner :: proc() -> EnemySpanwerPool {
 
 	mesh := rl.GenMeshCube(2, 2, 2)
 	model := rl.LoadModelFromMesh(mesh)
-	checked := rl.GenImageChecked(4, 4, 1, 1, color0, color4)
+	checked := rl.GenImageChecked(4, 4, 1, 1, blue_1, blue_4)
 	texture := rl.LoadTextureFromImage(checked)
 
 	for &enemy in pool.free {
@@ -96,10 +96,12 @@ getPointAtEdgeOfMap :: proc() -> vec3 {
 	return MapGround.shape.(Sphere) * normalize({x, 0, z})
 }
 
-getSafePointInGrid :: proc(enemies: ^EnemyPool) -> vec3 {
+getSafePointInGrid :: proc(enemies: ^EnemyPool, player: ^Player) -> vec3 {
 	// upper bound check
 	for ii in 0 ..< 15 {
 		pos := getPointInGrid(ii, 1.5)
+		if rl.Vector3DistanceSqrt(player.pos, pos) < 5 do continue // too close to player
+
 		safe := !isUnsafeSpawn(enemies, pos)
 		if safe do return pos
 	}
@@ -109,9 +111,9 @@ getSafePointInGrid :: proc(enemies: ^EnemyPool) -> vec3 {
 
 // Get randomPointInGridWithoutOverlap
 getPointInGrid :: proc(seed: int, grid: f32) -> vec3 {
-	// TODO: Find an algo that is more reliable and evenly spred
-	x := noise.noise_2d(i64(seed), {rl.GetTime() * 1, rl.GetTime() * 1})
-	z := noise.noise_2d(i64(seed) * 2, {rl.GetTime() * 1, rl.GetTime() * 1})
+	rand.default_random_generator()
+	x := rand.float32_range(-1, 1)
+	z := rand.float32_range(-1, 1)
 	dst := rand.float32_range(0, MapGround.shape.(Sphere))
 	return roundVec((dst * vec3{x, 0, z}) / grid) * grid
 }

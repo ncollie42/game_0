@@ -12,25 +12,24 @@ model: rl.Model
 // animSet: AnimationSet
 debugInit :: proc(game: ^Game) {
 	using game
-
 }
 
 debugUpdateGame :: proc(game: ^Game) {
 	using game
 
-	spawn := getSafePointInGrid(&game.enemies)
+	spawn := getSafePointInGrid(&game.enemies, player)
 	if rl.IsKeyPressed(.Q) {
 		spawnGem(&gems, mouseInWorld(camera))
 	}
 	if rl.IsKeyPressed(.F) {
-		spawnEnemy(&enemies, spawn, .Monolith)
+		spawnEnemy(&enemies, spawn, .Range, true)
 	}
 	if rl.IsKeyPressed(.G) {
-		spawnEnemy(&enemies, spawn, .Mele)
+		spawnEnemy(&enemies, spawn, .Mele, true)
 	}
 	if rl.IsKeyPressed(.H) {
 		spawn = mouseInWorld(camera)
-		spawnEnemy(&enemies, spawn, .Range)
+		spawnEnemy(&enemies, spawn, .Range, true)
 	}
 	if rl.IsKeyPressed(.J) {
 		debug = !debug

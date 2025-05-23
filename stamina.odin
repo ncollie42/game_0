@@ -5,17 +5,17 @@ import "core:math"
 import rl "vendor:raylib"
 
 Stamina := struct {
-	charges:       f32, //MAX
-	currentCharge: f32,
+	max:     f32, //MAX
+	current: f32,
 	// CD
-}{2, 2}
+}{2, 2} // TODO: add into player
 
 STAMINA_RECHARGE_SPEED: f32 = .3 // 2 // .5
 
 updateStamina :: proc(player: ^Player) {
 	if isDashing(player) do return
-	Stamina.currentCharge += getDelta() * STAMINA_RECHARGE_SPEED
-	Stamina.currentCharge = clamp(Stamina.currentCharge, 0, Stamina.charges)
+	Stamina.current += getDelta() * STAMINA_RECHARGE_SPEED
+	Stamina.current = clamp(Stamina.current, 0, Stamina.max)
 	// fmt.println(Stamina.currentCharge)
 }
 
@@ -33,29 +33,47 @@ isDashing :: proc(player: ^Player) -> bool {
 }
 
 hasEnoughStamina :: proc() -> bool {
-	return Stamina.currentCharge >= 1
+	return Stamina.current >= 1
 }
 
 consumeStamina :: proc() {
-	Stamina.currentCharge -= 1
+	Stamina.current -= 1
 }
 
 drawStamina :: proc(camera: ^rl.Camera, pos: vec3) {
 	// TODO: - set width based on hp max
 	width: f32 = healthBarWidth
 	height: f32 = healthBareHeight
-	pos2 := pos - {0, height / 2, 0} // buffer
-	pos2 -= {0, height, 0} // hight over health bar
-	pos2 += {-width / 2, 0, 0} // Move All the way to the right
-	pos2 += {height / 2, 0, 0} // center
+	aboveBlock: {
+		// pos2 := pos + {0, height, 0} // buffer
+		// pos2 += {0, height * 2, 0} // hight over block bar
+		// pos2 += {-width / 2, 0, 0} // Move All the way to the right
+		// pos2 += {height / 2, 0, 0} // center
 
-	for charge in 0 ..< Stamina.charges {
-		amount := math.max(0, math.min(1, Stamina.currentCharge - f32(charge)))
+		// for charge in 0 ..< Stamina.max {
+		// 	amount := math.max(0, math.min(1, Stamina.current - f32(charge)))
 
-		pos3 := pos2 + {height * 1.5 * charge, 0, 0}
-		color := rl.BLACK
-		if amount == 1 do color = rl.WHITE
+		// 	pos3 := pos2 + {height * 1.5 * charge, 0, 0}
+		// 	color := rl.BLACK
+		// 	if amount == 1 do color = rl.WHITE
 
-		rl.DrawBillboardRec(camera^, whiteTexture, {}, pos3, {height, height}, color)
+		// 	rl.DrawBillboardRec(camera^, whiteTexture, {}, pos3, {height, height}, color)
+		// }
+	}
+	nextTohp: {
+		pos2 := pos + {-height, 0, 0} // buffer
+		// pos2 += {0, 0, height * 2, 0} // hight over block bar
+		pos2 += {-width / 2, 0, 0} // Move All the way to the right
+		pos2 -= {height / 2, 0, 0} // center
+
+		for charge in 0 ..< Stamina.max {
+			amount := math.max(0, math.min(1, Stamina.current - f32(charge)))
+
+			pos3 := pos2 - {height * 1.5 * charge, 0, 0}
+			color := rl.BLACK
+			if amount == 1 do color = rl.WHITE
+
+			rl.DrawBillboardRec(camera^, whiteTexture, {}, pos3, {height, height}, color)
+		}
 	}
 }

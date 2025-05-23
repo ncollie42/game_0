@@ -12,6 +12,7 @@ AbilityInstance :: struct {
 		range,
 		mele,
 	},
+	canParry:      bool,
 }
 // enum (Timer_based, Single, Other)
 // timer
@@ -35,6 +36,7 @@ range :: struct {
 
 AbilityPool :: struct {
 	active: [dynamic]AbilityInstance,
+	orb:    rl.Model,
 	// free:   [dynamic]AbilityInstance,
 }
 
@@ -44,6 +46,9 @@ AbilityPool :: struct {
 initAbilityPool :: proc() -> ^AbilityPool {
 	pool := new(AbilityPool)
 	pool.active = make([dynamic]AbilityInstance, 0, 10)
+
+	orb := rl.GenMeshSphere(1, 8, 8)
+	pool.orb = rl.LoadModelFromMesh(orb)
 	return pool
 }
 
@@ -55,10 +60,12 @@ newMeleInstance :: proc(pos: vec3, power: f32, size: f32) -> AbilityInstance {
 	}
 }
 
-newRangeInstance :: proc(pos: vec3, rot: f32) -> AbilityInstance {
+newRangeInstance :: proc(pos: vec3, rot: f32, parry: bool) -> AbilityInstance {
 	return AbilityInstance {
-		spacial = Spacial{pos = pos, shape = 1.0, rot = rot},
+		power = 1,
+		spacial = Spacial{pos = pos, shape = 0.6, rot = rot},
 		type = range{duration = 1.5, speed = 7},
+		canParry = parry,
 	}
 }
 // ---- Spawn
@@ -68,7 +75,7 @@ spawnMeleInstance :: proc(pool: ^AbilityPool, pos: vec3, size: f32) {
 }
 
 spawnRangeInstance :: proc(pool: ^AbilityPool, pos: vec3, rot: f32) {
-	append(&pool.active, newRangeInstance(pos, rot))
+	append(&pool.active, newRangeInstance(pos, rot, false))
 }
 
 spawnMeleInstanceAtPlayer :: proc(pool: ^AbilityPool, player: ^Player) {
@@ -107,15 +114,16 @@ spawnInstanceFrontOfLocation :: proc(pool: ^AbilityPool, loc: ^Spacial) {
 	append(&pool.active, newMeleInstance(forward + loc.pos, 1, 1))
 }
 
-spawnRangeInstanceFrontOfLocation :: proc(pool: ^AbilityPool, loc: ^Spacial) {
+spawnRangeInstanceFrontOfLocation :: proc(pool: ^AbilityPool, loc: ^Spacial, parry: bool) {
 	forward := getForwardPoint(loc^)
-	append(&pool.active, newRangeInstance(forward + loc.pos, loc.rot))
+	append(&pool.active, newRangeInstance(forward + loc.pos, loc.rot, parry))
 }
 
 // ---- despawn 
 removeAbility :: proc(pool: ^AbilityPool, activeIndex: int) {
 	// Swap and remove last
 	pool.active[activeIndex] = pop(&pool.active)
+	// panic("Swap with unorder_remove")
 }
 
 // ---- Update
@@ -127,17 +135,17 @@ updateEnemyHitCollisions :: proc(
 	impact: ^Flipbook,
 ) {
 	// Check collision
-	for &obj, index in pool.active {
+	#reverse for &obj, index in pool.active {
 		switch &v in obj.type {
 		case mele:
 			updateAbilityMele(&obj, enemies, spawners, impact)
-			removeAbility(pool, index)
+			unordered_remove(&pool.active, index)
 		case range:
 			v.duration -= getDelta()
 			obj.spacial.pos += getForwardPoint(obj) * getDelta() * v.speed
 			hit := updateAbilityRange(&obj, enemies, spawners, impact)
 			if v.duration <= 0 || hit {
-				removeAbility(pool, index)
+				unordered_remove(&pool.active, index)
 			}
 		case:
 			panic("Ability has no type")
@@ -305,7 +313,7 @@ updatePlayerHitCollisions :: proc(pool: ^AbilityPool, player: ^Player) {
 				hurt(player, obj.power)
 			}
 
-			removeAbility(pool, index)
+			removeAbility(pool, index) // swap later
 		case:
 			panic("Ability has no type")
 		}
@@ -313,14 +321,23 @@ updatePlayerHitCollisions :: proc(pool: ^AbilityPool, player: ^Player) {
 }
 
 // ---- Draw
-drawAbilityInstances :: proc(pool: ^AbilityPool, color: rl.Color) {
+drawAbilityInstances :: proc(pool: ^AbilityPool, color: rl.Color, camera: ^rl.Camera) {
 	for obj in pool.active {
 		switch &v in obj.type {
 		case mele:
 		// rl.DrawSphereWires(obj.spacial.pos, obj.spacial.shape.(Sphere), 8, 8, color)
 		case range:
 			// rl.DrawSphereWires(obj.spacial.pos, obj.spacial.shape.(Sphere), 8, 8, color)
-			rl.DrawModel(model, obj.spacial.pos, .11, rl.WHITE)
+			size := obj.spacial.shape.(Sphere)
+			red := colorToVec4(color27)
+			green := colorToVec4(color9)
+			color := obj.canParry ? green : red
+			ss := obj.spacial
+			ss.pos += {0, 1, 0}
+
+			drawOutline(pool.orb, ss, size, camera, color)
+			drawShadow(pool.orb, obj.spacial, size, camera)
+			rl.DrawModel(pool.orb, ss.pos, size * .9, black_3)
 		case:
 			panic("Ability has no type")
 		}
@@ -415,4 +432,26 @@ get_box_normal :: proc(box: rl.BoundingBox, collision_point: rl.Vector3) -> rl.V
 	}
 
 	return normal
+}
+
+// ------------------------------------------ Parry
+
+PARRY_WINDOW :: .5
+PARRY_DIST :: 3.0
+parryAbility :: proc(p1_index: int, p1: ^AbilityPool, p2: ^AbilityPool) {
+	// swap ability from p1 to p2
+	aa := p1.active[p1_index]
+	aa.rot += rl.PI
+	switch &v in aa.type {
+	case range:
+		// make it go faster?
+		v.speed *= 2
+	case mele:
+	}
+	append(&p2.active, aa)
+	unordered_remove(&p1.active, p1_index)
+	// TODO:
+	// extend duration
+	// screen shake or time snow
+	// particle
 }

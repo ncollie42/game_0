@@ -21,6 +21,7 @@ DamageNumbers: [dynamic]DamageNumber
 
 // NOTE: Making this global for now, not sure if this is actually how I want it.
 initDamageNumbers :: proc() {
+	shrink(&DamageNumbers)
 	// warningModel := loadModel()
 }
 

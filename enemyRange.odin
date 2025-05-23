@@ -3,6 +3,7 @@ package main
 import "core:fmt"
 import "core:math"
 import "core:math/linalg"
+import "core:math/rand"
 import rl "vendor:raylib"
 
 RangeEnemy :: struct {
@@ -80,7 +81,8 @@ updateEnemyRange :: proc(
 
 		if frame >= s.action_frame {
 			s.hasTriggered = true
-			spawnRangeInstanceFrontOfLocation(pool, enemy)
+			parry := rand.float32_range(0, 1) > .3 // 30% chance to be parry ability
+			spawnRangeInstanceFrontOfLocation(pool, enemy, parry)
 		}
 	case EnemyPushback:
 		dir := getBackwardPoint(enemy)

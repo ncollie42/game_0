@@ -34,7 +34,7 @@ S_shadow: rl.Shader
 S_Black: rl.Shader
 S_hull: rl.Shader
 
-initPlayer :: proc() -> ^Player {
+newPlayer :: proc() -> ^Player {
 	player := new(Player)
 
 	modelPath: cstring = "resources/warrior/base.m3d"
@@ -47,20 +47,10 @@ initPlayer :: proc() -> ^Player {
 	player.model.materials[player.model.materialCount - 1].maps[rl.MaterialMapIndex.ALBEDO].texture =
 		texture
 
-	player.animState.speed = 1
-	player.animState.current = PLAYER.idle
-
-	player.health = Health {
-		max     = 10,
-		current = 10,
-	}
-	player.block = Block{3, 3, 0}
-
 	S_flash = rl.LoadShader(nil, "shaders/flash.fs")
 	S_hull = rl.LoadShader("shaders/hull.vs", "shaders/hull.fs")
 	S_grayscale = rl.LoadShader(nil, "shaders/grayScale.fs")
 	player.model.materials[player.model.materialCount - 1].shader = S_flash
-	player.spacial.shape = .8 //radius
 
 	path: cstring = "resources/trail_1.png"
 	player.trailLeft = initFlipbookPool(path, 32, 32, 8)
@@ -78,8 +68,27 @@ initPlayer :: proc() -> ^Player {
 	S_Discard = rl.LoadShader(nil, "shaders/alphaDiscard.fs")
 	player.viewCircle.materials[0].shader = S_Discard
 
-	player.scale = 5
+	initPlayer(player)
 	return player
+}
+
+initPlayer :: proc(player: ^Player) {
+	player.animState.speed = 1
+	player.animState.current = PLAYER.idle
+
+	player.health = Health {
+		max     = 10,
+		current = 10,
+	}
+	player.block = Block{3, 3, 0}
+
+	player.spacial = Spacial {
+		rot   = 0,
+		pos   = {},
+		shape = .8, //radius
+	}
+
+	player.scale = 5
 }
 
 moveAndSlide :: proc(player: ^Player, velocity: vec3, objs: [dynamic]EnvObj, enemies: ^EnemyPool) {
@@ -320,24 +329,33 @@ updatePlayerStateAttackLeft :: proc(
 	}
 }
 
-
 updatePlayerStateBlocking :: proc(
 	blocking: ^playerStateBlocking,
 	player: ^Player,
 	camera: ^rl.Camera3D,
-	objs: [dynamic]EnvObj,
 	enemies: ^EnemyPool,
+	enemyAbilities: ^AbilityPool,
+	playerAbilities: ^AbilityPool,
 ) {
 	if !canBlock(&player.block) {
 		enterPlayerState(player, playerStateBase{}, camera, enemies)
 	}
+	blocking.durration += getDelta()
+
 	parry: {
-		// TODO: check durration. If < parryTimer, check nearby abilities that can be parried
-		// Maybe move out to a different function with just want we need
+		if blocking.durration > PARRY_WINDOW do break parry
+
+		#reverse for &ability, index in enemyAbilities.active {
+			if !ability.canParry do continue
+			dist := rl.Vector3DistanceSqrt(ability.spacial.pos, player.pos)
+			if dist > PARRY_DIST do continue
+			doBlock(&player.block)
+			parryAbility(index, enemyAbilities, playerAbilities)
+			addTrauma(.large)
+		}
 	}
 
 	target := mouseInWorld(camera)
-	// target := player.spacial.pos + dir
 	r := lookAtVec3(target, player.spacial.pos)
 	player.spacial.rot = lerpRAD(player.spacial.rot, r, getDelta() * TURN_SPEED)
 }
@@ -350,7 +368,6 @@ updatePlayerStateBlockBashing :: proc(
 	enemies: ^EnemyPool,
 ) {
 	dir := getForwardPoint(player)
-	fmt.println("[Bash]", dir, rl.Vector3LengthSqr(dir))
 
 	// moveAndSlide(player, dir * 30, objs, enemies)
 	player.pos += dir * .1
@@ -380,6 +397,7 @@ enterPlayerState :: proc(
 	camera: ^rl.Camera3D,
 	enemies: ^EnemyPool,
 ) {
+	// TODO: swap this function with 1 for each state? -> EnterPlayerStateBase...
 
 	// assert? maybe this should not be a thing when we enter with checks
 	player.animState.duration = 0
@@ -435,6 +453,7 @@ enterPlayerState :: proc(
 
 		transitionAnim(&player.animState, PLAYER.punch2)
 	case playerStateBlocking:
+		addTrauma(.mid)
 		// TODO: Add blocking anim
 		transitionAnim(&player.animState, PLAYER.idle)
 	case playerStateBlockBash:
@@ -464,7 +483,7 @@ playerStateBase :: struct {}
 
 playerStateBlocking :: struct {
 	// TODO: maybe add Actions or other fields
-	timer:     Timer, // For duration? or charges?
+	durration: f32,
 	animation: ANIMATION_NAMES, // TODO group these 2
 }
 
@@ -529,9 +548,10 @@ playerStateAttackLeft :: struct {
 drawPlayer :: proc(player: Player, camera: ^rl.Camera3D) {
 	drawHitFlash(player.model, player.health)
 
-	drawHealthbar(player.health, camera, player.pos + {0, 3, 0}) // ADD top of player spot
-	drawBlockbar(player.block, camera, player.pos + {0, 3, 0})
-	drawStamina(camera, player.pos + {0, 3, 0})
+	hudPos := player.pos + {0, 3.4, 0}
+	drawHealthbar(player.health, camera, hudPos) // ADD top of player spot
+	drawBlockbar(player.block, camera, hudPos)
+	drawStamina(camera, hudPos)
 
 	// Draw player
 	assert(player.scale != 0, "Scale is 0")

@@ -77,7 +77,8 @@ TargetCrossTexture: rl.Texture2D
 // ---- ---- ---- ---- Init ---- ---- ---- ---- 
 enemyPoolSize := 100
 ENEMY_CD_ATTACK_VARIANT: f32 = 1
-initEnemyDummies :: proc() -> EnemyPool {
+
+newEnemyPools :: proc() -> EnemyPool {
 	SpawningTexture = loadTexture("resources/mark_2.png")
 	TargetCircleTexture = loadTexture("resources/png/target_circle.png")
 	TargetCrossTexture = loadTexture("resources/png/target_lock.png")
@@ -93,168 +94,168 @@ initEnemyDummies :: proc() -> EnemyPool {
 		freeMonolith = make([dynamic]Enemy, enemyPoolSize, enemyPoolSize),
 	}
 
-	// -------- Dummy -------- 
-	// Texture + Model + animation
-	modelPath: cstring = "resources/golem_large/base.m3d"
-	texturePath: cstring = "resources/golem_large/base.png"
-
-	pool.animSetDummy = loadM3DAnimationsWithRootMotion(modelPath)
-	texture := loadTexture(texturePath)
-
-	for &enemy in pool.freeDummy {
-		// Note: is loadModel slow? can I load once and dup memory for every model after?
-		enemy.model = loadModel(modelPath)
-		count := enemy.model.materialCount - 1
-		enemy.model.materials[count].maps[rl.MaterialMapIndex.ALBEDO].texture = texture
-		enemy.model.materials[count].shader = S_flash
-		enemy.health = Health {
-			max = 15,
+	loadEnemies :: proc(
+		pool: [dynamic]Enemy,
+		set: ^AnimationSet,
+		modelPath: cstring,
+		texturePath: cstring,
+	) {
+		if set != nil {
+			set^ = loadM3DAnimationsWithRootMotion(modelPath)
 		}
-		enemy.attackCD = Timer {
-			max = 2.0,
+		texture := loadTexture(texturePath)
+
+		for &enemy in pool {
+			// Note: is loadModel slow? can I load once and dup memory for every model after?
+			enemy.model = loadModel(modelPath)
+			count := enemy.model.materialCount - 1
+			enemy.model.materials[count].maps[rl.MaterialMapIndex.ALBEDO].texture = texture
+			enemy.model.materials[count].shader = S_flash
 		}
-		enemy.shape = 1
-		enemy.animState.current = ENEMY.idle
-		enemy.animState.speed = 1
-		enemy.type = DummyEnemy{}
-		enemy.size = 5
-		enemy.dmgIndicatorOffset = {0, 5, 0}
-		enemy.box = rl.BoundingBox{{-.2, 0, -.2}, {.2, .5, .2}}
 	}
+	// -------- Dummy -------- 
+	loadEnemies(
+		pool.freeDummy,
+		&pool.animSetDummy,
+		"resources/golem_large/base.m3d",
+		"resources/golem_large/base.png",
+	)
 
 	// -------- Mele -------- 
-	modelPath = "resources/golem_small_mele/base.m3d"
-	texturePath = "resources/golem_small_mele/base.png"
-
-	pool.animSetMele = loadM3DAnimationsWithRootMotion(modelPath)
-	texture = loadTexture(texturePath)
-
-	for &enemy in pool.freeMele {
-		enemy.model = loadModel(modelPath)
-		count := enemy.model.materialCount - 1
-		enemy.model.materials[count].maps[rl.MaterialMapIndex.ALBEDO].texture = texture
-		enemy.model.materials[count].shader = S_flash
-		enemy.health = Health {
-			max = 2,
-		}
-		enemy.attackCD = Timer {
-			left = 5.0,
-			max  = 10.0,
-		}
-		enemy.shape = .8
-		enemy.animState.current = ENEMY.idle
-		enemy.animState.speed = 1
-		enemy.type = MeleEnemy{}
-		enemy.size = 4
-		enemy.box = rl.BoundingBox{{-.2, 0, -.2}, {.2, .4, .2}}
-		enemy.dmgIndicatorOffset = {0, 2, 0}
-	}
-
+	loadEnemies(
+		pool.freeMele,
+		&pool.animSetMele,
+		"resources/golem_small_mele/base.m3d",
+		"resources/golem_small_mele/base.png",
+	)
 
 	// -------- Range -------- 
-	modelPath = "resources/golem_small_range/base.m3d"
-	texturePath = "resources/golem_small_range/base.png"
-
-	pool.animSetRange = loadM3DAnimationsWithRootMotion(modelPath)
-	texture = loadTexture(texturePath)
-
-	for &enemy in pool.freeRange {
-		enemy.model = loadModel(modelPath)
-		count := enemy.model.materialCount - 1
-		enemy.model.materials[count].maps[rl.MaterialMapIndex.ALBEDO].texture = texture
-		enemy.model.materials[count].shader = S_flash
-		enemy.health = Health {
-			max = 4,
-		}
-		enemy.attackCD = Timer {
-			max = 8.0,
-		}
-		enemy.shape = .8
-		enemy.animState.current = ENEMY.idle
-		enemy.animState.speed = 1
-		enemy.type = RangeEnemy{}
-		enemy.size = 4
-		enemy.box = rl.BoundingBox{{-.2, 0, -.2}, {.2, .5, .2}}
-		enemy.dmgIndicatorOffset = {0, 2.5, 0}
-	}
+	loadEnemies(
+		pool.freeRange,
+		&pool.animSetRange,
+		"resources/golem_small_range/base.m3d",
+		"resources/golem_small_range/base.png",
+	)
 
 	// -------- Giant -------- 
-	modelPath = "resources/golem_large/base.m3d"
-	texturePath = "resources/golem_large/base.png"
-
-	pool.animSetGiant = loadM3DAnimationsWithRootMotion(modelPath)
-	texture = loadTexture(texturePath)
-
-	for &enemy in pool.freeGiant {
-		enemy.model = loadModel(modelPath)
-		count := enemy.model.materialCount - 1
-		enemy.model.materials[count].maps[rl.MaterialMapIndex.ALBEDO].texture = texture
-		enemy.model.materials[count].shader = S_flash
-		enemy.health = Health {
-			max = 4,
-		}
-		enemy.attackCD = Timer {
-			left = 5.0,
-			max  = 10.0,
-		}
-		enemy.shape = .8 // TODO: change, but also add attack range
-		enemy.animState.speed = 1
-		enemy.type = GiantEnemy{}
-		enemy.size = 3
-		enemy.box = rl.BoundingBox{{-.3, 0, -.3}, {.3, .7, .3}}
-		enemy.dmgIndicatorOffset = {0, 2, 0}
-	}
+	loadEnemies(
+		pool.freeGiant,
+		&pool.animSetGiant,
+		"resources/golem_large/base.m3d",
+		"resources/golem_large/base.png",
+	)
 
 	// -------- Thorn -------- 
-	modelPath = "resources/thorn/base.m3d"
-	texturePath = "resources/thorn/base.png"
-	texture = loadTexture(texturePath)
-
-	for &enemy in pool.freeThorn {
-		enemy.model = loadModel(modelPath)
-		count := enemy.model.materialCount - 1
-		enemy.model.materials[count].maps[rl.MaterialMapIndex.ALBEDO].texture = texture
-		enemy.model.materials[count].shader = S_flash
-		enemy.health = Health {
-			max = 2,
-		}
-		enemy.attackCD = Timer {
-			left = .5,
-			max  = .5,
-		}
-		enemy.shape = .8 // TODO: change, but also add attack range
-		enemy.type = ThornEnemy{}
-		enemy.size = 3
-		enemy.box = rl.BoundingBox{{-.3, 0, -.3}, {.3, .7, .3}}
-		enemy.dmgIndicatorOffset = {0, 3.2, 0}
-	}
+	loadEnemies(pool.freeThorn, nil, "resources/thorn/base.m3d", "resources/thorn/base.png")
 
 	// -------- Monolith -------- 
-	modelPath = "resources/monolith/base.m3d"
-	texturePath = "resources/monolith/base3.png"
-	texture = loadTexture(texturePath)
+	loadEnemies(
+		pool.freeMonolith,
+		nil,
+		"resources/monolith/base.m3d",
+		"resources/monolith/base2.png",
+	)
 
-	for &enemy in pool.freeMonolith {
-		enemy.model = loadModel(modelPath)
-		count := enemy.model.materialCount - 1
-		enemy.model.materials[count].maps[rl.MaterialMapIndex.ALBEDO].texture = texture
-		enemy.model.materials[count].shader = S_flash
-		enemy.health = Health {
-			max = 15,
-		}
-		enemy.attackCD = Timer {
-			left = .5,
-			max  = .5,
-		}
-		enemy.shape = .8 // TODO: change, but also add attack range
-		enemy.type = MonolithEnemy{}
-		enemy.size = 3
-		enemy.box = rl.BoundingBox{{-.3, 0, -.3}, {.3, 1, .3}}
-		enemy.dmgIndicatorOffset = {0, 3.2, 0}
-	}
-
+	initEnemyPools(&pool)
 	return pool
 }
+
+initEnemyPools :: proc(pool: ^EnemyPool) {
+
+	initFreePool :: proc(ref: Enemy, pool: [dynamic]Enemy) {
+		for &enemy in pool {
+			enemy.animState = ref.animState
+			enemy.health = ref.health
+			enemy.attackCD = ref.attackCD
+			enemy.shape = .8 // TODO: change, but also add attack range
+			enemy.type = ref.type
+			enemy.size = ref.size
+			enemy.box = ref.box
+			enemy.dmgIndicatorOffset = ref.dmgIndicatorOffset
+		}
+	}
+	// -------- Dummy -------- 
+
+	dummy := Enemy {
+		health = {max = 15},
+		attackCD = {max = 2},
+		shape = .1,
+		type = DummyEnemy{},
+		animState = {speed = 1, current = ENEMY.idle},
+		size = 5,
+		box = rl.BoundingBox{{-.2, 0, -.2}, {.2, .5, .2}},
+		dmgIndicatorOffset = {0, 5, 0},
+	}
+	initFreePool(dummy, pool.freeDummy)
+
+	// -------- Mele -------- 
+
+	mele := Enemy {
+		health = {max = 3},
+		attackCD = {left = 5.0, max = 10.0},
+		shape = .8, // TODO: change, but also add attack range
+		type = MeleEnemy{},
+		animState = {speed = 1, current = ENEMY.idle},
+		size = 4,
+		box = rl.BoundingBox{{-.2, 0, -.2}, {.2, .4, .2}},
+		dmgIndicatorOffset = {0, 2, 0},
+	}
+	initFreePool(mele, pool.freeMele)
+
+	// -------- Range -------- 
+
+	range := Enemy {
+		health = {max = 2},
+		attackCD = {max = 8.0},
+		shape = .8, // TODO: change, but also add attack range
+		type = RangeEnemy{},
+		animState = {speed = 1, current = ENEMY.idle},
+		size = 4,
+		box = rl.BoundingBox{{-.2, 0, -.2}, {.2, .5, .2}},
+		dmgIndicatorOffset = {0, 2.5, 0},
+	}
+	initFreePool(range, pool.freeRange)
+
+	// -------- Giant -------- 
+
+	giant := Enemy {
+		health = {max = 4},
+		attackCD = {left = 5.0, max = 10.0},
+		shape = .8, // TODO: change, but also add attack range
+		type = GiantEnemy{},
+		size = 3,
+		box = rl.BoundingBox{{-.3, 0, -.3}, {.3, .7, .3}},
+		dmgIndicatorOffset = {0, 2, 0},
+	}
+	initFreePool(giant, pool.freeGiant)
+
+	// -------- Thorn -------- 
+	thorn := Enemy {
+		health = {max = 2},
+		attackCD = {left = .5, max = .5},
+		shape = .8, // TODO: change, but also add attack range
+		type = ThornEnemy{},
+		size = 3,
+		box = rl.BoundingBox{{-.3, 0, -.3}, {.3, .7, .3}},
+		dmgIndicatorOffset = {0, 3.2, 0},
+	}
+	initFreePool(thorn, pool.freeThorn)
+
+	// -------- Monolith -------- 
+
+	monolith := Enemy {
+		health = {max = 15},
+		attackCD = {left = .5, max = .5},
+		shape = .8, // TODO: change, but also add attack range
+		type = MonolithEnemy{},
+		size = 3,
+		box = rl.BoundingBox{{-.3, 0, -.3}, {.3, 1, .3}},
+		dmgIndicatorOffset = {0, 3.2, 0},
+	}
+	initFreePool(monolith, pool.freeMonolith)
+}
+
+
 // ---- ---- ---- ---- Spawn ---- ---- ---- ---- 
 spawnEnemyDummy :: proc(pool: ^EnemyPool, pos: vec3) {
 	if len(pool.freeDummy) == 0 {
@@ -310,7 +311,7 @@ spawnEnemyGiant :: proc(pool: ^EnemyPool, pos: vec3) {
 	append(&pool.active, enemy)
 }
 
-spawnEnemy :: proc(pool: ^EnemyPool, pos: vec3, type: EnemyType) {
+spawnEnemy :: proc(pool: ^EnemyPool, pos: vec3, type: EnemyType, now: bool) {
 	freePool: ^[dynamic]Enemy
 	switch type {
 	case .Mele:
@@ -335,13 +336,17 @@ spawnEnemy :: proc(pool: ^EnemyPool, pos: vec3, type: EnemyType) {
 	enemy.health.hitFlash = 0
 	enemy.spacial.pos = pos
 	// enemy.spacial.rot = f32(rl.GetRandomValue(0, 6))
-	spawn := Spawning {
-		enemy    = enemy,
-		pos      = pos,
-		duration = 1,
+
+	if now {
+		append(&pool.active, enemy)
+	} else {
+		spawn := Spawning {
+			enemy    = enemy,
+			pos      = pos,
+			duration = 1,
+		}
+		append(&pool.spawning, spawn)
 	}
-	// append(&pool.active, enemy)
-	append(&pool.spawning, spawn)
 }
 
 // ---- ---- ---- ---- Despawn ---- ---- ---- ---- 
@@ -458,7 +463,7 @@ drawChargeAbleEnemyMarks :: proc(enemies: ^EnemyPool, camera: ^rl.Camera, player
 
 
 	if !hasEnoughStamina() do return
-	red := vec4{230, 41, 55, 255} / 255
+	red := colorToVec4(color27)
 	black := vec4{0, 0, 0, 1}
 	for enemy in enemies.active {
 		if linalg.length2(enemy.pos - player.pos) > 40 do continue

@@ -29,9 +29,9 @@ whiteTexture: rl.Texture2D
 initGame :: proc() -> Game {
 	game := Game {
 		camera          = newCamera(),
-		player          = initPlayer(),
+		player          = newPlayer(),
 		objs            = initEnv(),
-		enemies         = initEnemyDummies(),
+		enemies         = newEnemyPools(),
 		spawners        = initEnemySpawner(),
 		playerAbilities = initAbilityPool(),
 		enemyAbilities  = initAbilityPool(),
@@ -82,12 +82,13 @@ initGame :: proc() -> Game {
 }
 
 //https://lospec.com/palette-list/apollo
-color0 := rl.GetColor(0x172038ff)
-color1 := rl.GetColor(0x253a5eff)
-color2 := rl.GetColor(0x3c5e8bff)
-color3 := rl.GetColor(0x4f8fbaff)
-color4 := rl.GetColor(0x73bed3ff)
-color5 := rl.GetColor(0xa4dddbff)
+// TODO: rename colors: ie, Blue0_6, green, brown, brow_2, red, purple, gray, whites
+blue_0 := rl.GetColor(0x172038ff) //0
+blue_1 := rl.GetColor(0x253a5eff)
+blue_2 := rl.GetColor(0x3c5e8bff)
+blue_3 := rl.GetColor(0x4f8fbaff)
+blue_4 := rl.GetColor(0x73bed3ff)
+blue_5 := rl.GetColor(0xa4dddbff)
 color6 := rl.GetColor(0x19332dff)
 color7 := rl.GetColor(0x25562eff)
 color8 := rl.GetColor(0x468232ff)
@@ -118,16 +119,20 @@ color32 := rl.GetColor(0x7a367bff)
 color33 := rl.GetColor(0xa23e8cff)
 color34 := rl.GetColor(0xc65197ff)
 color35 := rl.GetColor(0xdf84a5ff)
-color36 := rl.GetColor(0x090a14ff)
-color37 := rl.GetColor(0x10141fff)
-color38 := rl.GetColor(0x151d28ff)
-color39 := rl.GetColor(0x202e37ff)
-color40 := rl.GetColor(0x394a50ff)
-color41 := rl.GetColor(0x577277ff)
-color42 := rl.GetColor(0x819796ff)
-color43 := rl.GetColor(0xa8b5b2ff)
-color44 := rl.GetColor(0xc7cfccff)
-color45 := rl.GetColor(0xebede9ff)
+black_0 := rl.GetColor(0x090a14ff)
+black_1 := rl.GetColor(0x10141fff)
+black_2 := rl.GetColor(0x151d28ff)
+black_3 := rl.GetColor(0x202e37ff)
+black_4 := rl.GetColor(0x394a50ff)
+black_5 := rl.GetColor(0x577277ff)
+white_0 := rl.GetColor(0x819796ff)
+white_1 := rl.GetColor(0xa8b5b2ff)
+white_2 := rl.GetColor(0xc7cfccff)
+white_3 := rl.GetColor(0xebede9ff) //45
+
+colorToVec4 :: proc(color: rl.Color) -> vec4 {
+	return vec4{f32(color.r) / 255, f32(color.g) / 255, f32(color.b) / 255, 1}
+}
 
 spawnXDummyEnemies :: proc(game: ^Game, amount: int) {
 	for ii in 0 ..< amount {
@@ -140,12 +145,14 @@ resetGame :: proc(game: ^Game) {
 	using game
 
 	// Player :: TODO reset to a base line
-	player.health.current = player.health.max
+	initPlayer(player)
 	// Enemies
 	despawnAllEnemies(&enemies)
+	initEnemyPools(&enemies)
 
 	initWarnings()
 	initWaves()
+	initDamageNumbers()
 	// TODO: Reset spawners
 	// TODO: Reset Signs
 	// 
@@ -172,7 +179,7 @@ updateGame :: proc(game: ^Game) {
 	case playerStateAttackLeft:
 		updatePlayerStateAttackLeft(&s, player, camera, objs, &enemies)
 	case playerStateBlocking:
-		updatePlayerStateBlocking(&s, player, camera, objs, &enemies)
+		updatePlayerStateBlocking(&s, player, camera, &enemies, enemyAbilities, playerAbilities)
 	// updatePlayerStateBlockingParry(&s, abilities) // TODO: Add this 
 	case playerStateBlockBash:
 		updatePlayerStateBlockBashing(&s, player, camera, objs, &enemies)
@@ -219,8 +226,8 @@ drawGame :: proc(game: ^Game) {
 	// Draw Env first
 	drawEnv(&objs)
 
-	drawAbilityInstances(playerAbilities, color1)
-	drawAbilityInstances(enemyAbilities, color4)
+	drawAbilityInstances(playerAbilities, blue_1, camera)
+	drawAbilityInstances(enemyAbilities, blue_5, camera)
 
 	drawPlayer(player^, camera)
 	drawEnemies(&enemies, camera)

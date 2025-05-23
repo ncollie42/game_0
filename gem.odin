@@ -31,7 +31,11 @@ updateGems :: proc() {
 drawGems :: proc(gems: ^Gems, camera: ^rl.Camera) {
 	for gem in gems.gems {
 		drawShadow(gems.model, gem.spacial, 1, camera)
-		rl.DrawModel(gems.model, gem.spacial.pos + {0, 1, 0}, 1, rl.WHITE)
+		black := vec4{0, 0, 0, 1}
+		ss := gem.spacial
+		ss.pos += {0, 1, 0}
+		drawOutline(gems.model, ss, 1, camera, black)
+		rl.DrawModel(gems.model, ss.pos, 1, rl.WHITE)
 		// rl.DrawCube(gem.spacial.pos, 1, 1, 1, rl.WHITE)
 	}
 }

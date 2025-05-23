@@ -54,13 +54,13 @@ drawHealthbars :: proc(camera: ^rl.Camera, enemies: ^EnemyPool) {
 	}
 }
 
-healthBarWidth :: 1.0
+healthBarWidth :: 1.3
 healthBareHeight :: .15
 drawHealthbar :: proc(hp: Health, camera: ^rl.Camera, pos: vec3) {
 	// TODO: - set width based on hp max
 	width: f32 = healthBarWidth
 	height: f32 = healthBareHeight
-	rl.DrawBillboardRec(camera^, whiteTexture, {}, pos, {width, height}, rl.BLACK)
+	rl.DrawBillboardRec(camera^, whiteTexture, {}, pos, {width * 1.2, height * 1.8}, rl.BLACK)
 	percent := hp.showing / hp.max
 	whitePos := pos + {0, 0, -.003} // Bring forward from black
 	whitePos += {(-percent / 2) * width + width / 2, 0, 0} // Center left
