@@ -543,7 +543,7 @@ loadM3DAnimations :: proc(path: cstring) -> AnimationSet {
 	assert(file_data != nil, "File data is nil, could not laod m3d animations")
 	defer rl.UnloadFileData(file_data)
 
-	m3d_t = m3d.load(file_data, nil, nil, nil) // TODO: Add in loader/free callbacks 
+	m3d_t = m3d._load(file_data, nil, nil, nil) // TODO: Add in loader/free callbacks 
 	assert(m3d_t != nil, "m3d_t failed to load")
 	assert(!(m3d_t.errcode > -65 && m3d_t.errcode < 0), "m3d_t failed to load, fatal error.")
 	defer m3d.free(m3d_t)
@@ -655,7 +655,7 @@ loadM3DAnimationsWithRootMotion :: proc(path: cstring) -> AnimationSet {
 	assert(file_data != nil, msg)
 	defer rl.UnloadFileData(file_data)
 
-	m3d_t = m3d.load(file_data, nil, nil, nil) // TODO: Add in loader/free callbacks 
+	m3d_t = m3d._load(file_data, nil, nil, nil) // TODO: Add in loader/free callbacks 
 	assert(m3d_t != nil, "m3d_t failed to load")
 	assert(!(m3d_t.errcode > -65 && m3d_t.errcode < 0), "m3d_t failed to load, fatal error.")
 	defer m3d.free(m3d_t)

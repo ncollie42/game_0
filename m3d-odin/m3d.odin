@@ -1,6 +1,32 @@
 
 package m3d
 
+import "core:c"
+import "core:mem"
+
+// This allocator needs to operate like mem.Compat_Allocator
+allocator: mem.Allocator
+
+@(export)
+m3d_allocator_malloc :: proc "c" (size: c.size_t) -> rawptr {
+	context = {}
+	data, _ := mem.alloc(int(size), allocator = allocator)
+	return data
+}
+
+@(export)
+m3d_allocator_realloc :: proc "c" (old_pointer: rawptr, new_size: c.size_t) -> rawptr {
+	context = {}
+	data, _ := mem.resize(old_pointer, 0, int(new_size), allocator = allocator)
+	return data
+}
+
+@(export)
+m3d_allocator_free :: proc "c" (old_pointer: rawptr) {
+	context = {}
+	mem.free(old_pointer, allocator = allocator)
+}
+
 APIVERSION :: 0x0100
 
 DOUBLE :: #config(M3D_DOUBLE, false)
@@ -45,7 +71,7 @@ CMDMAXARG :: #config(
 hdr_t :: struct #packed {
 	magic:  [4]u8,
 	length: u32,
-	scale:  f32, /* deliberately not M3D_FLOAT */
+	scale:  f32, /* deliberately not m3d.FLOAT */
 	types:  u32,
 }
 
@@ -500,26 +526,20 @@ txsc_t :: #type proc "c" (name: cstring, script: rawptr, len: u32, output: ^tx_t
 /* interpret surface script */
 prsc_t :: #type proc "c" (name: cstring, script: rawptr, len: u32, model: ^m3d_t) -> i32
 
-when ODIN_OS == .Windows && ODIN_ARCH == .amd64 
-{
-	foreign import m3d "m3d_windows_amd64.lib"
-} else when ODIN_OS == .Linux && ODIN_ARCH == .amd64 {
+when ODIN_OS == .Windows && ODIN_ARCH == .amd64 {
+	foreign import m3d "m3d_windows_amd64_release.lib"
+} else when ODIN_OS == .Linux {
 	foreign import m3d "libm3d.so"
-} else when ODIN_OS == .Darwin {
-	// foreign import m3d "libm3dMac.so"
-	foreign import m3d "libm3d.dylib"
-
-	// when ODIN_ARCH == .arm64 {
-	// } else {
-		// foreign import Clay "macos/clay.a"
-	// }
 }
+//  else when ODIN_OS == .Darwin {
+// 	// foreign import m3d "libm3d.dylib"
+// }
 
 @(default_calling_convention = "c")
 foreign m3d 
 {
 	@(link_name = "m3d_load")
-	load :: proc(data: [^]u8, readfilecb: read_t, freecb: free_t, mtllib: ^m3d_t) -> ^m3d_t ---
+	_load :: proc(data: [^]u8, readfilecb: read_t, freecb: free_t, mtllib: ^m3d_t) -> ^m3d_t ---
 
 	@(link_name = "m3d_save")
 	save :: proc(model: ^m3d_t, quality, flags: i32, size: ^u32) -> [^]u8 ---
@@ -538,3 +558,7 @@ foreign m3d
 	@(link_name = "_m3d_safestr")
 	_m3d_safestr :: proc(in_: cstring, morelines: i32) -> cstring ---
 }
+
+// load :: proc(data: [^]u8, readfilecb: read_t, freecb: free_t, mtllib: ^m3d_t, allocator := context.allocator) -> ^m3d_t
+// {
+// }

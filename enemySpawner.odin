@@ -111,7 +111,6 @@ getSafePointInGrid :: proc(enemies: ^EnemyPool, player: ^Player) -> vec3 {
 
 // Get randomPointInGridWithoutOverlap
 getPointInGrid :: proc(seed: int, grid: f32) -> vec3 {
-	rand.default_random_generator()
 	x := rand.float32_range(-1, 1)
 	z := rand.float32_range(-1, 1)
 	dst := rand.float32_range(0, MapGround.shape.(Sphere))
