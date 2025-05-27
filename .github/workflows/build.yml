@@ -2,9 +2,7 @@ name: Build Odin Project
 
 on:
   push:
-    branches: [ main, master, develop ]
-  pull_request:
-    branches: [ main, master ]
+    branches: [ main, master]
 
 jobs:
   build-windows:
