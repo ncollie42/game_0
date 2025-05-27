@@ -529,11 +529,10 @@ prsc_t :: #type proc "c" (name: cstring, script: rawptr, len: u32, model: ^m3d_t
 when ODIN_OS == .Windows && ODIN_ARCH == .amd64 {
 	foreign import m3d "m3d_windows_amd64_release.lib"
 } else when ODIN_OS == .Linux {
-	foreign import m3d "libm3d.so"
+	foreign import m3d "vendor:raylib/linux/libraylib.a"
+} else when ODIN_OS == .Darwin {
+	foreign import m3d "vendor:raylib/macos/libraylib.a"
 }
-//  else when ODIN_OS == .Darwin {
-// 	// foreign import m3d "libm3d.dylib"
-// }
 
 @(default_calling_convention = "c")
 foreign m3d 
