@@ -1,0 +1,176 @@
+name: Build Odin Project
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Download cached Odin binary
+      id: cache-odin
+      uses: actions/cache/restore@v4
+      with:
+        path: |
+          Odin/odin.exe
+          Odin/base
+          Odin/bin
+          Odin/core
+          Odin/shared
+          Odin/vendor
+          Odin/LLVM-C.dll
+        key: odin-${{ runner.os }}-latest
+        restore-keys: |
+          odin-${{ runner.os }}-
+          
+    - name: Install Odin
+      if: steps.cache-odin.outputs.cache-hit != 'true'
+      shell: cmd
+      run: |
+        echo Installing Odin from source...
+        git clone https://github.com/odin-lang/Odin
+        cd Odin
+        build.bat release
+        
+    - name: Set up Odin environment
+      shell: cmd
+      run: |
+        echo Adding Odin to PATH
+        echo %GITHUB_WORKSPACE%\Odin>>%GITHUB_PATH%
+        echo ODIN_ROOT=%GITHUB_WORKSPACE%\Odin>>%GITHUB_ENV%
+        
+    - name: Cache Odin binary
+      if: steps.cache-odin.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: |
+          Odin/odin.exe
+          Odin/base
+          Odin/bin
+          Odin/core
+          Odin/shared
+          Odin/vendor
+          Odin/LLVM-C.dll
+        key: ${{ steps.cache-odin.outputs.cache-primary-key }}
+      
+    - name: Verify Odin installation
+      run: odin version
+      
+    - name: Build project (Release)
+      run: |
+        mkdir build-windows
+        odin build . -o:speed -out:"build-windows/game_0.exe"
+        
+    - name: Compress release
+      run: Compress-Archive -Path build-windows\game_0.exe -DestinationPath game_0-windows.zip
+      
+    - name: Upload Windows build
+      uses: actions/upload-artifact@v4
+      with:
+        name: windows-build
+        path: game_0-windows.zip
+
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Download cached Odin binary
+      id: cache-odin
+      uses: actions/cache/restore@v4
+      with:
+        path: |
+          Odin/odin
+          Odin/base
+          Odin/bin
+          Odin/core
+          Odin/shared
+          Odin/vendor
+        key: odin-${{ runner.os }}-latest
+        restore-keys: |
+          odin-${{ runner.os }}-
+          
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential clang llvm-dev
+        
+    - name: Install Odin
+      if: steps.cache-odin.outputs.cache-hit != 'true'
+      run: |
+        echo "Installing Odin from source..."
+        git clone https://github.com/odin-lang/Odin
+        cd Odin
+        make release-native
+        
+    - name: Set up Odin environment
+      run: |
+        echo "Adding Odin to PATH"
+        echo "$GITHUB_WORKSPACE/Odin" >> $GITHUB_PATH
+        echo "ODIN_ROOT=$GITHUB_WORKSPACE/Odin" >> $GITHUB_ENV
+        
+    - name: Cache Odin binary
+      if: steps.cache-odin.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: |
+          Odin/odin
+          Odin/base
+          Odin/bin
+          Odin/core
+          Odin/shared
+          Odin/vendor
+        key: ${{ steps.cache-odin.outputs.cache-primary-key }}
+      
+    - name: Verify Odin installation
+      run: odin version
+      
+    - name: Build project (Release)
+      run: |
+        mkdir -p build-linux
+        odin build . -o:speed -out:"build-linux/game_0"
+        
+    - name: Compress release
+      run: tar -czf game_0-linux.tar.gz build-linux/game_0
+      
+    - name: Upload Linux build
+      uses: actions/upload-artifact@v4
+      with:
+        name: linux-build
+        path: game_0-linux.tar.gz
+
+  # Optional: Create a release with both platforms
+  create-release:
+    needs: [build-windows, build-linux]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    
+    steps:
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: build-${{ github.run_number }}
+        name: Build ${{ github.run_number }}
+        files: |
+          windows-build/game_0-windows.zip
+          linux-build/game_0-linux.tar.gz
+        body: |
+          Automated build from commit ${{ github.sha }}
+          
+          **Downloads:**
+          - `game_0-windows.zip` - Windows executable
+          - `game_0-linux.tar.gz` - Linux executable
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
