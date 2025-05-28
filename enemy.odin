@@ -80,8 +80,8 @@ ENEMY_CD_ATTACK_VARIANT: f32 = 1
 
 newEnemyPools :: proc() -> EnemyPool {
 	SpawningTexture = loadTexture("resources/mark_2.png")
-	TargetCircleTexture = loadTexture("resources/png/target_circle.png")
-	TargetCrossTexture = loadTexture("resources/png/target_lock.png")
+	// TargetCircleTexture = loadTexture("resources/png/target_circle.png")
+	// TargetCrossTexture = loadTexture("resources/png/target_lock.png")
 
 	pool := EnemyPool {
 		spawning     = make([dynamic]Spawning, 0, 0),
@@ -110,7 +110,7 @@ newEnemyPools :: proc() -> EnemyPool {
 			enemy.model = loadModel(modelPath)
 			count := enemy.model.materialCount - 1
 			enemy.model.materials[count].maps[rl.MaterialMapIndex.ALBEDO].texture = texture
-			enemy.model.materials[count].shader = S_flash
+			enemy.model.materials[count].shader = Shaders[.Flash]
 		}
 	}
 	// -------- Dummy -------- 

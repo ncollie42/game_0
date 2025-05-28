@@ -38,7 +38,6 @@ SpawnerSpawning :: struct {
 // ---- Init
 spanwerPoolSize := 20
 initEnemySpawner :: proc() -> EnemySpanwerPool {
-	shader := rl.LoadShader(nil, "shaders/flash.fs")
 
 	pool := EnemySpanwerPool {
 		active = make([dynamic]Spawner, 0, 10),
@@ -59,7 +58,7 @@ initEnemySpawner :: proc() -> EnemySpanwerPool {
 		enemy.model = rl.LoadModelFromMesh(mesh)
 		//change index 1 when loading real model
 		enemy.model.materials[0].maps[rl.MaterialMapIndex.ALBEDO].texture = texture
-		enemy.model.materials[0].shader = shader
+		enemy.model.materials[0].shader = Shaders[.Flash]
 		enemy.health = Health {
 			max     = 2,
 			current = 2,

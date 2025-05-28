@@ -8,9 +8,6 @@ import "core:prof/spall"
 import "core:sync"
 import rl "vendor:raylib"
 
-engineerPath: cstring = "resources/Engineer.m3d"
-minionPath: cstring = "resources/Skeleton_Minion.m3d"
-
 SCREEN_W :: 1920 / 2
 SCREEN_H :: 1080 / 2
 
@@ -19,7 +16,6 @@ P_W :: SCREEN_W
 P_H :: SCREEN_H
 // P_W :: 1920 / 5
 // P_H :: 1080 / 5
-
 
 // TODO: maybe change to a union for each state
 App :: enum {
@@ -82,6 +78,9 @@ main :: proc() {
 			drawPauseUI(&game, &app)
 		case .STATS:
 			if rl.IsKeyPressed(.SPACE) {
+				app = .HOME
+			}
+			if rl.IsMouseButtonPressed(.LEFT) {
 				app = .HOME
 			}
 			drawStatsUI(&game)

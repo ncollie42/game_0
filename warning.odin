@@ -1,4 +1,5 @@
 package main
+
 import "core:fmt"
 import rl "vendor:raylib"
 
@@ -17,7 +18,7 @@ WarningTexture: rl.Texture2D
 // TODO: Repalce the ! with an actual model?
 // warningModel: rl.Model
 initWarnings :: proc() {
-	WarningTexture = loadTexture("resources/mark_1.png")
+	WarningTexture = loadTexture("resources/mark_4.png")
 }
 
 spawnWarning :: proc(pos: vec3) {

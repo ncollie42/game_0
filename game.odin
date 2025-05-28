@@ -24,9 +24,9 @@ Game :: struct {
 	gems:            Gems,
 }
 
-discardShader: rl.Shader
 whiteTexture: rl.Texture2D
 initGame :: proc() -> Game {
+	loadShaders()
 	game := Game {
 		camera          = newCamera(),
 		player          = newPlayer(),
@@ -66,9 +66,6 @@ initGame :: proc() -> Game {
 
 	game.dash = newPlayerDashAbility(game.player, game.camera)
 
-	discardShader = rl.LoadShader(nil, "shaders/alphaDiscard.fs")
-	S_shadow = rl.LoadShader("shaders/shadow.vs", "shaders/shadow.fs")
-	S_Black = rl.LoadShader(nil, "shaders/shadow.fs")
 	// For pixel look
 	rl.SetTextureFilter(game.screen.texture, rl.TextureFilter.POINT)
 
@@ -236,7 +233,7 @@ drawGame :: proc(game: ^Game) {
 
 	debugDrawGame(game)
 	{
-		rl.BeginShaderMode(discardShader) // For billboard
+		rl.BeginShaderMode(Shaders[.Discard]) // For billboard
 		drawFlipbook(camera^, impact, 3, {}, {})
 		drawMeleTrail(camera^, player.trailLeft)
 		drawMeleTrail(camera^, player.trailRight)

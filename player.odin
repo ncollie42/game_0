@@ -27,12 +27,6 @@ Player :: struct {
 
 MOVE_SPEED :: 7
 TURN_SPEED :: 10.0
-S_grayscale: rl.Shader
-S_flash: rl.Shader
-S_Discard: rl.Shader
-S_shadow: rl.Shader
-S_Black: rl.Shader
-S_hull: rl.Shader
 
 newPlayer :: proc() -> ^Player {
 	player := new(Player)
@@ -47,10 +41,7 @@ newPlayer :: proc() -> ^Player {
 	player.model.materials[player.model.materialCount - 1].maps[rl.MaterialMapIndex.ALBEDO].texture =
 		texture
 
-	S_flash = rl.LoadShader(nil, "shaders/flash.fs")
-	S_hull = rl.LoadShader("shaders/hull.vs", "shaders/hull.fs")
-	S_grayscale = rl.LoadShader(nil, "shaders/grayScale.fs")
-	player.model.materials[player.model.materialCount - 1].shader = S_flash
+	player.model.materials[player.model.materialCount - 1].shader = Shaders[.Flash]
 
 	path: cstring = "resources/trail_1.png"
 	player.trailLeft = initFlipbookPool(path, 32, 32, 8)
@@ -65,8 +56,7 @@ newPlayer :: proc() -> ^Player {
 	texturePath = "resources/half_circle.png"
 	texture = rl.LoadTexture(texturePath)
 	player.viewCircle.materials[0].maps[rl.MaterialMapIndex.ALBEDO].texture = texture
-	S_Discard = rl.LoadShader(nil, "shaders/alphaDiscard.fs")
-	player.viewCircle.materials[0].shader = S_Discard
+	player.viewCircle.materials[0].shader = Shaders[.Discard]
 
 	initPlayer(player)
 	return player
@@ -404,7 +394,7 @@ enterPlayerState :: proc(
 	player.animState.speed = 1
 	// player.animState.frame = 0
 	player.state = state
-	player.model.materials[player.model.materialCount - 1].shader = S_flash
+	player.model.materials[player.model.materialCount - 1].shader = Shaders[.Flash]
 
 	switch &s in player.state {
 	case playerStateBase:
@@ -420,7 +410,7 @@ enterPlayerState :: proc(
 		player.spacial.rot = lerpRAD(player.spacial.rot, r, 1)
 
 		player.animState.speed = s.speed
-		player.model.materials[player.model.materialCount - 1].shader = S_grayscale
+		player.model.materials[player.model.materialCount - 1].shader = Shaders[.GrayScale]
 		transitionAnim(&player.animState, s.animation)
 	case playerStateAttack:
 		s.action_frame = 10
@@ -464,7 +454,7 @@ enterPlayerState :: proc(
 		r := lookAtVec3(target, player.spacial.pos)
 		player.spacial.rot = lerpRAD(player.spacial.rot, r, 1)
 
-		player.model.materials[player.model.materialCount - 1].shader = S_grayscale
+		player.model.materials[player.model.materialCount - 1].shader = Shaders[.GrayScale]
 		transitionAnim(&player.animState, PLAYER.run_fast)
 	}
 }
