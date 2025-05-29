@@ -5,10 +5,11 @@ import "core:math"
 import rl "vendor:raylib"
 
 Stamina := struct {
-	max:     f32, //MAX
-	current: f32,
+	max:       f32, //MAX
+	current:   f32,
+	timeAtMax: f32,
 	// CD
-}{2, 2} // TODO: add into player
+}{2, 2, 1} // TODO: add into player
 
 STAMINA_RECHARGE_SPEED: f32 = .3 // 2 // .5
 
@@ -16,7 +17,8 @@ updateStamina :: proc(player: ^Player) {
 	if isDashing(player) do return
 	Stamina.current += getDelta() * STAMINA_RECHARGE_SPEED
 	Stamina.current = clamp(Stamina.current, 0, Stamina.max)
-	// fmt.println(Stamina.currentCharge)
+	if Stamina.current != Stamina.max do return
+	Stamina.timeAtMax += getDelta()
 }
 
 canDash :: proc(player: ^Player) -> bool {
@@ -38,9 +40,14 @@ hasEnoughStamina :: proc() -> bool {
 
 consumeStamina :: proc() {
 	Stamina.current -= 1
+	Stamina.timeAtMax = 0
 }
 
 drawStamina :: proc(camera: ^rl.Camera, pos: vec3) {
+	if Stamina.current == Stamina.max {
+		if Stamina.timeAtMax >= 1 do return
+	}
+
 	// TODO: - set width based on hp max
 	width: f32 = healthBarWidth
 	height: f32 = healthBareHeight

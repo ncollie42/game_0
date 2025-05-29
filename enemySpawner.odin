@@ -116,6 +116,13 @@ getPointInGrid :: proc(seed: int, grid: f32) -> vec3 {
 	return roundVec((dst * vec3{x, 0, z}) / grid) * grid
 }
 
+getRandomPoint :: proc() -> vec3 {
+	x := rand.float32_range(-1, 1)
+	z := rand.float32_range(-1, 1)
+	dst := rand.float32_range(0, MapGround.shape.(Sphere))
+	return {x, 0, z} * dst
+}
+
 // We are using a check against thorn and monolith. In the future we might want to swap safe search with some
 // different data structure that keeps track of whats placed in a grid? so we don't have to keep sampling.
 isUnsafeSpawn :: proc(enemies: ^EnemyPool, pos: vec3) -> bool {

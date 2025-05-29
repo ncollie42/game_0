@@ -26,8 +26,8 @@ updateHealth :: proc(hp: ^Health) {
 // hurt :: proc(hp: ^Health, amount: f32, armor :f32) {
 hurt :: proc(hp: ^Health, amount: f32) {
 	hp.current -= amount
-	fmt.println("Hurt:", hp.max, hp.current, amount)
 	hp.hitFlash = 1
+	// fmt.println("Hurt:", hp.max, hp.current, amount)
 }
 
 // Apply hit flash

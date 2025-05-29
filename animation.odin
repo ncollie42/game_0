@@ -643,7 +643,7 @@ loadM3DAnimationsWithRootMotion :: proc(path: cstring) -> AnimationSet {
 		strings.has_suffix(string(path), ".m3d"),
 		fmt.tprint("[loadM3DAnimation] Not an .m3d file :", path),
 	)
-	fmt.println("Animation: ", path)
+	// fmt.println("Animation: ", path)
 
 	anim := AnimationSet{}
 	animations: [^]rl.ModelAnimation = nil
@@ -670,7 +670,7 @@ loadM3DAnimationsWithRootMotion :: proc(path: cstring) -> AnimationSet {
 	animations = raw_data(make([]rl.ModelAnimation, m3d_t.numaction))
 
 	for a in 0 ..< int(m3d_t.numaction) {
-		fmt.println(m3d_t.action[a].name, "Frames:", m3d_t.action[a].durationmsec / M3D_ANIMDELAY)
+		// fmt.println(m3d_t.action[a].name, "Frames:", m3d_t.action[a].durationmsec / M3D_ANIMDELAY)
 		animations[a].frameCount = i32(m3d_t.action[a].durationmsec / M3D_ANIMDELAY)
 		animations[a].boneCount = i32(m3d_t.numbone + 1)
 

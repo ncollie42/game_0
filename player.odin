@@ -19,6 +19,7 @@ Player :: struct {
 	trailRight:    Flipbook,
 	viewCircle:    rl.Model,
 	block:         Block,
+	attack:        Attack,
 	//Test :: Collision
 	point:         vec3,
 	normal:        vec3,
@@ -71,6 +72,7 @@ initPlayer :: proc(player: ^Player) {
 		current = 10,
 	}
 	player.block = Block{3, 3, 0}
+	player.attack = Attack{5, 5, 0}
 
 	player.spacial = Spacial {
 		rot   = 0,
@@ -339,7 +341,7 @@ updatePlayerStateBlocking :: proc(
 			if !ability.canParry do continue
 			dist := rl.Vector3DistanceSqrt(ability.spacial.pos, player.pos)
 			if dist > PARRY_DIST do continue
-			doBlock(&player.block)
+			doBlock(&player.block, &player.attack)
 			parryAbility(index, enemyAbilities, playerAbilities)
 			addTrauma(.large)
 		}
@@ -413,6 +415,7 @@ enterPlayerState :: proc(
 		player.model.materials[player.model.materialCount - 1].shader = Shaders[.GrayScale]
 		transitionAnim(&player.animState, s.animation)
 	case playerStateAttack:
+		doAttack(&player.attack)
 		s.action_frame = 10
 		s.cancel_frame = 16
 		s.cancellable = true
@@ -429,6 +432,7 @@ enterPlayerState :: proc(
 
 		transitionAnim(&player.animState, PLAYER.punch)
 	case playerStateAttackLeft:
+		doAttack(&player.attack)
 		s.action_frame = 10
 		s.cancel_frame = 16
 		s.cancellable = true
@@ -443,7 +447,6 @@ enterPlayerState :: proc(
 
 		transitionAnim(&player.animState, PLAYER.punch2)
 	case playerStateBlocking:
-		addTrauma(.mid)
 		// TODO: Add blocking anim
 		transitionAnim(&player.animState, PLAYER.idle)
 	case playerStateBlockBash:
@@ -540,7 +543,8 @@ drawPlayer :: proc(player: Player, camera: ^rl.Camera3D) {
 
 	hudPos := player.pos + {0, 3.4, 0}
 	drawHealthbar(player.health, camera, hudPos) // ADD top of player spot
-	drawBlockbar(player.block, camera, hudPos)
+	// drawBlockbar(player.block, camera, hudPos)
+	drawAttackbar(player.attack, camera, hudPos)
 	drawStamina(camera, hudPos)
 
 	// Draw player
@@ -562,4 +566,11 @@ drawPlayer :: proc(player: Player, camera: ^rl.Camera3D) {
 
 	r := lookAtVec3(mouseInWorld(camera), player.spacial.pos) + rl.PI
 	rl.DrawModelEx(player.viewCircle, player.pos + {0, .1, 0}, UP, rl.RAD2DEG * r, 2, rl.WHITE)
+	if isBlocking(player) {
+		box := rl.GetModelBoundingBox(player.model)
+		modelMatrix := getSpacialMatrixNoRot(player.spacial, player.scale * 1.1)
+		box.min = rl.Vector3Transform(box.min, modelMatrix)
+		box.max = rl.Vector3Transform(box.max, modelMatrix)
+		rl.DrawBoundingBox(box, rl.WHITE)
+	}
 }

@@ -445,52 +445,11 @@ updateEnemyAnimations :: proc(enemies: ^EnemyPool) {
 }
 
 // ---- ---- ---- ---- Draw ---- ---- ---- ---- 
-drawChargeAbleEnemyMarks :: proc(enemies: ^EnemyPool, camera: ^rl.Camera, player: ^Player) {
-	if _, ok := player.state.(playerStateBlocking); !ok do return
-	// Use discard shader
-
-	// rl.BeginMode2D(rl.Camera2D{zoom = f32(rl.GetScreenHeight()) / f32(P_H)})
-	// zoom := f32(rl.GetScreenHeight()) / f32(P_H)
-	// for enemy in enemies.active {
-	// 	if linalg.length2(enemy.pos - player.pos) > 40 do continue
-	// 	pos := rl.GetWorldToScreen(enemy.pos, camera^)
-	// 	pos.x -= f32(TargetCircleTexture.width / 2)
-	// 	pos.y -= f32(TargetCircleTexture.height / 2)
-	// 	// rl.DrawText(number.text, i32(pos.x / zoom), i32(pos.y / zoom), i32(size), rl.WHITE)
-	// 	rl.DrawTexture(TargetCircleTexture, i32(pos.x / zoom), i32(pos.y / zoom), rl.WHITE)
-	// }
-	// rl.EndMode2D()
-
-
-	if !hasEnoughStamina() do return
-	red := colorToVec4(color27)
-	black := vec4{0, 0, 0, 1}
-	for enemy in enemies.active {
-		if linalg.length2(enemy.pos - player.pos) > 40 do continue
-
-		// Draw on top?
-		// rl.DrawBillboard(
-		// 	camera^,
-		// 	TargetCircleTexture,
-		// 	enemy.pos + enemy.dmgIndicatorOffset,
-		// 	1,
-		// 	rl.WHITE,
-		// )
-		// drawOutline(enemy.model, enemy.spacial, enemy.size, camera, black)
-		rl.DrawCube(enemy.pos + enemy.dmgIndicatorOffset, .25, .25, .25, rl.PURPLE)
-	}
+drawSelectedEnemy :: proc(enemies: ^EnemyPool, camera: ^rl.Camera) {
 	hit := getEnemyHitResult(enemies, camera)
-	if hit.hit {
-		// box := getModelBoundingBox(hit.enemy, hit.enemy.size * 1.1)
-		// rl.DrawBoundingBox(box, rl.BLUE) // DEBUG
-
-		// Do we add it to the enemy? enemy.targeted
-		drawOutline(hit.enemy.model, hit.enemy.spacial, hit.enemy.size, camera, red)
-		// 
-		// Maybe change to a shader select?
-		// rl.DrawBillboard(camera^, TargetCrossTexture, hit.posOverhead, 2, rl.WHITE)
-		// rl.DrawCube(hit.posOverhead, .3, .3, .3, rl.DARKPURPLE)
-	}
+	if !hit.hit do return
+	red := colorToVec4(color27)
+	drawOutline(hit.enemy.model, hit.enemy.spacial, hit.enemy.size, camera, red)
 }
 
 drawEnemies :: proc(enemies: ^EnemyPool, camera: ^rl.Camera) {

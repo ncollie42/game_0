@@ -18,19 +18,25 @@ debugUpdateGame :: proc(game: ^Game) {
 	using game
 
 	spawn := getSafePointInGrid(&game.enemies, player)
-	// if rl.IsKeyPressed(.Q) {
-	// 	spawnGem(&gems, mouseInWorld(camera))
-	// }
-	// if rl.IsKeyPressed(.F) {
-	// 	spawnEnemy(&enemies, spawn, .Range, true)
-	// }
-	// if rl.IsKeyPressed(.G) {
-	// 	spawnEnemy(&enemies, spawn, .Mele, true)
-	// }
-	// if rl.IsKeyPressed(.H) {
-	// 	spawn = mouseInWorld(camera)
-	// 	spawnEnemy(&enemies, spawn, .Range, true)
-	// }
+	if rl.IsMouseButtonDown(.RIGHT) {
+		// player.attack.current += getDelta() * 3
+	}
+	if rl.IsKeyPressed(.Q) {
+		spawn = getRandomPoint()
+		spawnGem(&gems, spawn)
+		// spawnGem(&gems, mouseInWorld(camera))
+	}
+	if rl.IsKeyPressed(.F) {
+		spawnEnemy(&enemies, spawn, .Range, true)
+	}
+	if rl.IsKeyPressed(.G) {
+		spawn = mouseInWorld(camera)
+		spawnEnemy(&enemies, spawn, .Mele, true)
+	}
+	if rl.IsKeyPressed(.H) {
+		spawn = mouseInWorld(camera)
+		spawnEnemy(&enemies, spawn, .Range, true)
+	}
 	if rl.IsKeyPressed(.J) {
 		debug = !debug
 	}
@@ -42,6 +48,7 @@ debugUpdateGame :: proc(game: ^Game) {
 		timeScale -= .25
 		fmt.println(timeScale)
 	}
+	updateGems(&gems, player)
 
 	updateEnemySpanwers(&spawners, &enemies, &objs)
 }

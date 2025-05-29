@@ -57,6 +57,7 @@ newMeleInstance :: proc(pos: vec3, power: f32, size: f32) -> AbilityInstance {
 		power = power,
 		spacial = Spacial{pos = pos, shape = size},
 		type = mele{},
+		canParry = true,
 	}
 }
 
@@ -234,6 +235,10 @@ updateAbilityMele :: proc(
 			// At hitflash -> move out of hurt
 			startHitStop() // TODO: only apply from some abilities, like mele - else it feels off. IE a dot would be bad
 			addTrauma(.large)
+			playSoundPunch()
+			spawnFlipbook(impact, enemy.pos, 0)
+			if !obj.canParry do continue
+
 			// TODO : add to the ability? as enum or full struct
 			state := EnemyPushback {
 				animation = ENEMY.hurt,
@@ -254,8 +259,6 @@ updateAbilityMele :: proc(
 			case MonolithEnemy:
 			// Do nothing no enemy
 			}
-			playSoundPunch()
-			spawnFlipbook(impact, enemy.pos, 0)
 		}
 		// enterEnemyState
 		// Push back
@@ -287,8 +290,8 @@ updatePlayerHitCollisions :: proc(pool: ^AbilityPool, player: ^Player) {
 			if !hit do continue
 
 
-			if isBlocking(player) {
-				doBlock(&player.block)
+			if isBlocking(player^) {
+				// doBlock(&player.block, &player.attack)
 				// if block, take no damage? or take less damage?
 				hurt(player, obj.power * .5)
 			} else {
@@ -305,8 +308,8 @@ updatePlayerHitCollisions :: proc(pool: ^AbilityPool, player: ^Player) {
 			obj.spacial.pos += getForwardPoint(obj) * getDelta() * v.speed
 			hit := checkCollision(obj, player)
 			if !hit do continue
-			if isBlocking(player) {
-				doBlock(&player.block)
+			if isBlocking(player^) {
+				// doBlock(&player.block, &player.attack)
 				// if block, take no damage? or take less damage?
 				hurt(player, obj.power * .5)
 			} else {
@@ -436,8 +439,8 @@ get_box_normal :: proc(box: rl.BoundingBox, collision_point: rl.Vector3) -> rl.V
 
 // ------------------------------------------ Parry
 
-PARRY_WINDOW :: .5
-PARRY_DIST :: 3.0
+PARRY_WINDOW :: .4
+PARRY_DIST :: 2.0
 parryAbility :: proc(p1_index: int, p1: ^AbilityPool, p2: ^AbilityPool) {
 	// swap ability from p1 to p2
 	aa := p1.active[p1_index]

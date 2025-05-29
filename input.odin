@@ -20,7 +20,7 @@ updatePlayerInput :: proc(game: ^Game) {
 	}
 	switch &s in player.state {
 	case playerStateBase:
-		if rl.IsMouseButtonPressed(.LEFT) {
+		if rl.IsMouseButtonPressed(.LEFT) && canAttack(&player.attack) {
 			enterPlayerState(player, normalAttack.state, camera, &enemies)
 		}
 		if rl.IsMouseButtonDown(.RIGHT) && canBlock(&player.block) {
@@ -34,11 +34,13 @@ updatePlayerInput :: proc(game: ^Game) {
 		if !rl.IsMouseButtonDown(.LEFT) do break
 		frame := i32(math.floor(player.animState.duration * FPS_30))
 		if frame < s.cancel_frame do return
+		if !canAttack(&player.attack) do return
 		s.comboInput = true
 	case playerStateAttackLeft:
 		if !rl.IsMouseButtonDown(.LEFT) do break
 		frame := i32(math.floor(player.animState.duration * FPS_30))
 		if frame < s.cancel_frame do return
+		if !canAttack(&player.attack) do return
 		s.comboInput = true
 	case playerStateBlocking:
 		if rl.IsMouseButtonUp(.RIGHT) {
@@ -46,23 +48,26 @@ updatePlayerInput :: proc(game: ^Game) {
 		}
 
 		if !hasEnoughStamina() do break
+		return
 
-		// if !isTimerReady(player.bashCD) do break
-		result := getEnemyHitResult(&enemies, camera)
-		// TODO: Check distance
-		// TODO: play sound if we can dash
-		if !result.hit do break
-		// Enter Dashing attack if inrange
-		if rl.IsMouseButtonPressed(.LEFT) {
-			// startTimer(&player.bashCD)
-			consumeStamina()
-			enterPlayerState(
-				player,
-				playerStateBlockBash{target = result.pos, action = bashingAction},
-				camera,
-				&enemies,
-			)
-		}
+	// if !isTimerReady(player.bashCD) do break
+	// result := getEnemyHitResult(&enemies, camera)
+	// // TODO: Check distance
+	// // TODO: play sound if we can dash
+	// if !result.hit do break
+	// // Enter Dashing attack if inrange
+	// if rl.IsMouseButtonPressed(.LEFT) {
+	// 	// startTimer(&player.bashCD)
+	// 	consumeStamina()
+
+	// 	enterPlayerState(player, normalAttack.state, camera, &enemies)
+	// 	// enterPlayerState(
+	// 	player,
+	// 	playerStateBlockBash{target = result.pos, action = bashingAction},
+	// 	camera,
+	// 	&enemies,
+	// )
+	// }
 	case playerStateBlockBash:
 
 	}

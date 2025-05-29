@@ -7,21 +7,22 @@ import rl "vendor:raylib"
 import gl "vendor:raylib/rlgl"
 
 Game :: struct {
-	camera:          ^rl.Camera,
-	player:          ^Player,
-	objs:            [dynamic]EnvObj,
-	enemies:         EnemyPool,
-	spawners:        EnemySpanwerPool,
-	playerAbilities: ^AbilityPool,
-	enemyAbilities:  ^AbilityPool,
+	camera:                  ^rl.Camera,
+	player:                  ^Player,
+	objs:                    [dynamic]EnvObj,
+	enemies:                 EnemyPool,
+	spawners:                EnemySpanwerPool,
+	playerAbilities:         ^AbilityPool,
+	enemyAbilities:          ^AbilityPool,
 	// Testing
-	normalAttack:    AbilityConfig,
-	chargeAttack:    AbilityConfig,
-	bashingAction:   Action, // We might not need AbilityConfig? 
-	dash:            State,
-	screen:          rl.RenderTexture2D,
-	impact:          Flipbook,
-	gems:            Gems,
+	normalAttack:            AbilityConfig,
+	chargeAttack:            AbilityConfig,
+	bashingAction:           Action, // We might not need AbilityConfig? 
+	actionSpawnMeleAtPlayer: Action,
+	dash:                    State,
+	screen:                  rl.RenderTexture2D,
+	impact:                  Flipbook,
+	gems:                    Gems,
 }
 
 whiteTexture: rl.Texture2D
@@ -40,7 +41,7 @@ initGame :: proc() -> Game {
 		gems            = initGems(),
 	}
 
-	actionSpawnMeleAtPlayer := ActionSpawnMeleAtPlayer {
+	game.actionSpawnMeleAtPlayer = ActionSpawnMeleAtPlayer {
 		player = game.player,
 		pool   = game.playerAbilities,
 	}
@@ -60,7 +61,7 @@ initGame :: proc() -> Game {
 			// TODO: add a transition_frame? different than cancel_frame
 			cancel_frame = 16, //10 - attack quicker with lower transition frame [10,16]
 			speed        = 1,
-			action       = actionSpawnMeleAtPlayer,
+			action       = game.actionSpawnMeleAtPlayer,
 		},
 	}
 
@@ -187,10 +188,11 @@ updateGame :: proc(game: ^Game) {
 	updateWaves(game)
 
 	updateAnimation(player.model, &player.animState, player.animSet)
-	updatePlayerHitCollisions(enemyAbilities, player)
+	updatePlayerHitCollisions(enemyAbilities, player) // Need to go before update enemies for mele parry
 	updateHealth(player)
 	updateStamina(player)
 	updateBlock(&player.block)
+	updateAttack(&player.attack)
 
 	updateEnemies(&enemies, player^, &objs, enemyAbilities)
 	updateSpawningEnemies(&enemies)
@@ -228,7 +230,7 @@ drawGame :: proc(game: ^Game) {
 
 	drawPlayer(player^, camera)
 	drawEnemies(&enemies, camera)
-	drawChargeAbleEnemyMarks(&enemies, camera, player)
+	drawSelectedEnemy(&enemies, camera)
 	drawGems(&gems, camera)
 
 	debugDrawGame(game)
