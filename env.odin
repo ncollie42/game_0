@@ -125,7 +125,7 @@ drawFlatGround :: proc(img: rl.Texture2D, camera: ^rl.Camera, pos: vec3, scale: 
 drawEnv :: proc(objs: ^[dynamic]EnvObj) {
 	// Floor
 	rad := MapGround.shape.(Sphere)
-	// rl.DrawCylinder({0, -1, 0}, rad, rad, 1, 25, color13) // Floor
+	rl.DrawCylinder({0, -1, 0}, rad, rad, 1, 25, color13) // Floor
 	rl.DrawCircle3D({0, .1, 0}, rad, {1, 0, 0}, 90, rl.WHITE) // Outline
 
 	// Objs

@@ -18,7 +18,6 @@ Player :: struct {
 	trailLeft:     Flipbook,
 	trailRight:    Flipbook,
 	viewCircle:    rl.Model,
-	block:         Block,
 	attack:        Attack,
 	//Test :: Collision
 	point:         vec3,
@@ -71,8 +70,7 @@ initPlayer :: proc(player: ^Player) {
 		max     = 10,
 		current = 10,
 	}
-	player.block = Block{3, 3, 0}
-	player.attack = Attack{5, 5, 0}
+	player.attack = Attack{5, 5}
 
 	player.spacial = Spacial {
 		rot   = 0,
@@ -84,7 +82,6 @@ initPlayer :: proc(player: ^Player) {
 }
 
 moveAndSlide :: proc(player: ^Player, velocity: vec3, objs: [dynamic]EnvObj, enemies: ^EnemyPool) {
-
 	// Projected movement
 	projected := player.spacial
 	projected.pos += velocity * getDelta()
@@ -197,6 +194,7 @@ moveAndStop :: proc(player: ^Player, velocity: vec3, objs: [dynamic]EnvObj, enem
 }
 
 updatePlayerStateBase :: proc(player: ^Player, objs: [dynamic]EnvObj, enemies: ^EnemyPool) {
+	player.point.y = 0 // Set to 0, some cases player gets pushed up -> check later why.
 
 	// Add a sub state - Idle and moving
 	dir := getVector()
@@ -329,9 +327,6 @@ updatePlayerStateBlocking :: proc(
 	enemyAbilities: ^AbilityPool,
 	playerAbilities: ^AbilityPool,
 ) {
-	if !canBlock(&player.block) {
-		enterPlayerState(player, playerStateBase{}, camera, enemies)
-	}
 	blocking.durration += getDelta()
 
 	parry: {
@@ -341,15 +336,15 @@ updatePlayerStateBlocking :: proc(
 			if !ability.canParry do continue
 			dist := rl.Vector3DistanceSqrt(ability.spacial.pos, player.pos)
 			if dist > PARRY_DIST do continue
-			doBlock(&player.block, &player.attack)
+			player.attack.current += 2
 			parryAbility(index, enemyAbilities, playerAbilities)
 			addTrauma(.large)
 		}
 	}
 
-	target := mouseInWorld(camera)
-	r := lookAtVec3(target, player.spacial.pos)
-	player.spacial.rot = lerpRAD(player.spacial.rot, r, getDelta() * TURN_SPEED)
+	// target := mouseInWorld(camera)
+	// r := lookAtVec3(target, player.spacial.pos)
+	// player.spacial.rot = lerpRAD(player.spacial.rot, r, getDelta() * TURN_SPEED)
 }
 
 updatePlayerStateBlockBashing :: proc(
@@ -447,8 +442,13 @@ enterPlayerState :: proc(
 
 		transitionAnim(&player.animState, PLAYER.punch2)
 	case playerStateBlocking:
+		// Snap to mouse direction before attack or Enemy
+		target := mouseInWorld(camera)
+		r := lookAtVec3(target, player.spacial.pos)
+		player.spacial.rot = lerpRAD(player.spacial.rot, r, 1)
 		// TODO: Add blocking anim
-		transitionAnim(&player.animState, PLAYER.idle)
+		transitionAnim(&player.animState, PLAYER.block)
+		player.model.materials[player.model.materialCount - 1].shader = Shaders[.GrayScale]
 	case playerStateBlockBash:
 		// Snap to mouse direction before attack or Enemy
 		result := getEnemyHitResult(enemies, camera)
@@ -458,7 +458,7 @@ enterPlayerState :: proc(
 		player.spacial.rot = lerpRAD(player.spacial.rot, r, 1)
 
 		player.model.materials[player.model.materialCount - 1].shader = Shaders[.GrayScale]
-		transitionAnim(&player.animState, PLAYER.run_fast)
+		transitionAnim(&player.animState, PLAYER.dash)
 	}
 }
 
@@ -563,14 +563,25 @@ drawPlayer :: proc(player: Player, camera: ^rl.Camera3D) {
 		rl.WHITE,
 	)
 
-
 	r := lookAtVec3(mouseInWorld(camera), player.spacial.pos) + rl.PI
 	rl.DrawModelEx(player.viewCircle, player.pos + {0, .1, 0}, UP, rl.RAD2DEG * r, 2, rl.WHITE)
 	if isBlocking(player) {
-		box := rl.GetModelBoundingBox(player.model)
-		modelMatrix := getSpacialMatrixNoRot(player.spacial, player.scale * 1.1)
-		box.min = rl.Vector3Transform(box.min, modelMatrix)
-		box.max = rl.Vector3Transform(box.max, modelMatrix)
-		rl.DrawBoundingBox(box, rl.WHITE)
+		// box := rl.GetModelBoundingBox(player.model)
+		// modelMatrix := getSpacialMatrixNoRot(player.spacial, player.scale * 1.1)
+		// box.min = rl.Vector3Transform(box.min, modelMatrix)
+		// box.max = rl.Vector3Transform(box.max, modelMatrix)
+		mesh := rl.GenMeshCube(1.5, 3, .1) // TODO: swap with a model on gen based on block angle?
+		shield := rl.LoadModelFromMesh(mesh)
+		rl.DrawModelEx(
+			shield,
+			player.spacial.pos + getForwardPoint(player) + {0, 1.5, 0},
+			UP,
+			rl.RAD2DEG * player.spacial.rot,
+			1,
+			rl.WHITE,
+		)
+		// rl.DrawBoundingBox(box, rl.WHITE)
+		// rl.DrawSphere(player.pos, 2, rl.WHITE)
+		// rl.DrawSphereWires(player.pos, 2.5, 8, 8, rl.WHITE)
 	}
 }

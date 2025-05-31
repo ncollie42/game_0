@@ -13,6 +13,10 @@ AbilityInstance :: struct {
 		mele,
 	},
 	canParry:      bool,
+	effect:        enum {
+		NONE,
+		pushback,
+	},
 }
 // enum (Timer_based, Single, Other)
 // timer
@@ -58,6 +62,7 @@ newMeleInstance :: proc(pos: vec3, power: f32, size: f32) -> AbilityInstance {
 		spacial = Spacial{pos = pos, shape = size},
 		type = mele{},
 		canParry = true,
+		effect = .NONE,
 	}
 }
 
@@ -67,6 +72,7 @@ newRangeInstance :: proc(pos: vec3, rot: f32, parry: bool) -> AbilityInstance {
 		spacial = Spacial{pos = pos, shape = 0.6, rot = rot},
 		type = range{duration = 1.5, speed = 7},
 		canParry = parry,
+		effect = .NONE,
 	}
 }
 // ---- Spawn
@@ -237,7 +243,8 @@ updateAbilityMele :: proc(
 			addTrauma(.large)
 			playSoundPunch()
 			spawnFlipbook(impact, enemy.pos, 0)
-			if !obj.canParry do continue
+
+			if obj.effect == .NONE do continue
 
 			// TODO : add to the ability? as enum or full struct
 			state := EnemyPushback {
@@ -334,13 +341,14 @@ drawAbilityInstances :: proc(pool: ^AbilityPool, color: rl.Color, camera: ^rl.Ca
 			size := obj.spacial.shape.(Sphere)
 			red := colorToVec4(color27)
 			green := colorToVec4(color9)
-			color := obj.canParry ? green : red
+			// color := obj.canParry ? green : red
+			color := red
 			ss := obj.spacial
 			ss.pos += {0, 1, 0}
 
 			drawOutline(pool.orb, ss, size, camera, color)
 			drawShadow(pool.orb, obj.spacial, size, camera)
-			rl.DrawModel(pool.orb, ss.pos, size * .9, black_3)
+			rl.DrawModel(pool.orb, ss.pos, size * .9, white_3) //black_3
 		case:
 			panic("Ability has no type")
 		}
@@ -451,6 +459,7 @@ parryAbility :: proc(p1_index: int, p1: ^AbilityPool, p2: ^AbilityPool) {
 		v.speed *= 2
 	case mele:
 	}
+	aa.effect = .pushback
 	append(&p2.active, aa)
 	unordered_remove(&p1.active, p1_index)
 	// TODO:

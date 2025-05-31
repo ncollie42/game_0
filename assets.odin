@@ -21,6 +21,7 @@ ShaderNames :: enum {
 	Shadow,
 	Black,
 	Hull,
+	Light, // TODO: https://youtu.be/yyJ-hdISgnw?si=k1GOwqAXirDFDNBR&t=2112
 }
 
 loadShaders :: proc() {
@@ -30,6 +31,7 @@ loadShaders :: proc() {
 	Shaders[.Discard] = rl.LoadShader(nil, "shaders/alphaDiscard.fs")
 	Shaders[.Shadow] = rl.LoadShader("shaders/shadow.vs", "shaders/shadow.fs")
 	Shaders[.Black] = rl.LoadShader(nil, "shaders/shadow.fs")
+	// Shaders[.Light] = rl.LoadShader("shaders/light.vs", "shaders/light.fs")
 
 	// rl.LoadFontFromMemory()
 	// rl.LoadImageFromMemory()

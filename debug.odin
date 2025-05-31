@@ -17,25 +17,20 @@ debugInit :: proc(game: ^Game) {
 debugUpdateGame :: proc(game: ^Game) {
 	using game
 
-	spawn := getSafePointInGrid(&game.enemies, player)
-	if rl.IsMouseButtonDown(.RIGHT) {
-		// player.attack.current += getDelta() * 3
-	}
+	grid := getSafePointInGrid(&game.enemies, player)
+	mouse := mouseInWorld(camera)
+	random := getRandomPoint()
+
 	if rl.IsKeyPressed(.Q) {
-		spawn = getRandomPoint()
-		spawnGem(&gems, spawn)
-		// spawnGem(&gems, mouseInWorld(camera))
 	}
 	if rl.IsKeyPressed(.F) {
-		spawnEnemy(&enemies, spawn, .Range, true)
+		spawnEnemy(&enemies, grid, .Range, true)
 	}
 	if rl.IsKeyPressed(.G) {
-		spawn = mouseInWorld(camera)
-		spawnEnemy(&enemies, spawn, .Mele, true)
+		spawnEnemy(&enemies, grid, .Mele, true)
 	}
 	if rl.IsKeyPressed(.H) {
-		spawn = mouseInWorld(camera)
-		spawnEnemy(&enemies, spawn, .Range, true)
+		spawnEnemy(&enemies, mouse, .Range, true)
 	}
 	if rl.IsKeyPressed(.J) {
 		debug = !debug
@@ -48,7 +43,6 @@ debugUpdateGame :: proc(game: ^Game) {
 		timeScale -= .25
 		fmt.println(timeScale)
 	}
-	updateGems(&gems, player)
 
 	updateEnemySpanwers(&spawners, &enemies, &objs)
 }

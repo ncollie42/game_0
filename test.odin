@@ -29,7 +29,7 @@ newPlayerDashAbility :: proc(player: ^Player, camera: ^rl.Camera3D) -> State {
 	// No action needed
 
 	// For now not using AbilityConfig; might have it's own config later.
-	return playerStateDashing{timer = Timer{max = .5}, animation = PLAYER.run_fast, speed = 1.0}
+	return playerStateDashing{timer = Timer{max = .5}, animation = PLAYER.dash, speed = 1.0}
 }
 
 // ----------------------------- New System

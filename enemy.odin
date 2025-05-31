@@ -408,14 +408,14 @@ updateSpawningEnemies :: proc(enemies: ^EnemyPool) {
 }
 
 // ---- ---- ---- ---- Health ---- ---- ---- ---- 
-updateEnemyHealth :: proc(enemies: ^$T) {
+updateEnemyHealth :: proc(enemies: ^$T, pickup: ^Pickup, player: ^Player) {
 	// Loop in reverse and swap with last element on remove
 	#reverse for &enemy, index in enemies.active {
 		updateHealth(&enemy)
-		if enemy.health.current <= 0 {
-			// enterEnemyMeleState(&enemy, EnemyDead{}) -> TODO: Animation on death
-			unordered_remove(&enemies.active, index)
-		}
+		if enemy.health.current > 0 do continue
+		// enterEnemyMeleState(&enemy, EnemyDead{}) -> TODO: Animation on death
+		spawnPickup(pickup, enemy.pos, normalize(enemy.pos - player.pos))
+		unordered_remove(&enemies.active, index)
 	}
 }
 

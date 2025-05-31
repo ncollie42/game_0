@@ -23,3 +23,13 @@ cd ./resources/golem_small_range/fbx
 # Convert all the FBX to a single m3d from the current dir
 blender_4.3 -b --python ../../../fbx2m3d.py
 mv ./base.m3d ../base.m3d
+cd -
+
+echo "warrior"
+echo ""
+pwd
+cd ./resources/warrior/fbx
+# Convert all the FBX to a single m3d from the current dir
+blender_4.3 -b --python ../../../fbx2m3d.py
+mv ./base.m3d ../base.m3d
+cd -

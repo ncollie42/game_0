@@ -90,8 +90,8 @@ spawnEnemySpawner :: proc(pool: ^EnemySpanwerPool) {
 
 // Get random point at edge of map
 getPointAtEdgeOfMap :: proc() -> vec3 {
-	x := noise.noise_2d(0, {rl.GetTime(), rl.GetTime()})
-	z := noise.noise_2d(1, {rl.GetTime(), rl.GetTime()})
+	x := rand.float32_range(-1, 1)
+	z := rand.float32_range(-1, 1)
 	return MapGround.shape.(Sphere) * normalize({x, 0, z})
 }
 

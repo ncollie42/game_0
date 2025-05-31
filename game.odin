@@ -23,6 +23,7 @@ Game :: struct {
 	screen:                  rl.RenderTexture2D,
 	impact:                  Flipbook,
 	gems:                    Gems,
+	pickups:                 Pickup,
 }
 
 whiteTexture: rl.Texture2D
@@ -39,6 +40,7 @@ initGame :: proc() -> Game {
 		screen          = rl.LoadRenderTexture(P_W, P_H),
 		impact          = initFlipbookPool("resources/impact.png", 305, 383, 27),
 		gems            = initGems(),
+		pickups         = initPickup(),
 	}
 
 	game.actionSpawnMeleAtPlayer = ActionSpawnMeleAtPlayer {
@@ -191,13 +193,14 @@ updateGame :: proc(game: ^Game) {
 	updatePlayerHitCollisions(enemyAbilities, player) // Need to go before update enemies for mele parry
 	updateHealth(player)
 	updateStamina(player)
-	updateBlock(&player.block)
 	updateAttack(&player.attack)
+	updateGems(&gems, player)
+	updatePickup(&pickups, player)
 
 	updateEnemies(&enemies, player^, &objs, enemyAbilities)
 	updateSpawningEnemies(&enemies)
 	updateEnemyAnimations(&enemies)
-	updateEnemyHealth(&enemies) //Add other enemies here too
+	updateEnemyHealth(&enemies, &pickups, player) //Add other enemies here too
 	applyBoundaryForces(&enemies, &objs)
 	applyBoundaryForcesFromMap(&enemies, &objs)
 	updateEnemyHitCollisions(playerAbilities, &enemies, &spawners, &impact)
@@ -232,6 +235,7 @@ drawGame :: proc(game: ^Game) {
 	drawEnemies(&enemies, camera)
 	drawSelectedEnemy(&enemies, camera)
 	drawGems(&gems, camera)
+	drawPickup(&pickups, camera)
 
 	debugDrawGame(game)
 	{

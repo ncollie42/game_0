@@ -28,8 +28,8 @@ wave :: struct {
 }
 
 waves2 := []wave {
-	{enemies = {.Monolith}, spawnRate = .001, waveDuration = .02},
-	{enemies = {.Thorn}, spawnRate = .001, waveDuration = .02},
+	{enemies = {.Monolith}, spawnRate = .001, waveDuration = .04},
+	// {enemies = {.Thorn}, spawnRate = .001, waveDuration = .02},
 	{enemies = {.Mele}, spawnRate = 2, waveDuration = 6},
 	{enemies = {.Thorn}, spawnRate = .1, waveDuration = 1},
 	{enemies = {.Range}, spawnRate = 2, waveDuration = 6},

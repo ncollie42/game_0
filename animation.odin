@@ -12,12 +12,12 @@ import m3d "m3d-odin"
 import rl "vendor:raylib"
 
 PLAYER :: enum {
+	dash,
 	idle,
-	kick,
 	punch,
 	punch2,
 	run,
-	run_fast,
+	block,
 }
 
 // enum is 1 shifted down from what they are in the file

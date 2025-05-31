@@ -23,12 +23,12 @@ updatePlayerInput :: proc(game: ^Game) {
 		if rl.IsMouseButtonPressed(.LEFT) && canAttack(&player.attack) {
 			enterPlayerState(player, normalAttack.state, camera, &enemies)
 		}
-		if rl.IsMouseButtonDown(.RIGHT) && canBlock(&player.block) {
+		if rl.IsMouseButtonDown(.RIGHT) {
 			enterPlayerState(player, playerStateBlocking{}, camera, &enemies)
 		}
 	case playerStateDashing:
 	case playerStateAttack:
-		if rl.IsMouseButtonDown(.RIGHT) && canBlock(&player.block) {
+		if rl.IsMouseButtonDown(.RIGHT) {
 			enterPlayerState(player, playerStateBlocking{}, camera, &enemies)
 		}
 		if !rl.IsMouseButtonDown(.LEFT) do break
