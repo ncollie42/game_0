@@ -15,97 +15,44 @@ updatePlayerInput :: proc(game: ^Game) {
 	// Player Actions
 	// :: SM Input
 	playerInputDash(player, dash, camera, &enemies)
-	if rl.IsKeyPressed(.ONE) {
-		rl.ToggleBorderlessWindowed() // Less hassle, full screen breaks
-	}
+
 	switch &s in player.state {
 	case playerStateBase:
-		if rl.IsMouseButtonPressed(.LEFT) && canAttack(&player.attack) {
-			enterPlayerState(player, normalAttack.state, camera, &enemies)
+		if isActionPressed(.One) && canAttack(&player.mana) && hasActiveSlot(hand, .Attack) {
+			useMana(&player.mana, hand[.Attack].cost)
+			enterPlayerState(player, hand[.Attack].state, camera, &enemies)
 		}
-		if rl.IsMouseButtonDown(.RIGHT) {
+		if isActionPressed(.Two) && canAttack(&player.mana) && hasActiveSlot(hand, .Power) {
+			useMana(&player.mana, hand[.Power].cost)
+			enterPlayerState(player, hand[.Power].state, camera, &enemies)
+		}
+		if isActionPressed(.Block) {
 			enterPlayerState(player, playerStateBlocking{}, camera, &enemies)
 		}
 	case playerStateDashing:
 	case playerStateAttack:
-		if rl.IsMouseButtonDown(.RIGHT) {
-			enterPlayerState(player, playerStateBlocking{}, camera, &enemies)
-		}
-		if !rl.IsMouseButtonDown(.LEFT) do break
+		if isActionPressed(.Block) do enterPlayerState(player, playerStateBlocking{}, camera, &enemies)
+		if !isActionPressed(.One) do break
 		frame := i32(math.floor(player.animState.duration * FPS_30))
-		if frame < s.cancel_frame do return
-		if !canAttack(&player.attack) do return
+		if frame < s.cancel_frame do break
+		if !canAttack(&player.mana) do break
+		if s.comboInput == true do break // already triggered
+
+		useMana(&player.mana, hand[.Attack].cost)
 		s.comboInput = true
 	case playerStateAttackLeft:
-		if !rl.IsMouseButtonDown(.LEFT) do break
+		if isActionPressed(.Block) do enterPlayerState(player, playerStateBlocking{}, camera, &enemies)
+		if !isActionPressed(.One) do break
 		frame := i32(math.floor(player.animState.duration * FPS_30))
-		if frame < s.cancel_frame do return
-		if !canAttack(&player.attack) do return
+		if frame < s.cancel_frame do break
+		if !canAttack(&player.mana) do break
+		if s.comboInput == true do break // already triggered
+
+		useMana(&player.mana, hand[.Attack].cost)
 		s.comboInput = true
 	case playerStateBlocking:
-		if rl.IsMouseButtonUp(.RIGHT) {
+		if !isActionDown(.Block) {
 			enterPlayerState(player, playerStateBase{}, camera, &enemies)
 		}
-
-		if !hasEnoughStamina() do break
-		return
-
-	// if !isTimerReady(player.bashCD) do break
-	// result := getEnemyHitResult(&enemies, camera)
-	// // TODO: Check distance
-	// // TODO: play sound if we can dash
-	// if !result.hit do break
-	// // Enter Dashing attack if inrange
-	// if rl.IsMouseButtonPressed(.LEFT) {
-	// 	// startTimer(&player.bashCD)
-	// 	consumeStamina()
-
-	// 	enterPlayerState(player, normalAttack.state, camera, &enemies)
-	// 	// enterPlayerState(
-	// 	player,
-	// 	playerStateBlockBash{target = result.pos, action = bashingAction},
-	// 	camera,
-	// 	&enemies,
-	// )
-	// }
-	case playerStateBlockBash:
-
 	}
 }
-
-
-// Example on how to maybe do button hold / regular click for attacks
-// MousePress := union {
-// 	Idle,
-// 	Press,
-// }{}
-
-// Idle :: struct {}
-// Press :: struct {
-// 	duration: f32,
-// }
-// CheckMousePress: {
-// 	_, idle := MousePress.(Idle)
-// 	_, longAttack := player.state.(playerStateAttackLong)
-
-// 	if rl.IsMouseButtonPressed(.LEFT) && idle && !longAttack { 	// Don't attack while doing long Attack
-// 		MousePress = Press{}
-// 	}
-
-// 	switch &state in MousePress {
-// 	case Idle:
-// 	case Press:
-// 		state.duration += getDelta()
-
-// 		if state.duration > .3 { 	// Durration of a normal auto
-// 			MousePress = Idle{}
-// 			enterPlayerState(player, chargeAttack.state, camera)
-// 		}
-// 		if rl.IsMouseButtonReleased(.LEFT) {
-// 			MousePress = Idle{}
-// 			enterPlayerState(player, normalAttack.state, camera)
-// 		}
-// 	case:
-// 		state = Idle{}
-// 	}
-// }

@@ -44,7 +44,7 @@ updateGems :: proc(gems: ^Gems, player: ^Player) {
 			unordered_remove(&gems.gems, index)
 			// Do something
 			// player.attack.current += player.attack.max
-			player.attack.current += 2
+			player.mana.current += 2
 		}
 	}
 }
@@ -124,7 +124,7 @@ updatePickup :: proc(pickup: ^Pickup, player: ^Player) {
 				unordered_remove(&pickup.items, index)
 				// Do something
 				// player.attack.current += player.attack.max
-				player.attack.current += 1
+				player.mana.current += 1
 			}
 		}
 	}

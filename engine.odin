@@ -104,25 +104,49 @@ KeyBinding :: union {
 	rl.KeyboardKey,
 }
 
-keyBindings := [4]KeyBinding{ACTION_0, ACTION_1, ACTION_2, ACTION_3}
-ACTION_0 :: rl.MouseButton.LEFT
-ACTION_1 :: rl.KeyboardKey.Q
-ACTION_2 :: rl.KeyboardKey.E
-ACTION_3 :: rl.KeyboardKey.R
-BLOCK :: rl.KeyboardKey.LEFT_SHIFT
-DASH :: rl.KeyboardKey.SPACE
-PICKUP :: rl.KeyboardKey.F
-// Movement
-FORWARD :: rl.KeyboardKey.W
-BACKWARD :: rl.KeyboardKey.S
-RIGHT :: rl.KeyboardKey.D
-LEFT :: rl.KeyboardKey.A
+HandAction :: enum {
+	Nil,
+	Attack, // Basic
+	Power, // Nuke
+	Special, // CC / AOE
+	Defence, //
+	// Ult,
+}
 
-isKeyPressed :: proc(keyBind: KeyBinding) -> bool {
-	// TODO: change for pressed work on key down and not key up
-	switch key in keyBind {
+ActionNames :: enum {
+	One,
+	Two,
+	Three,
+	Four,
+	Dash,
+	Block,
+	Forward,
+	Backward,
+	Right,
+	Left,
+	Pause,
+}
+
+// Basic mele, x, x, defensive
+bindings := [ActionNames]KeyBinding {
+	.One      = rl.MouseButton.LEFT, // Mele
+	.Two      = rl.KeyboardKey.Q,
+	.Three    = rl.KeyboardKey.E,
+	.Four     = rl.KeyboardKey.R,
+	.Dash     = rl.KeyboardKey.SPACE,
+	.Block    = rl.MouseButton.RIGHT,
+	.Forward  = rl.KeyboardKey.W,
+	.Backward = rl.KeyboardKey.S,
+	.Right    = rl.KeyboardKey.D,
+	.Left     = rl.KeyboardKey.A,
+	.Pause    = rl.KeyboardKey.ESCAPE,
+}
+
+isActionPressed :: proc(action: ActionNames) -> bool {
+	binding := bindings[action]
+	switch key in binding {
 	case rl.MouseButton:
-		if rl.IsMouseButtonReleased(key) {
+		if rl.IsMouseButtonPressed(key) {
 			return true
 		}
 	case rl.KeyboardKey:
@@ -133,9 +157,9 @@ isKeyPressed :: proc(keyBind: KeyBinding) -> bool {
 	return false
 }
 
-isKeyDown :: proc(keyBind: KeyBinding) -> bool {
-	// TODO: change for pressed work on key down and not key up
-	switch key in keyBind {
+isActionDown :: proc(action: ActionNames) -> bool {
+	binding := bindings[action]
+	switch key in binding {
 	case rl.MouseButton:
 		if rl.IsMouseButtonDown(key) {
 			return true

@@ -7,26 +7,28 @@ import rl "vendor:raylib"
 import gl "vendor:raylib/rlgl"
 
 Game :: struct {
-	camera:                  ^rl.Camera,
-	player:                  ^Player,
-	objs:                    [dynamic]EnvObj,
-	enemies:                 EnemyPool,
-	spawners:                EnemySpanwerPool,
-	playerAbilities:         ^AbilityPool,
-	enemyAbilities:          ^AbilityPool,
-	// Testing
-	normalAttack:            AbilityConfig,
-	chargeAttack:            AbilityConfig,
-	bashingAction:           Action, // We might not need AbilityConfig? 
-	actionSpawnMeleAtPlayer: Action,
-	dash:                    State,
-	screen:                  rl.RenderTexture2D,
-	impact:                  Flipbook,
-	gems:                    Gems,
-	pickups:                 Pickup,
+	camera:          ^rl.Camera,
+	player:          ^Player,
+	objs:            [dynamic]EnvObj,
+	enemies:         EnemyPool,
+	spawners:        EnemySpanwerPool,
+	playerAbilities: ^AbilityPool,
+	enemyAbilities:  ^AbilityPool,
+	hand:            [HandAction]AbilityConfig, // Not using all actions, just the ones in hand
+	dash:            State,
+	screen:          rl.RenderTexture2D,
+	ui:              rl.RenderTexture2D, // test
+	upgradeOptions:  [3]UpgradeName,
+	impact:          Flipbook,
+	gems:            Gems,
+	pickups:         Pickup,
+	state:           enum {
+		PLAYING,
+		UPGRADE,
+		PAUSE,
+	},
 }
 
-whiteTexture: rl.Texture2D
 initGame :: proc() -> Game {
 	loadShaders()
 	game := Game {
@@ -38,40 +40,32 @@ initGame :: proc() -> Game {
 		playerAbilities = initAbilityPool(),
 		enemyAbilities  = initAbilityPool(),
 		screen          = rl.LoadRenderTexture(P_W, P_H),
+		ui              = rl.LoadRenderTexture(P_W, P_H),
 		impact          = initFlipbookPool("resources/impact.png", 305, 383, 27),
 		gems            = initGems(),
 		pickups         = initPickup(),
 	}
 
-	game.actionSpawnMeleAtPlayer = ActionSpawnMeleAtPlayer {
-		player = game.player,
-		pool   = game.playerAbilities,
+	Closures[.Mele] = ActionSpawnMeleAtPlayer {
+		percent = 1, // 100%
+		player  = game.player,
+		pool    = game.playerAbilities,
 	}
-	game.bashingAction = SpawnBashingMeleAtPlayer {
-		player = game.player,
-		pool   = game.playerAbilities,
+	Closures[.Range] = ActionSpawnRangeAtPlayer {
+		percent = .5, // 50%
+		player  = game.player,
+		pool    = game.playerAbilities,
 	}
-	// NOTE: We could make this global, and not part of the game object
-	game.normalAttack = AbilityConfig {
-		cost = 1,
-		cd = Timer{max = 5},
-		usageLimit = Limited{2, 2},
-		state = playerStateAttack {
-			cancellable  = true,
-			animation    = PLAYER.punch,
-			action_frame = 10,
-			// TODO: add a transition_frame? different than cancel_frame
-			cancel_frame = 16, //10 - attack quicker with lower transition frame [10,16]
-			speed        = 1,
-			action       = game.actionSpawnMeleAtPlayer,
-		},
-	}
+
+	game.hand[.Attack] = MeleAttackConfig
 
 	game.dash = newPlayerDashAbility(game.player, game.camera)
 
 	// For pixel look
 	rl.SetTextureFilter(game.screen.texture, rl.TextureFilter.POINT)
+	rl.SetTextureFilter(game.ui.texture, rl.TextureFilter.BILINEAR)
 
+	// TODO: remove from asset - Textures[]
 	whiteImage := rl.GenImageColor(1, 1, rl.WHITE)
 	whiteTexture = rl.LoadTextureFromImage(whiteImage)
 	rl.UnloadImage(whiteImage)
@@ -149,7 +143,11 @@ resetGame :: proc(game: ^Game) {
 	// Enemies
 	despawnAllEnemies(&enemies)
 	initEnemyPools(&enemies)
+	removeAllAbilities(enemyAbilities)
+	removeAllAbilities(playerAbilities)
+	initStamina()
 
+	ManaRechargeSpeed = .25
 	initWarnings()
 	initWaves()
 	initDamageNumbers()
@@ -180,9 +178,6 @@ updateGame :: proc(game: ^Game) {
 		updatePlayerStateAttackLeft(&s, player, camera, objs, &enemies)
 	case playerStateBlocking:
 		updatePlayerStateBlocking(&s, player, camera, &enemies, enemyAbilities, playerAbilities)
-	// updatePlayerStateBlockingParry(&s, abilities) // TODO: Add this 
-	case playerStateBlockBash:
-		updatePlayerStateBlockBashing(&s, player, camera, objs, &enemies)
 	case:
 		// Go straight to base state if not initialized.
 		enterPlayerState(player, playerStateBase{}, camera, &enemies)
@@ -193,7 +188,7 @@ updateGame :: proc(game: ^Game) {
 	updatePlayerHitCollisions(enemyAbilities, player) // Need to go before update enemies for mele parry
 	updateHealth(player)
 	updateStamina(player)
-	updateAttack(&player.attack)
+	updateMana(&player.mana)
 	updateGems(&gems, player)
 	updatePickup(&pickups, player)
 
@@ -221,8 +216,9 @@ updateGame :: proc(game: ^Game) {
 drawGame :: proc(game: ^Game) {
 	using game
 
-	rl.BeginTextureMode(screen)
-	rl.ClearBackground({})
+	// IF STREACING UI
+	// rl.BeginTextureMode(screen)
+	// rl.ClearBackground({})
 	rl.BeginMode3D(camera^)
 
 	// Draw Env first
@@ -254,13 +250,13 @@ drawGame :: proc(game: ^Game) {
 	rl.EndTextureMode()
 
 	// Render 3D
-	w := f32(rl.GetScreenWidth()) * 1
-	h := f32(rl.GetScreenHeight()) * 1
+	// IF STREACING UI
+	// w := f32(rl.GetScreenWidth()) * 1
+	// h := f32(rl.GetScreenHeight()) * 1
 
-	// https://github.com/raysan5/raylib/wiki/Frequently-Asked-Questions#why-is-my-render-texture-upside-down
-	rl.DrawTexturePro(screen.texture, {0, 0, -P_W, P_H}, {0, 0, w, h}, {w, h}, 180, rl.WHITE)
+	// // https://github.com/raysan5/raylib/wiki/Frequently-Asked-Questions#why-is-my-render-texture-upside-down
+	// rl.DrawTexturePro(screen.texture, {0, 0, -P_W, P_H}, {0, 0, w, h}, {w, h}, 180, rl.WHITE)
 
-	// drawDamageNumbersUI(camera)
 }
 
 @(private = "file")
@@ -272,13 +268,13 @@ UI := struct {
 drawGameUI :: proc(game: ^Game) {
 	using game
 
+	if uiStrech {
+		rl.BeginTextureMode(ui)
+		rl.ClearBackground({})
+	}
+
 	clayFrameSetup()
 	clay.BeginLayout()
-	defer {
-		layout := clay.EndLayout()
-		clayRaylibRender(&layout)
-	}
-	rl.DrawFPS(10, 10)
 	// UI.hideAll = true
 	if rl.IsKeyReleased(.TAB) {
 		UI.debug = !UI.debug
@@ -288,24 +284,18 @@ drawGameUI :: proc(game: ^Game) {
 	drawDamageNumbersUI(camera)
 	// Start UI
 	if clay.UI(clay.ID("root"), clay.Layout(layoutRoot)) {
-		if clay.UI(
-			clay.ID("top"),
-			clay.Layout(
-				{
-					sizing = {height = clay.SizingPercent(.2), width = clay.SizingGrow({})},
-					childAlignment = {x = .CENTER},
-				},
-			),
-			clay.Rectangle(testPannel),
-		) {
+		layout := clay.LayoutConfig {
+			sizing = {height = clay.SizingPercent(.2), width = clay.SizingGrow({})},
+			padding = {0, 0, 0, 0},
+			childGap = childGap,
+			childAlignment = {.CENTER, .TOP},
+			layoutDirection = .LEFT_TO_RIGHT,
+		}
+		if clay.UI(clay.ID("top"), clay.Layout(layout), clay.Rectangle(testPannel)) {
 			timer := fmt.tprintf("%.1f", Waves.duration)
 			uiText(timer, .large)
 		}
-		if clay.UI(
-			clay.ID("center"),
-			clay.Layout({sizing = expand}),
-			// clay.Rectangle(testPannel),
-		) {
+		if clay.UI(clay.ID("center"), clay.Layout({sizing = expand}), clay.Rectangle(testPannel)) {
 			if UI.debug {
 				if clay.UI(
 					clay.ID("DEBUG"),
@@ -338,39 +328,38 @@ drawGameUI :: proc(game: ^Game) {
 							timeScale = clamp(timeScale + .25, 0, 3)
 						}
 					}
-					// }
-					// for enemy in enemies.active {
-					// 	state := reflect.union_variant_type_info(enemy.state)
-					// 	uiText(fmt.tprint(state), .mid)
-					// 	debugEnemyHPBar(enemy.health)
-					// }
 				}
 			}
+			// drawUpgradeUI(game)
 		}
-		if clay.UI(
-			clay.ID("bottom"),
-			clay.Layout(
-				{
-					sizing = {height = clay.SizingPercent(.2), width = clay.SizingGrow({})},
-					childGap = childGap,
-				},
-			),
-		) {
-			if clay.UI(
-				clay.ID("HP_XP"),
-				clay.Layout(
-					{sizing = expand, layoutDirection = .TOP_TO_BOTTOM, childGap = childGap},
-				),
-				clay.Rectangle(testPannel),
-			) {
+		layout = clay.LayoutConfig {
+			sizing = {height = clay.SizingPercent(.2), width = clay.SizingGrow({})},
+			padding = {0, 0, 0, 0},
+			childGap = childGap,
+			childAlignment = {.CENTER, .BOTTOM},
+			layoutDirection = .LEFT_TO_RIGHT,
+		}
+		if clay.UI(clay.ID("bottom"), clay.Layout(layout)) {
+			layout = clay.LayoutConfig {
+				sizing          = expand,
+				padding         = {0, 0, 0, 0},
+				childGap        = childGap,
+				childAlignment  = {.LEFT, .BOTTOM},
+				layoutDirection = .TOP_TO_BOTTOM,
+			}
+			if clay.UI(clay.ID("HP_XP"), clay.Layout(layout), clay.Rectangle(testPannel)) {
 				playerHPBar(player)
 			}
-			if clay.UI(
-				clay.ID("Abilities"),
-				clay.Layout({sizing = expand}),
-				clay.Rectangle(testPannel),
-			) {
 
+			layout = clay.LayoutConfig {
+				sizing          = expand,
+				padding         = {0, 0, 0, 0},
+				childGap        = childGap,
+				childAlignment  = {.CENTER, .BOTTOM},
+				layoutDirection = .LEFT_TO_RIGHT,
+			}
+			if clay.UI(clay.ID("Abilities"), clay.Layout(layout), clay.Rectangle(testPannel)) {
+				playerHand(&hand, player)
 			}
 			if clay.UI(
 				clay.ID("??"),
@@ -401,6 +390,17 @@ drawGameUI :: proc(game: ^Game) {
 			}
 		}
 	}
+	layout := clay.EndLayout()
+	clayRaylibRender(&layout)
+
+	if uiStrech {
+		rl.EndTextureMode()
+
+		w := f32(rl.GetScreenWidth()) * 1
+		h := f32(rl.GetScreenHeight()) * 1
+
+		rl.DrawTexturePro(ui.texture, {0, 0, -P_W, P_H}, {0, 0, w, h}, {w, h}, 180, rl.WHITE)
+	}
 }
 
 drawPauseUI :: proc(game: ^Game, app: ^App) {
@@ -408,24 +408,33 @@ drawPauseUI :: proc(game: ^Game, app: ^App) {
 
 	clayFrameSetup()
 	clay.BeginLayout()
-	defer {
-		layout := clay.EndLayout()
-		clayRaylibRender(&layout)
-	}
 
-	rl.DrawFPS(10, 10)
 	// Start UI
 	if clay.UI(clay.ID("root"), clay.Layout(layoutRoot)) {
-		pos := rl.GetWorldToScreen({}, camera^)
-		if clay.UI(clay.Floating(clay.FloatingElementConfig{offset = pos})) {
+		layout := clay.LayoutConfig {
+			sizing          = expand,
+			padding         = {0, 0, 0, 0},
+			childGap        = childGap,
+			childAlignment  = {.CENTER, .CENTER},
+			layoutDirection = .TOP_TO_BOTTOM,
+		}
+		if clay.UI(clay.ID("Pause"), clay.Layout(layout), clay.Rectangle(testPannel)) {
 			if buttonText("Resume") {
 				app^ = .PLAYING
 			}
 			if buttonText("Main Menu") {
 				app^ = .HOME
 			}
+			if buttonText("QUIT") {
+				rl.CloseWindow() // Close more gracefully
+			}
 		}
+		// pos := rl.GetWorldToScreen({}, camera^)
+		// if clay.UI(clay.Floating(clay.FloatingElementConfig{offset = pos})) {
+		// }
 	}
+	layout := clay.EndLayout()
+	clayRaylibRender(&layout)
 }
 
 drawStatsUI :: proc(game: ^Game) {
@@ -433,17 +442,135 @@ drawStatsUI :: proc(game: ^Game) {
 
 	clayFrameSetup()
 	clay.BeginLayout()
-	defer {
-		layout := clay.EndLayout()
-		clayRaylibRender(&layout)
-	}
 
-	rl.DrawFPS(10, 10)
 	// Start UI
 	if clay.UI(clay.ID("root"), clay.Layout(layoutRoot)) {
-		pos := rl.GetWorldToScreen({}, camera^)
-		if clay.UI(clay.Floating(clay.FloatingElementConfig{offset = pos})) {
+		layout := clay.LayoutConfig {
+			sizing          = expand,
+			padding         = {0, 0, 0, 0},
+			childGap        = childGap,
+			childAlignment  = {.CENTER, .CENTER},
+			layoutDirection = .TOP_TO_BOTTOM,
+		}
+		if clay.UI(clay.ID("Pause"), clay.Layout(layout), clay.Rectangle(testPannel)) {
 			uiText("STATS", .large)
 		}
 	}
+
+	layout := clay.EndLayout()
+	clayRaylibRender(&layout)
+}
+
+
+// ---------------- UPGRADE UI ------------------------------
+a1 := Upgrade {
+	name   = .AttackSpeed,
+	img    = .Mark1,
+	type   = .Ability,
+	rarity = .Common,
+}
+
+a2 := Upgrade {
+	name   = .Mana,
+	img    = .Mark1,
+	type   = .Ability,
+	rarity = .Common,
+}
+
+a3 := Upgrade {
+	name   = .Stamina,
+	img    = .Mark1,
+	type   = .Ability,
+	rarity = .Common,
+}
+drawUpgradeUI :: proc(game: ^Game) {
+	using game
+
+	clayFrameSetup()
+	clay.BeginLayout()
+
+	if clay.UI(clay.ID("root"), clay.Layout(layoutRoot)) {
+		layout := clay.LayoutConfig {
+			sizing          = expand,
+			padding         = {0, 0, 0, 0},
+			childGap        = childGap,
+			childAlignment  = {.CENTER, .CENTER},
+			layoutDirection = .TOP_TO_BOTTOM,
+		}
+		if clay.UI(clay.ID("Upgrades"), clay.Layout(layout), clay.Rectangle(testPannel)) {
+			// game.upgradeOptions -> TODO: load and loop from here
+			// Upgrades show ->
+			uiText("Choose One:", .large)
+			if drawUpgradeUIItem(game, a1) ||
+			   drawUpgradeUIItem(game, a2) ||
+			   drawUpgradeUIItem(game, a3) {
+				game.state = .PLAYING
+			}
+		}
+	}
+
+	layout := clay.EndLayout()
+	clayRaylibRender(&layout)
+}
+
+drawUpgradeUIItem :: proc(game: ^Game, upgrade: Upgrade) -> bool {
+	size: f32 = 64 * 1.5
+	padding: u16 = 10
+	layout := clay.LayoutConfig { 	// Background container
+		sizing = {
+			width = clay.SizingFixed((size * 4 + f32(padding * 2))),
+			height = clay.SizingFixed(size + f32(padding * 2)),
+		},
+		padding = {padding, padding, padding, padding},
+		childGap = childGap,
+		childAlignment = {},
+		layoutDirection = .LEFT_TO_RIGHT,
+	}
+	rec := clay.RectangleElementConfig { 	// background
+		color        = light_05,
+		cornerRadius = {uiCorners, uiCorners, uiCorners, uiCorners},
+	}
+	hovered := false
+	if clay.UI() { 	// Need to wrap in an extra clay.ui for hover reasons
+		if clay.UI(
+			clay.Layout(layout),
+			clay.BorderAllRadius(
+				{width = borderThick, color = clay.Hovered() ? light_100 : light_05},
+				uiCorners,
+			),
+			clay.Rectangle(rec),
+		) {
+			layout = clay.LayoutConfig { 	// Image 
+				sizing = {width = clay.SizingFixed(size), height = clay.SizingFixed(size)},
+				padding = {0, 0, 0, 0},
+				childGap = {},
+				childAlignment = {},
+				layoutDirection = .LEFT_TO_RIGHT,
+			}
+			if clay.UI(clay.Layout(layout), clay.Image({imageData = &Textures[upgrade.img]})) {}
+
+			layout = clay.LayoutConfig { 	// Text container
+				sizing          = expand,
+				padding         = {0, 0, 0, 0},
+				childGap        = {},
+				childAlignment  = {},
+				layoutDirection = .TOP_TO_BOTTOM,
+			}
+			if clay.UI(clay.Layout(layout)) {
+				hovered = clay.Hovered()
+				type := fmt.tprint(upgrade.type)
+				uiText(type, .large)
+				devider()
+				str := upgradeDescription(game, upgrade.name)
+				uiText(str, .mid)
+			}
+		}
+	}
+
+	clicked := hovered && rl.IsMouseButtonPressed(.LEFT)
+	if clicked do doUpgrade(game, upgrade.name)
+
+
+	// imageData = &Textures[config.img],
+	return clicked
 }

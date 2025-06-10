@@ -7,6 +7,7 @@ import rl "vendor:raylib"
 AbilityInstance :: struct {
 	// Can parry: bool, -> move to player list? if range swap Dir
 	power:         f32,
+	crit:          f32,
 	using spacial: Spacial,
 	type:          union {
 		range,
@@ -17,6 +18,13 @@ AbilityInstance :: struct {
 		NONE,
 		pushback,
 	},
+	// Type :: Magic - Physical
+	dmgType:       DamageType,
+}
+
+DamageType :: enum {
+	Physical,
+	Magic,
 }
 // enum (Timer_based, Single, Other)
 // timer
@@ -56,74 +64,56 @@ initAbilityPool :: proc() -> ^AbilityPool {
 	return pool
 }
 
-newMeleInstance :: proc(pos: vec3, power: f32, size: f32) -> AbilityInstance {
+newMeleInstance :: proc(pos: vec3, damage: f32, crit: f32) -> AbilityInstance {
 	return AbilityInstance {
-		power = power,
-		spacial = Spacial{pos = pos, shape = size},
+		power = damage,
+		crit = crit,
+		spacial = Spacial{pos = pos, shape = 1},
 		type = mele{},
 		canParry = true,
 		effect = .NONE,
+		dmgType = .Physical,
 	}
 }
 
-newRangeInstance :: proc(pos: vec3, rot: f32, parry: bool) -> AbilityInstance {
+newRangeInstance :: proc(pos: vec3, rot: f32, damage: f32, crit: f32) -> AbilityInstance {
 	return AbilityInstance {
-		power = 1,
+		power = damage,
+		crit = crit,
 		spacial = Spacial{pos = pos, shape = 0.6, rot = rot},
 		type = range{duration = 1.5, speed = 7},
-		canParry = parry,
+		canParry = true,
 		effect = .NONE,
+		dmgType = .Magic,
 	}
 }
 // ---- Spawn
 // TODO: add power when spawning ability + add extra arg in callback
-spawnMeleInstance :: proc(pool: ^AbilityPool, pos: vec3, size: f32) {
-	append(&pool.active, newMeleInstance(pos, 1, size))
+
+spawnAbilityInstance :: proc(pool: ^AbilityPool, ability: AbilityInstance) {
+	append(&pool.active, ability)
 }
 
-spawnRangeInstance :: proc(pool: ^AbilityPool, pos: vec3, rot: f32) {
-	append(&pool.active, newRangeInstance(pos, rot, false))
+spawnMeleInstance :: proc(pool: ^AbilityPool, pos: vec3, damage: f32, crit: f32) {
+	ability := newMeleInstance(pos, damage, crit)
+	append(&pool.active, ability)
 }
 
-spawnMeleInstanceAtPlayer :: proc(pool: ^AbilityPool, player: ^Player) {
-	pos := player.spacial.pos
-	mat := rl.MatrixTranslate(pos.x, pos.y, pos.z)
-	mat = mat * rl.MatrixRotateY(player.spacial.rot)
-	mat = mat * rl.MatrixTranslate(0, 0, 1)
-	p := rl.Vector3Transform({}, mat)
-
-	spawnMeleInstance(pool, pos, 1)
+spawnRangeInstance :: proc(pool: ^AbilityPool, pos: vec3, rot: f32, damage: f32, crit: f32) {
+	ability := newRangeInstance(pos, rot, damage, crit)
+	append(&pool.active, ability)
 }
 
-spawnBashingMeleAtPlayer :: proc(pool: ^AbilityPool, player: ^Player) {
-	pos := player.spacial.pos
-	mat := rl.MatrixTranslate(pos.x, pos.y, pos.z)
-	mat = mat * rl.MatrixRotateY(player.spacial.rot)
-	p := rl.Vector3Transform({}, mat)
-
-	spawnMeleInstance(pool, pos, 3)
-}
-
-spawnRangeInstanceAtPlayer :: proc(pool: ^AbilityPool, player: ^Player) {
-	// TODO: replace with getForwardpoint
-	pos := player.spacial.pos
-	mat := rl.MatrixTranslate(pos.x, pos.y, pos.z)
-	mat = mat * rl.MatrixRotateY(player.spacial.rot)
-	mat = mat * rl.MatrixTranslate(0, 0, 1)
-	p := rl.Vector3Transform({}, mat)
-
-	spawnRangeInstance(pool, p, player.rot)
-}
-
+// Enemy spawning
 spawnInstanceFrontOfLocation :: proc(pool: ^AbilityPool, loc: ^Spacial) {
 	forward := getForwardPoint(loc^)
 
-	append(&pool.active, newMeleInstance(forward + loc.pos, 1, 1))
+	append(&pool.active, newMeleInstance(forward + loc.pos, 1, 0))
 }
 
-spawnRangeInstanceFrontOfLocation :: proc(pool: ^AbilityPool, loc: ^Spacial, parry: bool) {
+spawnRangeInstanceFrontOfLocation :: proc(pool: ^AbilityPool, loc: ^Spacial) {
 	forward := getForwardPoint(loc^)
-	append(&pool.active, newRangeInstance(forward + loc.pos, loc.rot, parry))
+	append(&pool.active, newRangeInstance(forward + loc.pos, loc.rot, 1, 0))
 }
 
 // ---- despawn 
@@ -131,6 +121,14 @@ removeAbility :: proc(pool: ^AbilityPool, activeIndex: int) {
 	// Swap and remove last
 	pool.active[activeIndex] = pop(&pool.active)
 	// panic("Swap with unorder_remove")
+}
+
+removeAllAbilities :: proc(pool: ^AbilityPool) {
+	fmt.println(pool.active)
+	#reverse for &obj, index in pool.active {
+		unordered_remove(&pool.active, index)
+	}
+	fmt.println(pool.active)
 }
 
 // ---- Update
@@ -172,8 +170,9 @@ updateAbilityRange :: proc(
 		if !hit do continue
 		// on hit
 		{
-
+			// TODO: check if crit
 			hurt(&enemy, obj.power)
+			spawnDamangeNumber(enemy.pos + enemy.dmgIndicatorOffset, obj.power, .Default)
 			// At hitflash -> move out of hurt
 			startHitStop() // TODO: only apply from some abilities, like mele - else it feels off. IE a dot would be bad
 			addTrauma(.large)
@@ -237,7 +236,7 @@ updateAbilityMele :: proc(
 		{
 
 			hurt(&enemy, obj.power)
-			spawnDamangeNumber(enemy.pos + enemy.dmgIndicatorOffset, obj.power)
+			spawnDamangeNumber(enemy.pos + enemy.dmgIndicatorOffset, obj.power, .Default)
 			// At hitflash -> move out of hurt
 			startHitStop() // TODO: only apply from some abilities, like mele - else it feels off. IE a dot would be bad
 			addTrauma(.large)

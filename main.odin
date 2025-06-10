@@ -7,21 +7,25 @@ import "core:math"
 import "core:prof/spall"
 import "core:sync"
 import rl "vendor:raylib"
-
-SCREEN_W :: 1920 / 2
-SCREEN_H :: 1080 / 2
+// {1280, 800}
+// {1280, 1024}
+// {1440,900}
+// {1440,960}
+// {1600,900}
+// {1680,1050}
+SCREEN_W :: 1280
+SCREEN_H :: 800
+// SCREEN_W :: 1920 / 5
+// SCREEN_H :: 1080 / 5
 
 // PIXEL_LOOK
 P_W :: SCREEN_W
 P_H :: SCREEN_H
-// P_W :: 1920 / 5
-// P_H :: 1080 / 5
 
 // TODO: maybe change to a union for each state
 App :: enum {
 	HOME,
 	PLAYING,
-	PAUSE,
 	STATS,
 	OTHER,
 }
@@ -44,38 +48,49 @@ main :: proc() {
 	game := initGame()
 
 	app := App{}
+	rl.SetExitKey(.KEY_NULL)
 	for !rl.WindowShouldClose() {
 		rl.BeginDrawing()
 		defer rl.EndDrawing()
-		// rl.ClearBackground(color36)
 		rl.ClearBackground(color13)
 
+		if rl.IsKeyPressed(.ONE) {
+			rl.ToggleBorderlessWindowed() // Less hassle, full screen breaks
+		}
 		switch app {
 		case .HOME:
 			if rl.IsKeyPressed(.SPACE) {
 				resetGame(&game)
 				app = .PLAYING
+				// game.state = .UPGRADE
 			}
 			drawMainMemu(&app, &game)
-		// Add some UI + button
 		case .PLAYING:
-			if isGameOver(game.player) {
-				app = .STATS
-				// reset values
+			rl.DrawFPS(10, 10)
+			switch game.state {
+			case .PLAYING:
+				if isGameOver(game.player) {
+					app = .STATS
+				}
+				if rl.IsKeyPressed(.ESCAPE) {
+					game.state = .UPGRADE
+				}
+				updateGame(&game)
+				drawGame(&game)
+				drawGameUI(&game)
+			case .UPGRADE:
+				if rl.IsKeyPressed(.ESCAPE) {
+					game.state = .PAUSE
+				}
+				drawGame(&game)
+				drawUpgradeUI(&game)
+			case .PAUSE:
+				if rl.IsKeyPressed(.ESCAPE) {
+					game.state = .PLAYING // TODO: go back to prev state, upgrade or playing
+				}
+				drawGame(&game)
+				drawPauseUI(&game, &app)
 			}
-			if rl.IsKeyPressed(.P) {
-				app = .PAUSE
-			}
-			updateGame(&game)
-			drawGame(&game)
-			drawGameUI(&game)
-		case .PAUSE:
-			if rl.IsKeyPressed(.P) {
-				app = .PLAYING
-			}
-			// TODO: pause UI
-			drawGame(&game)
-			drawPauseUI(&game, &app)
 		case .STATS:
 			if rl.IsKeyPressed(.SPACE) {
 				app = .HOME
@@ -83,6 +98,7 @@ main :: proc() {
 			if rl.IsMouseButtonPressed(.LEFT) {
 				app = .HOME
 			}
+			drawGame(&game)
 			drawStatsUI(&game)
 		case .OTHER:
 		}

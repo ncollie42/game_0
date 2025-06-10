@@ -10,28 +10,37 @@ isBlocking :: proc(player: Player) -> bool {
 	_, blocking := player.state.(playerStateBlocking)
 	return blocking
 }
+isParrying :: proc(player: Player) -> bool {
+	blocking, isBlocking := player.state.(playerStateBlocking)
+	if !isBlocking do return false
 
-Attack :: struct {
+	return blocking.durration < PARRY_WINDOW
+}
+
+
+// Change to Mana?
+Mana :: struct {
 	current: f32, // showing
 	max:     f32,
 }
 
-canAttack :: proc(attack: ^Attack) -> bool {
+canAttack :: proc(attack: ^Mana) -> bool {
 	return attack.current >= 1
 }
 
-doAttack :: proc(attack: ^Attack) {
-	attack.current -= 1
+useMana :: proc(attack: ^Mana, cost: int) {
+	attack.current -= f32(cost)
 }
 
-updateAttack :: proc(attack: ^Attack) {
-	attack.current += getDelta() * .25 // very slow
+ManaRechargeSpeed: f32 = .25
+updateMana :: proc(attack: ^Mana) {
+	attack.current += getDelta() * ManaRechargeSpeed // very slow
 
 	attack.current = clamp(attack.current, 0, attack.max)
 }
 
 // showing, max, pos, barwidth, height, 
-drawAttackbar :: proc(attack: Attack, camera: ^rl.Camera, pos: vec3) {
+drawAttackbar :: proc(attack: Mana, camera: ^rl.Camera, pos: vec3) {
 	// TODO: - set width based on hp max
 	width: f32 = healthBarWidth
 	height: f32 = healthBareHeight

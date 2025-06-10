@@ -10,6 +10,7 @@ model: rl.Model
 // 	speed   = 1,
 // }
 // animSet: AnimationSet
+img: rl.Texture2D
 debugInit :: proc(game: ^Game) {
 	using game
 }
@@ -21,9 +22,12 @@ debugUpdateGame :: proc(game: ^Game) {
 	mouse := mouseInWorld(camera)
 	random := getRandomPoint()
 
-	if rl.IsKeyPressed(.Q) {
+	img = loadTexture("resources/mark_4.png")
+	if rl.IsKeyPressed(.P) {
+		doUpgrade(game, .RangeUnlock)
 	}
 	if rl.IsKeyPressed(.F) {
+		uiStrech = !uiStrech
 		spawnEnemy(&enemies, grid, .Range, true)
 	}
 	if rl.IsKeyPressed(.G) {
@@ -31,6 +35,9 @@ debugUpdateGame :: proc(game: ^Game) {
 	}
 	if rl.IsKeyPressed(.H) {
 		spawnEnemy(&enemies, mouse, .Range, true)
+	}
+	if rl.IsKeyPressed(.M) {
+		game.state = .UPGRADE
 	}
 	if rl.IsKeyPressed(.J) {
 		debug = !debug

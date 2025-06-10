@@ -18,7 +18,8 @@ Player :: struct {
 	trailLeft:     Flipbook,
 	trailRight:    Flipbook,
 	viewCircle:    rl.Model,
-	attack:        Attack,
+	mana:          Mana,
+	power:         Stats,
 	//Test :: Collision
 	point:         vec3,
 	normal:        vec3,
@@ -70,7 +71,8 @@ initPlayer :: proc(player: ^Player) {
 		max     = 10,
 		current = 10,
 	}
-	player.attack = Attack{5, 5}
+	player.mana = Mana{3, 3}
+	player.power = newPlayerStats()
 
 	player.spacial = Spacial {
 		rot   = 0,
@@ -206,7 +208,8 @@ updatePlayerStateBase :: proc(player: ^Player, objs: [dynamic]EnvObj, enemies: ^
 	}
 
 	// speed := getRootMotionSpeed(&player.animState, player.animSet, player.scale)
-	moveAndSlide(player, dir * MOVE_SPEED, objs, enemies)
+	speed := player.animState.speed
+	moveAndSlide(player, dir * MOVE_SPEED * speed, objs, enemies)
 
 	if dir == {} {
 		transitionAnimBlend(&player.animState, PLAYER.idle)
@@ -256,14 +259,14 @@ updatePlayerStateAttack :: proc(
 	// Action
 	if frame >= attack.action_frame && !attack.hasTriggered {
 		attack.hasTriggered = true
-		doAction(attack.action)
+		doAction(attack.closure)
 		pos := getForwardPoint(player)
 		spawnFlipbook(&player.trailRight, player.pos + pos, player.rot)
 	}
 
 	if frame >= attack.cancel_frame && attack.comboInput {
 		left := playerStateAttackLeft {
-			action = attack.action, // Pass forward the action, might want to make this global??
+			closure = attack.closure,
 		}
 		enterPlayerState(player, left, camera, enemies)
 		return
@@ -299,14 +302,14 @@ updatePlayerStateAttackLeft :: proc(
 	// Action
 	if frame >= attack.action_frame && !attack.hasTriggered {
 		attack.hasTriggered = true
-		doAction(attack.action)
+		doAction(attack.closure)
 		pos := getForwardPoint(player)
 		spawnFlipbook(&player.trailLeft, player.pos + pos, player.rot) // left only
 	}
 
 	if frame >= attack.cancel_frame && attack.comboInput {
 		right := playerStateAttack {
-			action = attack.action, // Pass forward the action, might want to make this global??
+			closure = attack.closure,
 		}
 		enterPlayerState(player, right, camera, enemies)
 		return
@@ -336,7 +339,7 @@ updatePlayerStateBlocking :: proc(
 			if !ability.canParry do continue
 			dist := rl.Vector3DistanceSqrt(ability.spacial.pos, player.pos)
 			if dist > PARRY_DIST do continue
-			player.attack.current += 2
+			player.mana.current += 2
 			parryAbility(index, enemyAbilities, playerAbilities)
 			addTrauma(.large)
 		}
@@ -347,29 +350,12 @@ updatePlayerStateBlocking :: proc(
 	// player.spacial.rot = lerpRAD(player.spacial.rot, r, getDelta() * TURN_SPEED)
 }
 
-updatePlayerStateBlockBashing :: proc(
-	bash: ^playerStateBlockBash,
-	player: ^Player,
-	camera: ^rl.Camera3D,
-	objs: [dynamic]EnvObj,
-	enemies: ^EnemyPool,
-) {
-	dir := getForwardPoint(player)
-
-	// moveAndSlide(player, dir * 30, objs, enemies)
-	player.pos += dir * .1
-
-	if linalg.length2(player.pos - bash.target) > 5 do return
-	doAction(bash.action)
-	enterPlayerState(player, playerStateBase{}, camera, enemies) //Into an attack?
-}
-
 playerInputDash :: proc(player: ^Player, state: State, camera: ^rl.Camera3D, enemies: ^EnemyPool) {
 	// Make 'ability' for dash
 
 	// if ability is interruptable
 	if !hasEnoughStamina() {return}
-	if !isKeyPressed(DASH) {return}
+	if !isActionPressed(.Dash) {return}
 	if !canDash(player) {return}
 
 	consumeStamina()
@@ -410,7 +396,6 @@ enterPlayerState :: proc(
 		player.model.materials[player.model.materialCount - 1].shader = Shaders[.GrayScale]
 		transitionAnim(&player.animState, s.animation)
 	case playerStateAttack:
-		doAttack(&player.attack)
 		s.action_frame = 10
 		s.cancel_frame = 16
 		s.cancellable = true
@@ -427,7 +412,6 @@ enterPlayerState :: proc(
 
 		transitionAnim(&player.animState, PLAYER.punch)
 	case playerStateAttackLeft:
-		doAttack(&player.attack)
 		s.action_frame = 10
 		s.cancel_frame = 16
 		s.cancellable = true
@@ -449,16 +433,6 @@ enterPlayerState :: proc(
 		// TODO: Add blocking anim
 		transitionAnim(&player.animState, PLAYER.block)
 		player.model.materials[player.model.materialCount - 1].shader = Shaders[.GrayScale]
-	case playerStateBlockBash:
-		// Snap to mouse direction before attack or Enemy
-		result := getEnemyHitResult(enemies, camera)
-		target := mouseInWorld(camera)
-		if result.hit do target = result.pos
-		r := lookAtVec3(target, player.spacial.pos)
-		player.spacial.rot = lerpRAD(player.spacial.rot, r, 1)
-
-		player.model.materials[player.model.materialCount - 1].shader = Shaders[.GrayScale]
-		transitionAnim(&player.animState, PLAYER.dash)
 	}
 }
 
@@ -468,7 +442,6 @@ State :: union {
 	playerStateAttack, // DO we have one state of all abilities or each one has it's own?
 	playerStateAttackLeft,
 	playerStateBlocking,
-	playerStateBlockBash,
 	//	AbiltiyPreviewState
 }
 
@@ -478,11 +451,6 @@ playerStateBlocking :: struct {
 	// TODO: maybe add Actions or other fields
 	durration: f32,
 	animation: ANIMATION_NAMES, // TODO group these 2
-}
-
-playerStateBlockBash :: struct {
-	target: vec3,
-	action: Action,
 }
 
 playerStateDashing :: struct {
@@ -503,7 +471,8 @@ playerStateAttack :: struct {
 	hasTriggered: bool,
 	// trigger:       f32, // between 0 and 1 -- Sub for frame in future
 	action_frame: i32,
-	action:       Action,
+	// action:       Action,
+	closure:      ClosureName,
 	cancel_frame: i32,
 	// combo
 	comboInput:   bool,
@@ -520,22 +489,12 @@ playerStateAttackLeft :: struct {
 	hasTriggered: bool,
 	// trigger:       f32, // between 0 and 1 -- Sub for frame in future
 	action_frame: i32,
-	action:       Action,
+	// action:       Action,
+	closure:      ClosureName,
 	cancel_frame: i32,
 	// combo
 	comboInput:   bool,
 }
-
-// 	r := lookAtVec3(mouseInWorld(camera), player.spacial.pos)
-// 	player.spacial.rot = lerpRAD(player.spacial.rot, r, 1)
-// 	if progress > .5 { 	// Move .5 to struct?
-// 		dir := getForwardPoint(player)
-// 		moveAndStop(player, dir * MOVE_SPEED * 3, objs, enemies) // IF stoped -> trigger action? TODO: make func return collision
-// 	}
-// 	if attack.timer.left <= 0 {
-// 		enterPlayerState(player, playerStateBase{}, camera, enemies)
-// 	}
-// }
 
 // Draw
 drawPlayer :: proc(player: Player, camera: ^rl.Camera3D) {
@@ -544,7 +503,7 @@ drawPlayer :: proc(player: Player, camera: ^rl.Camera3D) {
 	hudPos := player.pos + {0, 3.4, 0}
 	drawHealthbar(player.health, camera, hudPos) // ADD top of player spot
 	// drawBlockbar(player.block, camera, hudPos)
-	drawAttackbar(player.attack, camera, hudPos)
+	drawAttackbar(player.mana, camera, hudPos)
 	drawStamina(camera, hudPos)
 
 	// Draw player
@@ -572,13 +531,15 @@ drawPlayer :: proc(player: Player, camera: ^rl.Camera3D) {
 		// box.max = rl.Vector3Transform(box.max, modelMatrix)
 		mesh := rl.GenMeshCube(1.5, 3, .1) // TODO: swap with a model on gen based on block angle?
 		shield := rl.LoadModelFromMesh(mesh)
+		parrying := isParrying(player)
+		color := parrying ? rl.WHITE : rl.GRAY
 		rl.DrawModelEx(
 			shield,
 			player.spacial.pos + getForwardPoint(player) + {0, 1.5, 0},
 			UP,
 			rl.RAD2DEG * player.spacial.rot,
 			1,
-			rl.WHITE,
+			color,
 		)
 		// rl.DrawBoundingBox(box, rl.WHITE)
 		// rl.DrawSphere(player.pos, 2, rl.WHITE)

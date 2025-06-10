@@ -26,9 +26,9 @@ initDamageNumbers :: proc() {
 }
 
 // spawnFloatingText :: proc(pos, text, duration, type)
-spawnDamangeNumber :: proc(pos: vec3, amount: f32) {
+spawnDamangeNumber :: proc(pos: vec3, amount: f32, type: FloatingText) {
 	// TODO: add randomness so they don't overlap or use some other system.
-	append(&DamageNumbers, DamageNumber{fmt.ctprint(amount), pos, DamageNumberDuration, .Default})
+	append(&DamageNumbers, DamageNumber{fmt.ctprint(amount), pos, DamageNumberDuration, type})
 }
 
 updateDamageNumbers :: proc() {

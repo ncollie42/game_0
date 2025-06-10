@@ -191,7 +191,7 @@ initEnemyPools :: proc(pool: ^EnemyPool) {
 	// -------- Mele -------- 
 
 	mele := Enemy {
-		health = {max = 3},
+		health = {max = 6},
 		attackCD = {left = 5.0, max = 10.0},
 		shape = .8, // TODO: change, but also add attack range
 		type = MeleEnemy{},
@@ -205,7 +205,7 @@ initEnemyPools :: proc(pool: ^EnemyPool) {
 	// -------- Range -------- 
 
 	range := Enemy {
-		health = {max = 2},
+		health = {max = 4},
 		attackCD = {max = 8.0},
 		shape = .8, // TODO: change, but also add attack range
 		type = RangeEnemy{},
@@ -219,7 +219,7 @@ initEnemyPools :: proc(pool: ^EnemyPool) {
 	// -------- Giant -------- 
 
 	giant := Enemy {
-		health = {max = 4},
+		health = {max = 8},
 		attackCD = {left = 5.0, max = 10.0},
 		shape = .8, // TODO: change, but also add attack range
 		type = GiantEnemy{},
@@ -231,7 +231,7 @@ initEnemyPools :: proc(pool: ^EnemyPool) {
 
 	// -------- Thorn -------- 
 	thorn := Enemy {
-		health = {max = 2},
+		health = {max = 4},
 		attackCD = {left = .5, max = .5},
 		shape = .8, // TODO: change, but also add attack range
 		type = ThornEnemy{},
@@ -244,7 +244,7 @@ initEnemyPools :: proc(pool: ^EnemyPool) {
 	// -------- Monolith -------- 
 
 	monolith := Enemy {
-		health = {max = 15},
+		health = {max = 25},
 		attackCD = {left = .5, max = .5},
 		shape = .8, // TODO: change, but also add attack range
 		type = MonolithEnemy{},

@@ -13,6 +13,10 @@ Stamina := struct {
 
 STAMINA_RECHARGE_SPEED: f32 = .3 // 2 // .5
 
+initStamina :: proc() {
+	Stamina = {2, 2, 1}
+}
+
 updateStamina :: proc(player: ^Player) {
 	if isDashing(player) do return
 	Stamina.current += getDelta() * STAMINA_RECHARGE_SPEED
@@ -30,8 +34,7 @@ canDash :: proc(player: ^Player) -> bool {
 
 isDashing :: proc(player: ^Player) -> bool {
 	_, dashing := player.state.(playerStateDashing)
-	_, bashing := player.state.(playerStateBlockBash)
-	return dashing || bashing
+	return dashing
 }
 
 hasEnoughStamina :: proc() -> bool {

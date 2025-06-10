@@ -81,8 +81,7 @@ updateEnemyRange :: proc(
 
 		if frame >= s.action_frame {
 			s.hasTriggered = true
-			// parry := rand.float32_range(0, 1) > .3 // 30% chance to be parry ability
-			spawnRangeInstanceFrontOfLocation(pool, enemy, true)
+			spawnRangeInstanceFrontOfLocation(pool, enemy)
 		}
 	case EnemyPushback:
 		dir := getBackwardPoint(enemy)

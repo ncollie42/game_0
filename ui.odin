@@ -108,7 +108,11 @@ clayFrameSetup :: proc() {
 		rl.GetFrameTime(),
 	)
 
-	clay.SetLayoutDimensions({cast(f32)rl.GetScreenWidth(), cast(f32)rl.GetScreenHeight()})
+	if uiStrech {
+		clay.SetLayoutDimensions({P_W, P_H})
+	} else {
+		clay.SetLayoutDimensions({cast(f32)rl.GetScreenWidth(), cast(f32)rl.GetScreenHeight()})
+	}
 
 	if (rl.IsKeyPressed(.MINUS)) {
 		debugModeEnabled = !debugModeEnabled
@@ -169,6 +173,44 @@ playerHPBar :: proc(hp: Health) {
 		) {}
 	}
 }
+
+// hand 
+playerHand :: proc(hand: ^[HandAction]AbilityConfig, player: ^Player) {
+	size: f32 = 64 * 1.5
+	empty := AbilityConfig{}
+	for config, slot in hand {
+		if slot == .Nil do continue
+
+		if clay.UI(
+			clay.Layout(
+				{sizing = {width = clay.SizingFixed(size), height = clay.SizingFixed(size)}},
+			), // clay.Layout({sizing = {clay.SizingGrow({}), clay.SizingGrow({})}}),
+			clay.BorderAllRadius({width = borderThick, color = light_100}, uiCorners),
+			clay.Image(
+				clay.ImageElementConfig {
+					imageData = &Textures[config.img],
+					sourceDimensions = {size, size},
+				},
+			),
+		) {
+			str := actionDescription(config.closureName)
+			fmt.println(str)
+			// Where do we use the 60% of abiltiy usage and power? -> part of the closure
+
+			// name := getClosureName(config)
+			// Closures[name].percent
+			// closure[name].type?
+			// player.power.Physical
+			// damageDone := dmg
+
+			// "Name: %sDoes %s/% percent (X) damage as mele. CD: "
+			// text := getAbilityDescription(config)
+
+			// fmt.println(config.cost)
+		}
+	}
+}
+
 
 // Progress bar stamina
 staminaBar :: proc(showing: f32, max: f32) {
@@ -566,3 +608,12 @@ dropDown :: proc(text: string) -> bool {
 	}
 	return hovered && rl.IsMouseButtonPressed(.LEFT)
 }
+
+/*
+	To streach the UI, we create an extra texture to draw on.
+	enable texture mode
+	and draw that texture on to the screen after all the layout is done 
+
+	- I'm not sure if I want to keep it, it's an else if for now.
+*/
+uiStrech := false
