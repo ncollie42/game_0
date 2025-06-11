@@ -22,6 +22,7 @@ ShaderNames :: enum {
 	Black,
 	Hull,
 	Light, // TODO: https://youtu.be/yyJ-hdISgnw?si=k1GOwqAXirDFDNBR&t=2112
+	Tiling,
 }
 
 Textures := [TextureName]rl.Texture2D{}
@@ -40,6 +41,7 @@ loadShaders :: proc() {
 	Shaders[.Shadow] = rl.LoadShader("shaders/shadow.vs", "shaders/shadow.fs")
 	Shaders[.Black] = rl.LoadShader(nil, "shaders/shadow.fs")
 	// Shaders[.Light] = rl.LoadShader("shaders/light.vs", "shaders/light.fs")
+	Shaders[.Tiling] = rl.LoadShader(nil, "shaders/tiling.fs")
 
 	Textures[.Mark1] = rl.LoadTexture("resources/mark_1.png")
 	Textures[.Mark2] = rl.LoadTexture("resources/mark_2.png")
