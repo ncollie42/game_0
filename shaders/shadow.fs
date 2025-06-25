@@ -5,9 +5,13 @@ out vec4 finalColor;
 
 void main()
 {
-    // Set shadow color to semi-transparent black
-    // Getting issues with overlaping on the alpha, might need to render out solid to a texture and bring back in?
+    // Alpha :: -> Getting strange overlap on alphas + it's blending with background brown, not env on floor
     // finalColor = vec4(0.0, 0.0, 0.0, 0.55);
-    // Same as background with a lower 'value'
-    finalColor = vec4(.38, .22, .2, 1);
+    // finalColor = vec4(0.0, 0.0, 0.0, 0.10);
+    // 
+    // background with a lower 'value'
+    // finalColor = vec4(.38, .22, .2, 1);
+    //
+    // Black :: It looks a bit harsh
+    finalColor = vec4(0.0, 0.0, 0.0, 1);
 }

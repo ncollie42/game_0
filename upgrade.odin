@@ -70,7 +70,6 @@ startUpgradePhase :: proc() {
 	// 3. In UI -> if pressed -> doUnlock(game, name) - set state back to playing
 }
 
-// TODO: UndoUpgrade & also reset all
 doUpgrade :: proc(game: ^Game, name: UpgradeName) {
 	using game
 
@@ -78,6 +77,7 @@ doUpgrade :: proc(game: ^Game, name: UpgradeName) {
 	switch name {
 	case .RangeUnlock:
 		slot := getFreeSlot(game.hand)
+		fmt.println("Adding, ", slot)
 		if slot == .Nil {
 			// Do we want to panic? should not give this option of we can't select? or we allow to overwride?
 			panic("Don't know how to handle not option yet")

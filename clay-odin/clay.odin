@@ -448,6 +448,23 @@ BorderAllRadius :: proc(allBorders: BorderData, radius: f32) -> TypedConfig {
 	}
 }
 
+BorderBottomOnly :: proc(allBorders: BorderData) -> TypedConfig {
+	// CUSTOM 
+	return {
+		type   = ElementConfigType.Border,
+		config = _StoreBorderElementConfig(
+			(BorderElementConfig) {
+				left         = {},
+				right        = {},
+				top          = {},
+				bottom       = allBorders,
+				cornerRadius = {},
+				// cornerRadius = {radius, radius, radius, radius},
+			},
+		),
+	}
+}
+
 CornerRadiusAll :: proc(radius: f32) -> CornerRadius {
 	return CornerRadius{radius, radius, radius, radius}
 }

@@ -109,11 +109,12 @@ HandAction :: enum {
 	Attack, // Basic
 	Power, // Nuke
 	Special, // CC / AOE
-	Defence, //
-	// Ult,
+	// Defence, //
+	Ult,
 }
 
 ActionNames :: enum {
+	Nil,
 	One,
 	Two,
 	Three,
@@ -129,6 +130,7 @@ ActionNames :: enum {
 
 // Basic mele, x, x, defensive
 bindings := [ActionNames]KeyBinding {
+	.Nil      = nil,
 	.One      = rl.MouseButton.LEFT, // Mele
 	.Two      = rl.KeyboardKey.Q,
 	.Three    = rl.KeyboardKey.E,
@@ -233,6 +235,7 @@ Timer :: struct {
 
 updateTimer :: proc(timer: ^Timer) {
 	timer.left -= getDelta()
+	timer.left = clamp(timer.left, 0, timer.max)
 }
 
 isTimerReady :: proc(timer: Timer) -> bool {
@@ -348,7 +351,6 @@ drawShadow :: proc(model: rl.Model, spacial: Spacial, scale: f32, camera: ^rl.Ca
 
 	model.materials[count].shader = Shaders[.Shadow]
 	rl.DrawModel(model, spacial.pos, scale, rl.WHITE)
-
 	model.materials[count].shader = prevShader
 }
 

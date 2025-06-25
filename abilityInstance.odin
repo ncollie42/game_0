@@ -31,7 +31,8 @@ DamageType :: enum {
 // hit:           bool, 
 // Model
 // }
-mele :: struct {}
+mele :: struct {
+}
 range :: struct {
 	speed:    f32,
 	duration: f32, //0 would be == 0 mele
@@ -124,11 +125,9 @@ removeAbility :: proc(pool: ^AbilityPool, activeIndex: int) {
 }
 
 removeAllAbilities :: proc(pool: ^AbilityPool) {
-	fmt.println(pool.active)
 	#reverse for &obj, index in pool.active {
 		unordered_remove(&pool.active, index)
 	}
-	fmt.println(pool.active)
 }
 
 // ---- Update

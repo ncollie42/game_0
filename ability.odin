@@ -2,7 +2,8 @@ package main
 import "core:fmt"
 import rl "vendor:raylib"
 
-Infinate :: struct {}
+Infinate :: struct {
+}
 Limited :: struct {
 	max:     u8,
 	current: u8,
@@ -110,7 +111,7 @@ spawnRangeInstanceAtPlayer :: proc(pool: ^AbilityPool, player: ^Player, damage: 
 MeleAttackConfig := AbilityConfig {
 	cost = 0,
 	cd = Timer{max = 5},
-	usageLimit = Limited{2, 2},
+	usageLimit = Infinate{},
 	img = .Mark1,
 	closureName = .Mele,
 	state = playerStateAttack {
@@ -149,7 +150,7 @@ hasFreeSlot :: proc(hand: [HandAction]AbilityConfig) -> bool {
 	return false
 }
 
-hasActiveSlot :: proc(hand: [HandAction]AbilityConfig, slot: HandAction) -> bool {
+isActiveSlot :: proc(hand: [HandAction]AbilityConfig, slot: HandAction) -> bool {
 	empty := AbilityConfig{}
 	return hand[slot] != empty
 }

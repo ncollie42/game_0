@@ -57,6 +57,7 @@ initGame :: proc() -> Game {
 		pool    = game.playerAbilities,
 	}
 
+	game.hand = {}
 	game.hand[.Attack] = MeleAttackConfig
 
 	game.dash = newPlayerDashAbility(game.player, game.camera)
@@ -332,6 +333,7 @@ drawGameUI :: proc(game: ^Game) {
 			}
 			// drawUpgradeUI(game)
 		}
+		// Bottom 20% of screen
 		layout = clay.LayoutConfig {
 			sizing = {height = clay.SizingPercent(.2), width = clay.SizingGrow({})},
 			padding = {0, 0, 0, 0},
@@ -351,16 +353,9 @@ drawGameUI :: proc(game: ^Game) {
 				playerHPBar(player)
 			}
 
-			layout = clay.LayoutConfig {
-				sizing          = expand,
-				padding         = {0, 0, 0, 0},
-				childGap        = childGap,
-				childAlignment  = {.CENTER, .BOTTOM},
-				layoutDirection = .LEFT_TO_RIGHT,
-			}
-			if clay.UI(clay.ID("Abilities"), clay.Layout(layout), clay.Rectangle(testPannel)) {
-				playerHand(&hand, player)
-			}
+			// Player Abilities 
+			playerHand(&hand, player)
+			// Right Bottom 
 			if clay.UI(
 				clay.ID("??"),
 				clay.Layout({sizing = expand}),
@@ -464,7 +459,7 @@ drawStatsUI :: proc(game: ^Game) {
 
 // ---------------- UPGRADE UI ------------------------------
 a1 := Upgrade {
-	name   = .AttackSpeed,
+	name   = .RangeUnlock,
 	img    = .Mark1,
 	type   = .Ability,
 	rarity = .Common,

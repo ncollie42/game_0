@@ -12,5 +12,6 @@
 	"profile": "default",
 	"profiles": [
 		{ "name": "linux_profile", "os": "linux", "checker_path": ["src/main.odin"]},
+		{ "name": "mac", "os": "mac", "checker_path": ["src/main.odin"]},
 	]
 }

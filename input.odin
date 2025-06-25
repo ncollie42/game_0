@@ -15,17 +15,32 @@ updatePlayerInput :: proc(game: ^Game) {
 	// Player Actions
 	// :: SM Input
 	playerInputDash(player, dash, camera, &enemies)
-
+	// Action 1 2 3 4 -> hand[1, 2, 3, 4] -> [0].one, .Attack
 	switch &s in player.state {
 	case playerStateBase:
-		if isActionPressed(.One) && canAttack(&player.mana) && hasActiveSlot(hand, .Attack) {
+		// NOTE: maybe rename from attack / power / spacial / ext.. might not be needed here.
+		if isActionPressed(.One) {
+			if !isActiveSlot(hand, .Attack) do break
+			if !hasEnoughMana(&player.mana, hand[.Attack].cost) do break
+			// Check CD
 			useMana(&player.mana, hand[.Attack].cost)
 			enterPlayerState(player, hand[.Attack].state, camera, &enemies)
 		}
-		if isActionPressed(.Two) && canAttack(&player.mana) && hasActiveSlot(hand, .Power) {
+		if isActionPressed(.Two) {
+			if !isActiveSlot(hand, .Power) do break
+			if !hasEnoughMana(&player.mana, hand[.Power].cost) do break
+			// Check CD
 			useMana(&player.mana, hand[.Power].cost)
 			enterPlayerState(player, hand[.Power].state, camera, &enemies)
 		}
+		if isActionPressed(.Three) {
+			if !isActiveSlot(hand, .Special) do break
+			if !hasEnoughMana(&player.mana, hand[.Special].cost) do break
+			// Check CD
+			useMana(&player.mana, hand[.Special].cost)
+			enterPlayerState(player, hand[.Special].state, camera, &enemies)
+		}
+
 		if isActionPressed(.Block) {
 			enterPlayerState(player, playerStateBlocking{}, camera, &enemies)
 		}
@@ -35,7 +50,7 @@ updatePlayerInput :: proc(game: ^Game) {
 		if !isActionPressed(.One) do break
 		frame := i32(math.floor(player.animState.duration * FPS_30))
 		if frame < s.cancel_frame do break
-		if !canAttack(&player.mana) do break
+		if !hasEnoughMana(&player.mana, 1) do break // TOOD: replace with actual cost
 		if s.comboInput == true do break // already triggered
 
 		useMana(&player.mana, hand[.Attack].cost)
@@ -45,7 +60,7 @@ updatePlayerInput :: proc(game: ^Game) {
 		if !isActionPressed(.One) do break
 		frame := i32(math.floor(player.animState.duration * FPS_30))
 		if frame < s.cancel_frame do break
-		if !canAttack(&player.mana) do break
+		if !hasEnoughMana(&player.mana, 1) do break // TOOD: replace with actual cost
 		if s.comboInput == true do break // already triggered
 
 		useMana(&player.mana, hand[.Attack].cost)

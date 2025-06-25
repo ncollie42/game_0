@@ -178,35 +178,154 @@ playerHPBar :: proc(hp: Health) {
 playerHand :: proc(hand: ^[HandAction]AbilityConfig, player: ^Player) {
 	size: f32 = 64 * 1.5
 	empty := AbilityConfig{}
-	for config, slot in hand {
-		if slot == .Nil do continue
 
-		if clay.UI(
-			clay.Layout(
-				{sizing = {width = clay.SizingFixed(size), height = clay.SizingFixed(size)}},
-			), // clay.Layout({sizing = {clay.SizingGrow({}), clay.SizingGrow({})}}),
-			clay.BorderAllRadius({width = borderThick, color = light_100}, uiCorners),
-			clay.Image(
-				clay.ImageElementConfig {
-					imageData = &Textures[config.img],
-					sourceDimensions = {size, size},
-				},
-			),
-		) {
-			str := actionDescription(config.closureName)
-			fmt.println(str)
-			// Where do we use the 60% of abiltiy usage and power? -> part of the closure
+	layoutOuter := clay.LayoutConfig {
+		sizing          = expand,
+		padding         = {0, 0, 0, 0},
+		childGap        = childGap,
+		childAlignment  = {.CENTER, .BOTTOM},
+		layoutDirection = .LEFT_TO_RIGHT,
+	}
 
-			// name := getClosureName(config)
-			// Closures[name].percent
-			// closure[name].type?
-			// player.power.Physical
-			// damageDone := dmg
+	if clay.UI(clay.ID("Abilities"), clay.Layout(layoutOuter), clay.Rectangle(testPannel)) {
+		layout := clay.LayoutConfig {
+			// sizing          = expand,
+			sizing = {width = clay.SizingFixed(size), height = clay.SizingFixed(size)},
+			layoutDirection = .TOP_TO_BOTTOM,
+			padding = {0, 0, 0, 0},
+			childGap = 0,
+		}
+		for config, slot in hand {
+			if slot == .Nil do continue
+			// Image
+			//   [x]CD overlay
+			//   [x]Mana cost
+			//   [ ]charges left
+			//   [ ]Key press
+			//  .attack -> .One
 
-			// "Name: %sDoes %s/% percent (X) damage as mele. CD: "
-			// text := getAbilityDescription(config)
+			// if slot != .Attack do continue
+			if clay.UI(
+				clay.Layout(layout),
+				clay.BorderAll({width = borderThick, color = light_100}),
+				// clay.BorderAllRadius({width = borderThick, color = light_100}, uiCorners),
+				clay.Image(
+					clay.ImageElementConfig {
+						imageData = &Textures[config.img],
+						sourceDimensions = {size, size},
+					},
+				),
+			) {
+				percent := config.cd.left / config.cd.max
+				coverLayout := clay.LayoutConfig {
+					sizing = {
+						width = clay.SizingFixed(size),
+						height = clay.SizingPercent(percent),
+					},
+					padding = {8, 8, 8, 8},
+					childGap = 8,
+				}
+				cover := clay.RectangleElementConfig {
+					color = {0, 0, 0, 255 * .8},
+				}
+				if percent > 0 {
+					if clay.UI(
+						clay.Layout(coverLayout),
+						clay.Rectangle(cover),
+						clay.BorderBottomOnly({width = borderThick, color = light_100}),
+					) {
+					}
+					floating := clay.FloatingElementConfig {
+						attachment = clay.FloatingAttachPoints {
+							element = .CENTER_CENTER,
+							parent = .CENTER_CENTER,
+						},
+						pointerCaptureMode = .PASSTHROUGH,
+					}
+					// Text
+					if clay.UI(clay.Floating(floating)) {
+						uiText(fmt.tprintf("%1.f", config.cd.left), .large)
+					}
+				}
+				// Cost
+				rec := clay.RectangleElementConfig {
+					color        = light_05,
+					cornerRadius = {size / 6, size / 6, size / 6, size / 6},
+				}
+				layout := clay.LayoutConfig {
+					sizing = {
+						width = clay.SizingFixed(size / 3),
+						height = clay.SizingFixed(size / 3),
+					},
+					padding = {0, 0, 0, 0},
+					childGap = 0,
+					childAlignment = {.CENTER, .CENTER},
+				}
+				if config.cost > 0 {
+					floating := clay.FloatingElementConfig {
+						attachment = clay.FloatingAttachPoints {
+							element = .CENTER_CENTER,
+							parent = .RIGHT_TOP,
+						},
+						pointerCaptureMode = .PASSTHROUGH,
+					}
+					if clay.UI(clay.Layout(layout), clay.Rectangle(rec), clay.Floating(floating)) {
+						// Text
+						if clay.UI() {
+							uiText(fmt.tprintf("%d", config.cost), .large)
+						}
+					}
+				}
+				// Charges 
+				// floating = clay.FloatingElementConfig {
+				// 	attachment = clay.FloatingAttachPoints {
+				// 		element = .CENTER_CENTER,
+				// 		parent = .LEFT_TOP,
+				// 	},
+				// 	pointerCaptureMode = .PASSTHROUGH,
+				// }
+				// if clay.UI(clay.Layout(layout), clay.Rectangle(rec), clay.Floating(floating)) {
+				// 	// Text
+				// 	str: string
+				// 	switch &v in config.usageLimit {
+				// 	case Infinate:
+				// 		str = fmt.tprint(".") // Maybe don't show on this case?
+				// 	case Limited:
+				// 		str = fmt.tprintf("%d", v.current)
+				// 	}
+				// 	if clay.UI() {
+				// 		uiText(str, .large)
+				// 	}
+				// }
 
-			// fmt.println(config.cost)
+				// Key
+				floating := clay.FloatingElementConfig {
+					attachment = clay.FloatingAttachPoints {
+						element = .CENTER_CENTER,
+						parent = .CENTER_BOTTOM,
+					},
+					pointerCaptureMode = .PASSTHROUGH,
+				}
+				if clay.UI(clay.Layout(layout), clay.Rectangle(rec), clay.Floating(floating)) {
+					key := bindings[ActionNames(slot)]
+					if clay.UI() {
+						uiText(fmt.tprint(key), .large)
+					}
+				}
+
+				str := actionDescription(config.closureName)
+				// 
+				// Where do we use the 60% of abiltiy usage and power? -> part of the closure
+
+				// name := getClosureName(config)
+				// Closures[name].percent
+				// closure[name].type?
+				// player.power.Physical
+				// damageDone := dmg
+
+				// "Name: %sDoes %s/% percent (X) damage as mele. CD: "
+				// text := getAbilityDescription(config)
+			}
 		}
 	}
 }

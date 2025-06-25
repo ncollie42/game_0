@@ -24,8 +24,8 @@ Mana :: struct {
 	max:     f32,
 }
 
-canAttack :: proc(attack: ^Mana) -> bool {
-	return attack.current >= 1
+hasEnoughMana :: proc(attack: ^Mana, cost: int) -> bool {
+	return attack.current >= f32(cost)
 }
 
 useMana :: proc(attack: ^Mana, cost: int) {
