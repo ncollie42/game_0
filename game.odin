@@ -14,6 +14,7 @@ Game :: struct {
 	spawners:        EnemySpanwerPool,
 	playerAbilities: ^AbilityPool,
 	enemyAbilities:  ^AbilityPool,
+	gpoints:         ^[dynamic]GravityPoint, // For boids
 	hand:            [HandAction]AbilityConfig, // Not using all actions, just the ones in hand
 	dash:            State,
 	screen:          rl.RenderTexture2D,
@@ -31,6 +32,7 @@ Game :: struct {
 
 initGame :: proc() -> Game {
 	loadShaders()
+	// game = new(Game) // NOTE: we could also allocate all of this from the start.
 	game := Game {
 		camera          = newCamera(),
 		player          = newPlayer(),
@@ -39,6 +41,7 @@ initGame :: proc() -> Game {
 		spawners        = initEnemySpawner(),
 		playerAbilities = initAbilityPool(),
 		enemyAbilities  = initAbilityPool(),
+		gpoints         = new([dynamic]GravityPoint),
 		screen          = rl.LoadRenderTexture(P_W, P_H),
 		ui              = rl.LoadRenderTexture(P_W, P_H),
 		impact          = initFlipbookPool("resources/impact.png", 305, 383, 27),
@@ -47,15 +50,28 @@ initGame :: proc() -> Game {
 	}
 
 	Closures[.Mele] = ActionSpawnMeleAtPlayer {
-		percent = 1, // 100%
+		percent = 1, // 100% - Damage
 		player  = game.player,
 		pool    = game.playerAbilities,
 	}
+
 	Closures[.Range] = ActionSpawnRangeAtPlayer {
-		percent = .5, // 50%
+		percent = .5, // 50% - Damage
 		player  = game.player,
 		pool    = game.playerAbilities,
 	}
+
+	Closures[.Aoe] = ActionSpawnAoEAtPlayer {
+		percent = .5, // 50% - Damage
+		player  = game.player,
+		pool    = game.playerAbilities,
+	}
+
+	Closures[.Gravity] = ActionSpawnGPointAtMouse {
+		camera = game.camera,
+		pool   = game.gpoints,
+	}
+	fmt.println("Pool", game.gpoints, Closures[.Gravity])
 
 	game.hand = {}
 	game.hand[.Attack] = MeleAttackConfig
@@ -152,6 +168,7 @@ resetGame :: proc(game: ^Game) {
 	initWarnings()
 	initWaves()
 	initDamageNumbers()
+	clearGravityPoints(gpoints)
 	// TODO: Reset spawners
 	// TODO: Reset Signs
 	// 
@@ -179,6 +196,7 @@ updateGame :: proc(game: ^Game) {
 		updatePlayerStateAttackLeft(&s, player, camera, objs, &enemies)
 	case playerStateBlocking:
 		updatePlayerStateBlocking(&s, player, camera, &enemies, enemyAbilities, playerAbilities)
+	case playerStateBeam:
 	case:
 		// Go straight to base state if not initialized.
 		enterPlayerState(player, playerStateBase{}, camera, &enemies)
@@ -193,13 +211,15 @@ updateGame :: proc(game: ^Game) {
 	updateGems(&gems, player)
 	updatePickup(&pickups, player)
 
-	updateEnemies(&enemies, player^, &objs, enemyAbilities)
+	updateGravityPoints(gpoints)
+
+	updateEnemies(&enemies, player^, &objs, gpoints, enemyAbilities)
 	updateSpawningEnemies(&enemies)
 	updateEnemyAnimations(&enemies)
 	updateEnemyHealth(&enemies, &pickups, player) //Add other enemies here too
 	applyBoundaryForces(&enemies, &objs)
 	applyBoundaryForcesFromMap(&enemies, &objs)
-	updateEnemyHitCollisions(playerAbilities, &enemies, &spawners, &impact)
+	updateEnemyHitCollisions(playerAbilities, &enemies, &impact)
 
 	updateHitStop()
 	updateCameraPos(camera, player^)
@@ -223,6 +243,7 @@ drawGame :: proc(game: ^Game) {
 	rl.BeginMode3D(camera^)
 
 	// Draw Env first
+	rl.DrawModel(model, {0, 0, 0}, 1, rl.WHITE)
 	drawEnv(&objs)
 
 	drawAbilityInstances(playerAbilities, blue_1, camera)
@@ -233,6 +254,8 @@ drawGame :: proc(game: ^Game) {
 	drawSelectedEnemy(&enemies, camera)
 	drawGems(&gems, camera)
 	drawPickup(&pickups, camera)
+
+	drawGravityPoints(gpoints)
 
 	debugDrawGame(game)
 	{
@@ -458,26 +481,7 @@ drawStatsUI :: proc(game: ^Game) {
 
 
 // ---------------- UPGRADE UI ------------------------------
-a1 := Upgrade {
-	name   = .RangeUnlock,
-	img    = .Mark1,
-	type   = .Ability,
-	rarity = .Common,
-}
 
-a2 := Upgrade {
-	name   = .Mana,
-	img    = .Mark1,
-	type   = .Ability,
-	rarity = .Common,
-}
-
-a3 := Upgrade {
-	name   = .Stamina,
-	img    = .Mark1,
-	type   = .Ability,
-	rarity = .Common,
-}
 drawUpgradeUI :: proc(game: ^Game) {
 	using game
 

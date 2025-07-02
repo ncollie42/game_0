@@ -24,6 +24,8 @@ import rl "vendor:raylib"
 // 
 UpgradeName :: enum {
 	RangeUnlock,
+	AoeUnlock,
+	GravityUnlock,
 	AttackSpeed,
 	Physical,
 	P_Crit,
@@ -83,6 +85,22 @@ doUpgrade :: proc(game: ^Game, name: UpgradeName) {
 			panic("Don't know how to handle not option yet")
 		}
 		game.hand[slot] = RangeAttackConfig
+	case .AoeUnlock:
+		slot := getFreeSlot(game.hand)
+		fmt.println("Adding, ", slot)
+		if slot == .Nil {
+			// Do we want to panic? should not give this option of we can't select? or we allow to overwride?
+			panic("Don't know how to handle not option yet")
+		}
+		game.hand[slot] = AoeAttackConfig
+	case .GravityUnlock:
+		slot := getFreeSlot(game.hand)
+		fmt.println("Adding, ", slot)
+		if slot == .Nil {
+			// Do we want to panic? should not give this option of we can't select? or we allow to overwride?
+			panic("Don't know how to handle not option yet")
+		}
+		game.hand[slot] = GravityAttackConfig
 	case .AttackSpeed:
 		attack := MeleAttackConfig.state.(playerStateAttack)
 		attack.cancel_frame = 10
@@ -116,6 +134,10 @@ upgradeDescription :: proc(game: ^Game, name: UpgradeName) -> string {
 	case .RangeUnlock:
 		description = actionDescription2(RangeAttackConfig)
 	// description = actionDescription(.Range)
+	case .AoeUnlock:
+		description = actionDescription2(AoeAttackConfig)
+	case .GravityUnlock:
+		description = actionDescription2(GravityAttackConfig)
 	case .AttackSpeed:
 		description = "Increase attack speed"
 	case .Physical:
@@ -151,3 +173,24 @@ how to do text? -> What about for feeding in damage?
 // eventSystem :: Queue -> global
 // addEvent(name)
 // onupdate -> processQueue(game) -> switch eventName -> do stuff
+
+a1 := Upgrade {
+	name   = .RangeUnlock,
+	img    = .Mark1,
+	type   = .Ability,
+	rarity = .Common,
+}
+
+a2 := Upgrade {
+	name   = .AoeUnlock,
+	img    = .Mark2,
+	type   = .Ability,
+	rarity = .Common,
+}
+
+a3 := Upgrade {
+	name   = .GravityUnlock,
+	img    = .Mark1,
+	type   = .Ability,
+	rarity = .Common,
+}

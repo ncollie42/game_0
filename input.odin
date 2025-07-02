@@ -69,5 +69,6 @@ updatePlayerInput :: proc(game: ^Game) {
 		if !isActionDown(.Block) {
 			enterPlayerState(player, playerStateBase{}, camera, &enemies)
 		}
+	case playerStateBeam:
 	}
 }

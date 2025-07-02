@@ -22,10 +22,10 @@ initGems :: proc() -> Gems {
 }
 
 spawnGem :: proc(gems: ^Gems, pos: vec3) {
-	gem := Spacial {
-		pos = pos,
-	}
-	append(&gems.gems, gem)
+	// gem := Spacial {
+	// 	pos = pos,
+	// }
+	// append(&gems.gems, gem)
 }
 
 updateGems :: proc(gems: ^Gems, player: ^Player) {
@@ -70,7 +70,7 @@ Item :: struct {
 		PICKUP,
 	},
 	dir:     vec3, // fall dir
-	// Item type?
+	// Item type? XP | Mana | hp | 
 	// Action
 }
 
@@ -124,7 +124,9 @@ updatePickup :: proc(pickup: ^Pickup, player: ^Player) {
 				unordered_remove(&pickup.items, index)
 				// Do something
 				// player.attack.current += player.attack.max
-				player.mana.current += 1
+				// ACTION
+				// player.mana.current += 1
+				// player.xp.current += 1
 			}
 		}
 	}
@@ -142,6 +144,6 @@ drawPickup :: proc(pickup: ^Pickup, camera: ^rl.Camera) {
 		ss := item.spacial
 		ss.pos += {0, 1, 0}
 		drawOutline(pickup.model, ss, 1, camera, black)
-		rl.DrawModel(pickup.model, ss.pos, 1, rl.BLUE)
+		rl.DrawModel(pickup.model, ss.pos, 1, rl.WHITE)
 	}
 }

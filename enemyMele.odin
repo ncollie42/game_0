@@ -11,6 +11,7 @@ MeleEnemy :: struct {
 		EnemyStateIdle,
 		EnemyStateRunning,
 		EnemyPushback,
+		EnemyFreeze,
 		EnemyAttack,
 		EnemyDead,
 	},
@@ -21,6 +22,7 @@ updateEnemyMele :: proc(
 	player: Player,
 	enemies: ^EnemyPool,
 	objs: ^[dynamic]EnvObj,
+	gpoints: ^[dynamic]GravityPoint,
 	pool: ^AbilityPool,
 ) {
 	enemy.attackCD.left -= getDelta()
@@ -30,7 +32,7 @@ updateEnemyMele :: proc(
 	switch &s in mele.state {
 	case EnemyStateRunning:
 		speed := getRootMotionSpeed(&enemy.animState, enemies.animSetMele, enemy.size)
-		updateEnemyMovement(.PLAYER, enemy, player, enemies, objs, speed) // Boids
+		updateEnemyMovement(.PLAYER, enemy, player, enemies, objs, speed, gpoints) // Boids gravityPoints
 		if linalg.distance(enemy.pos, player.pos) > ATTACK_RANGE_MELE do return
 
 		enterEnemyMeleState(enemy, EnemyStateIdle{})
@@ -96,7 +98,7 @@ updateEnemyMele :: proc(
 			enterEnemyMeleState(enemy, EnemyStateIdle{})
 		}
 	case EnemyDead:
-
+	case EnemyFreeze:
 	case:
 		enterEnemyMeleState(enemy, EnemyStateIdle{})
 	}
@@ -106,6 +108,7 @@ enterEnemyMeleState :: proc(enemy: ^Enemy, state: union {
 		EnemyStateIdle,
 		EnemyStateRunning,
 		EnemyPushback,
+		EnemyFreeze,
 		EnemyAttack,
 		EnemyDead,
 	}) {
@@ -134,5 +137,6 @@ enterEnemyMeleState :: proc(enemy: ^Enemy, state: union {
 		enemy.animState.current = s.animation
 		spawnWarning(enemy.pos + {0, 3, 0})
 	case EnemyDead:
+	case EnemyFreeze:
 	}
 }

@@ -21,6 +21,7 @@ updateEnemyRange :: proc(
 	player: Player,
 	enemies: ^EnemyPool,
 	objs: ^[dynamic]EnvObj,
+	gpoints: ^[dynamic]GravityPoint,
 	pool: ^AbilityPool,
 ) {
 	enemy.attackCD.left -= getDelta()
@@ -29,7 +30,7 @@ updateEnemyRange :: proc(
 	switch &s in range.state {
 	case EnemyStateRunning:
 		speed := getRootMotionSpeed(&enemy.animState, enemies.animSetRange, enemy.size)
-		updateEnemyMovement(.PLAYER, enemy, player, enemies, objs, speed) // Boids
+		updateEnemyMovement(.PLAYER, enemy, player, enemies, objs, speed, gpoints) // Boids
 		if linalg.distance(enemy.pos, player.pos) > ATTACK_RANGE_RANGE {return}
 
 		enterEnemyRangeState(enemy, EnemyStateIdle{})

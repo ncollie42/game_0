@@ -69,6 +69,12 @@ EnemyPushback :: struct {
 	animSpeed: f32,
 }
 
+EnemyFreeze :: struct {
+	duration: f32,
+	// animation: ENEMY,
+	// animSpeed: f32,
+}
+
 
 SpawningTexture: rl.Texture2D
 TargetCircleTexture: rl.Texture2D
@@ -375,6 +381,7 @@ updateEnemies :: proc(
 	enemies: ^EnemyPool,
 	player: Player,
 	objs: ^[dynamic]EnvObj,
+	gpoints: ^[dynamic]GravityPoint,
 	pool: ^AbilityPool,
 ) {
 	for &enemy, index in enemies.active {
@@ -382,15 +389,15 @@ updateEnemies :: proc(
 		case DummyEnemy:
 			updateEnemyDummy(&enemy, player, enemies, objs, pool)
 		case MeleEnemy:
-			updateEnemyMele(&enemy, player, enemies, objs, pool)
+			updateEnemyMele(&enemy, player, enemies, objs, gpoints, pool)
 		case RangeEnemy:
-			updateEnemyRange(&enemy, player, enemies, objs, pool)
+			updateEnemyRange(&enemy, player, enemies, objs, gpoints, pool)
 		case GiantEnemy:
-			updateEnemyGiant(&enemy, player, enemies, objs, pool)
+			updateEnemyGiant(&enemy, player, enemies, objs, gpoints, pool)
 		case ThornEnemy:
-			updateEnemyThorn(&enemy, player, enemies, objs, pool)
+			updateEnemyThorn(&enemy, pool)
 		case MonolithEnemy:
-			updateEnemyMonolith(&enemy, player, enemies, objs, pool)
+			updateEnemyMonolith(&enemy)
 		}
 	}
 }

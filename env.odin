@@ -12,7 +12,7 @@ EnvObj :: struct {
 	using spacial: Spacial,
 }
 
-grass := [dynamic]vec3{}
+// grass := [dynamic]vec3{}
 
 MapGround := Spacial {
 	rot   = 0,
@@ -26,10 +26,10 @@ initEnv :: proc() -> [dynamic]EnvObj {
 	checked := rl.GenImageChecked(4, 4, 1, 1, blue_0, blue_4)
 	texture := rl.LoadTextureFromImage(checked)
 
-	for ii in 0 ..< 50 {
-		pos := getRandomPoint()
-		append(&grass, pos)
-	}
+	// for ii in 0 ..< 50 {
+	// 	pos := getRandomPoint()
+	// 	append(&grass, pos)
+	// }
 
 	// Stuff
 	// { 	// Box
@@ -134,11 +134,11 @@ drawEnv :: proc(objs: ^[dynamic]EnvObj) {
 	rad := MapGround.shape.(Sphere)
 	// rl.DrawCylinder({0, -1, 0}, rad, rad, 1, 25, color13) // Floor
 	rl.DrawCircle3D({0, .1, 0}, rad, {1, 0, 0}, 90, rl.WHITE) // Outline
-	// grass 
 
-	for pos in grass {
-		rl.DrawCube(pos + {0, .5, 0}, .25, .5, .25, rl.WHITE)
-	}
+	// grass 
+	// for pos in grass {
+	// 	rl.DrawCube(pos + {0, .5, 0}, .25, .5, .25, rl.WHITE)
+	// }
 
 	// Objs
 	for obj in objs {

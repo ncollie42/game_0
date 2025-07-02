@@ -2,8 +2,7 @@ package main
 import "core:fmt"
 import rl "vendor:raylib"
 
-Infinate :: struct {
-}
+Infinate :: struct {}
 Limited :: struct {
 	max:     u8,
 	current: u8,
@@ -30,26 +29,47 @@ AbilityConfig :: struct {
 Closure :: union {
 	ActionSpawnMeleAtPlayer,
 	ActionSpawnRangeAtPlayer,
+	ActionSpawnAoEAtPlayer,
+	ActionSpawnGPointAtMouse,
 }
 
 ClosureName :: enum {
 	Nil,
 	Mele,
 	Range,
+	Aoe,
+	Gravity,
 }
 
 Closures := [ClosureName]Closure{} // Global
 
 doAction :: proc(name: ClosureName) {
-	switch a in Closures[name] {
+	fmt.println(name)
+	switch &a in Closures[name] {
 	case ActionSpawnMeleAtPlayer:
 		dmg := a.percent * a.player.power.Physical
 		crit := a.player.power.M_Crit // Pass in crit, based on every attack
-		spawnMeleInstanceAtPlayer(a.pool, a.player, dmg, crit)
+
+		forward := getForwardPoint(a.player)
+		ability := newMeleInstance(a.player.pos + forward, dmg, crit)
+		append(&a.pool.active, ability)
 	case ActionSpawnRangeAtPlayer:
 		crit := a.player.power.M_Crit
 		dmg := a.percent * a.player.power.Magic
-		spawnRangeInstanceAtPlayer(a.pool, a.player, dmg, crit)
+
+		forward := getForwardPoint(a.player)
+		ability := newRangeInstance(a.player.pos + forward, a.player.rot, dmg, crit)
+		append(&a.pool.active, ability)
+	case ActionSpawnAoEAtPlayer:
+		crit := a.player.power.M_Crit
+		dmg := a.percent * a.player.power.Magic
+		pos := a.player.pos
+
+		ability := newAoEInstance(pos, dmg, crit)
+		append(&a.pool.active, ability)
+	case ActionSpawnGPointAtMouse:
+		mouse := mouseInWorld(a.camera)
+		spawnGravityPoint(a.pool, mouse)
 	}
 }
 
@@ -60,6 +80,10 @@ actionDescription :: proc(name: ClosureName) -> string {
 		description = fmt.tprintf("Type: Physical\nPower: %.0f%%\nMele Attack", a.percent * 100)
 	case ActionSpawnRangeAtPlayer:
 		description = fmt.tprintf("Type: Magic\nPower: %.0f%%\nRange attack", a.percent * 100)
+	case ActionSpawnAoEAtPlayer:
+		description = fmt.tprintf("Type: Magic\nPower: %.0f%%\nRange attack", a.percent * 100)
+	case ActionSpawnGPointAtMouse:
+		description = fmt.tprintf("Gravity point")
 	}
 	return description
 }
@@ -88,12 +112,6 @@ ActionSpawnMeleAtPlayer :: struct {
 	pool:    ^AbilityPool,
 }
 
-spawnMeleInstanceAtPlayer :: proc(pool: ^AbilityPool, player: ^Player, damage: f32, crit: f32) {
-	forward := getForwardPoint(player)
-
-	spawnMeleInstance(pool, player.pos + forward, damage, crit)
-}
-
 ActionSpawnRangeAtPlayer :: struct {
 	percent: f32, //[0,1] % of damage of given power
 	// Magic or physical? probably wont change 
@@ -101,10 +119,15 @@ ActionSpawnRangeAtPlayer :: struct {
 	pool:    ^AbilityPool,
 }
 
-spawnRangeInstanceAtPlayer :: proc(pool: ^AbilityPool, player: ^Player, damage: f32, crit: f32) {
-	forward := getForwardPoint(player)
+ActionSpawnAoEAtPlayer :: struct {
+	percent: f32, //[0,1] % of damage of given power
+	player:  ^Player,
+	pool:    ^AbilityPool,
+}
 
-	spawnRangeInstance(pool, player.pos + forward, player.rot, damage, crit)
+ActionSpawnGPointAtMouse :: struct {
+	camera: ^rl.Camera,
+	pool:   ^[dynamic]GravityPoint,
 }
 
 // Global
@@ -130,14 +153,46 @@ RangeAttackConfig := AbilityConfig {
 	cd = Timer{max = 5},
 	usageLimit = Limited{2, 2},
 	img = .Mark2,
-	closureName = .Range,
+	closureName = ClosureName.Range,
 	state = playerStateAttack {
 		cancellable = true,
 		animation = PLAYER.punch,
 		action_frame = 10,
 		cancel_frame = 16,
 		speed = 1,
-		closure = .Range,
+		closure = ClosureName.Range,
+	},
+}
+
+AoeAttackConfig := AbilityConfig {
+	cost = 1,
+	cd = Timer{max = 5},
+	usageLimit = Limited{2, 2},
+	img = .Mark2,
+	closureName = ClosureName.Aoe,
+	state = playerStateAttack {
+		cancellable = true,
+		animation = PLAYER.punch,
+		action_frame = 10,
+		cancel_frame = 16,
+		speed = 1,
+		closure = ClosureName.Aoe,
+	},
+}
+
+GravityAttackConfig := AbilityConfig {
+	cost = 1,
+	cd = Timer{max = 5},
+	usageLimit = Limited{2, 2},
+	img = .Mark2,
+	closureName = ClosureName.Gravity,
+	state = playerStateAttack {
+		cancellable = true,
+		animation = PLAYER.punch,
+		action_frame = 10,
+		cancel_frame = 16,
+		speed = 1,
+		closure = ClosureName.Gravity,
 	},
 }
 

@@ -20,6 +20,7 @@ updateEnemyGiant :: proc(
 	player: Player,
 	enemies: ^EnemyPool,
 	objs: ^[dynamic]EnvObj,
+	gpoints: ^[dynamic]GravityPoint,
 	pool: ^AbilityPool,
 ) {
 	enemy.attackCD.left -= getDelta()
@@ -29,7 +30,7 @@ updateEnemyGiant :: proc(
 	switch &s in giant.state {
 	case EnemyStateRunning:
 		speed := getRootMotionSpeed(&enemy.animState, enemies.animSetGiant, enemy.size)
-		updateEnemyMovement(.PLAYER, enemy, player, enemies, objs, speed) // Boids
+		updateEnemyMovement(.PLAYER, enemy, player, enemies, objs, speed, gpoints) // Boids
 		if linalg.distance(enemy.pos, player.pos) > ATTACK_RANGE_MELE do return // TODO: replace with giant attack range
 
 		enterEnemyGiantState(enemy, EnemyStateIdle{})

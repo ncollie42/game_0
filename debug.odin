@@ -51,11 +51,16 @@ debugUpdateGame :: proc(game: ^Game) {
 
 	img = loadTexture("resources/mark_4.png")
 	if rl.IsKeyPressed(.N) {
-		doUpgrade(game, .RangeUnlock)
+		// doUpgrade(game, .RangeUnlock)
+		doUpgrade(game, .GravityUnlock)
 	}
 	if rl.IsKeyPressed(.F) {
-		uiStrech = !uiStrech
-		spawnEnemy(&enemies, grid, .Range, true)
+		ability := newBeamInstance(player, 1, 0, camera, &enemies)
+		append(&playerAbilities.active, ability)
+		fmt.println("Beam->")
+		// spawnGravityPoint(&gpoints, mouse)
+		// uiStrech = !uiStrech
+		// spawnEnemy(&enemies, grid, .Range, true)
 	}
 	if rl.IsKeyPressed(.G) {
 		spawnEnemy(&enemies, grid, .Mele, true)
@@ -67,8 +72,8 @@ debugUpdateGame :: proc(game: ^Game) {
 		game.state = .UPGRADE
 	}
 	if rl.IsKeyPressed(.J) {
-		debug = !debug
-		startTimer(&hand[.Attack].cd)
+		// debug = !debug
+		// startTimer(&hand[.Attack].cd)
 	}
 	if rl.IsKeyPressed(.UP) {
 		// timeScale += .25
@@ -88,6 +93,8 @@ debugUpdateGame :: proc(game: ^Game) {
 	}
 
 	updateEnemySpanwers(&spawners, &enemies, &objs)
+
+
 }
 
 // Z coordinate is compared to the appropriate entry in the depth buffer, if that pixel has already been drawn with a closer depth buffer value, then our new pixel isn't rendered at all, it's behind something that is already on the screen.
@@ -106,8 +113,13 @@ debugDrawGame :: proc(game: ^Game) {
 	// rl.DrawTexturePro(text, source, dest, {0, 0}, 0, rl.WHITE)
 
 	// Flat tile
-	rl.DrawModel(model, {0, 0, 0}, 1, rl.WHITE)
+	// rl.DrawModel(model, {0, 0, 0}, 1, rl.WHITE)
 
+	drawPreviewCircle(camera, 4)
+	drawPreviewCircleWithMaxDistance(player, camera, 4, 10)
+	// drawPreviewline(player, camera)
+	// drawPreviewCapsule(player, camera)
+	drawPreviewRec(player, camera)
 	// Heightmap
 	// rl.DrawModel(hmap2, {-50, 0, -50}, 1, rl.WHITE)
 }
@@ -171,3 +183,12 @@ debugDrawGame :: proc(game: ^Game) {
 //    [ Settings ] [ Keybindings | Audio | ]
 //
 // [ Ability Description ] - Hoverover hand | upgrade section
+//
+//
+//
+//
+//
+//
+//
+//
+//-----------------------------------------------------

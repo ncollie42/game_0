@@ -433,6 +433,8 @@ enterPlayerState :: proc(
 		// TODO: Add blocking anim
 		transitionAnim(&player.animState, PLAYER.block)
 		player.model.materials[player.model.materialCount - 1].shader = Shaders[.GrayScale]
+	case playerStateBeam:
+	// Update timer
 	}
 }
 
@@ -442,6 +444,7 @@ State :: union {
 	playerStateAttack, // DO we have one state of all abilities or each one has it's own?
 	playerStateAttackLeft,
 	playerStateBlocking,
+	playerStateBeam,
 	//	AbiltiyPreviewState
 }
 
@@ -449,6 +452,11 @@ playerStateBase :: struct {}
 
 playerStateBlocking :: struct {
 	// TODO: maybe add Actions or other fields
+	durration: f32,
+	animation: ANIMATION_NAMES, // TODO group these 2
+}
+
+playerStateBeam :: struct {
 	durration: f32,
 	animation: ANIMATION_NAMES, // TODO group these 2
 }

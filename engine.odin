@@ -233,6 +233,15 @@ Timer :: struct {
 	//ready: bool, 
 }
 
+tickTimer :: proc(tick: ^Timer) -> bool {
+	if isTimerReady(tick^) {
+		startTimer(tick)
+		return true
+	}
+	updateTimer(tick)
+	return false
+}
+
 updateTimer :: proc(timer: ^Timer) {
 	timer.left -= getDelta()
 	timer.left = clamp(timer.left, 0, timer.max)
@@ -278,6 +287,9 @@ almostEquals :: proc(a: f32, b: f32, epsilon: f32 = 0.001) -> bool {
 // 	animate_to_target_f32(&value.x, target.x, delta_t, rate, good_enough)
 // 	animate_to_target_f32(&value.y, target.y, delta_t, rate, good_enough)
 // }
+distance_to :: proc(a: vec3, b: vec3) -> f32 {
+	return linalg.length(a - b)
+}
 
 normalize :: proc(vec: vec3) -> vec3 {
 	// You can't normalize an empty vector 

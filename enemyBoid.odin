@@ -16,7 +16,7 @@ updateEnemyMovement :: proc(targetOption: enum {
 		CENTER,
 		FORWARD,
 		PLAYER,
-	}, enemy: ^Enemy, player: Player, enemies: ^EnemyPool, objs: ^[dynamic]EnvObj, speed: f32) {
+	}, enemy: ^Enemy, player: Player, enemies: ^EnemyPool, objs: ^[dynamic]EnvObj, speed: f32, gpoints: ^[dynamic]GravityPoint) {
 	target: vec3
 	switch targetOption {
 	case .CENTER:
@@ -54,11 +54,22 @@ updateEnemyMovement :: proc(targetOption: enum {
 	{
 		cohesionForce += boidCohesion(enemy, enemies)
 	}
+	gravityWellForce := vec3{}
+	{
+		for gpoint in gpoints {
+			// if within range, vector towards center
+			if distance_to(gpoint.pos, enemy.pos) < gpoint.radius {
+				// Duration / Size / pos
+				gravityWellForce += normalize(gpoint.pos - enemy.pos)
+			}
+		}
+	}
 	{ 	// Apply forces
 
 		target = normalize(
 			(clearPath * 10) +
 			(target * 1) +
+			(gravityWellForce * 10) +
 			(seperationForce * .75) +
 			(alignmentForce * .50) +
 			(cohesionForce * .25),
@@ -201,3 +212,42 @@ boidCohesion :: proc(boid: ^Enemy, enemies: ^EnemyPool) -> vec3 {
 		
 	}
 */
+
+// ---------------------------- Gravity Well ------------------
+GravityPoint :: struct {
+	pos:      vec3,
+	radius:   f32,
+	duration: f32,
+	// Visuals?
+	// data
+}
+// Spawn -
+spawnGravityPoint :: proc(pool: ^[dynamic]GravityPoint, pos: vec3) {
+	assert(pool != nil, "empty gravity pool")
+	point := GravityPoint {
+		pos      = pos,
+		radius   = 3,
+		duration = 3,
+	}
+	fmt.println("p:", len(pool), pool, point)
+	append(pool, point)
+}
+// update -
+updateGravityPoints :: proc(pool: ^[dynamic]GravityPoint) {
+	#reverse for &obj, index in pool {
+		obj.duration -= getDelta()
+		if obj.duration <= 0 do unordered_remove(pool, index)
+	}
+}
+// draw - 
+drawGravityPoints :: proc(pool: ^[dynamic]GravityPoint) {
+	for &obj, index in pool {
+		rl.DrawSphereWires(obj.pos, obj.radius, 8, 8, rl.BLACK)
+	}
+}
+
+clearGravityPoints :: proc(pool: ^[dynamic]GravityPoint) {
+	#reverse for &obj, index in pool {
+		unordered_remove(pool, index)
+	}
+}

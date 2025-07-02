@@ -6,36 +6,35 @@ import rl "vendor:raylib"
 // MeleInstance 
 AbilityInstance :: struct {
 	// Can parry: bool, -> move to player list? if range swap Dir
+	using spacial: Spacial,
+	// Damage 
 	power:         f32,
 	crit:          f32,
-	using spacial: Spacial,
-	type:          union {
-		range,
-		mele,
+	dmgType:       enum {
+		Physical,
+		Magic,
 	},
 	canParry:      bool,
 	effect:        enum {
 		NONE,
 		pushback,
 	},
-	// Type :: Magic - Physical
-	dmgType:       DamageType,
+	type:          union {
+		Range,
+		Mele,
+		Aoe_Tick,
+		Beam,
+	},
 }
 
-DamageType :: enum {
-	Physical,
-	Magic,
-}
-// enum (Timer_based, Single, Other)
-// timer
-// hit:           bool, 
-// Model
-// }
-mele :: struct {
-}
-range :: struct {
+Mele :: struct {}
+
+Range :: struct {
 	speed:    f32,
 	duration: f32, //0 would be == 0 mele
+	// Visual :: Particles
+	tick:     Timer, // for particle spawn
+	trail:    [dynamic]vec3,
 }
 
 // oneShot : hurt everything around
@@ -70,7 +69,7 @@ newMeleInstance :: proc(pos: vec3, damage: f32, crit: f32) -> AbilityInstance {
 		power = damage,
 		crit = crit,
 		spacial = Spacial{pos = pos, shape = 1},
-		type = mele{},
+		type = Mele{},
 		canParry = true,
 		effect = .NONE,
 		dmgType = .Physical,
@@ -82,28 +81,20 @@ newRangeInstance :: proc(pos: vec3, rot: f32, damage: f32, crit: f32) -> Ability
 		power = damage,
 		crit = crit,
 		spacial = Spacial{pos = pos, shape = 0.6, rot = rot},
-		type = range{duration = 1.5, speed = 7},
+		type = Range{duration = 1.5, speed = 7, tick = Timer{.02, 0}},
 		canParry = true,
 		effect = .NONE,
 		dmgType = .Magic,
 	}
 }
+
 // ---- Spawn
 // TODO: add power when spawning ability + add extra arg in callback
 
-spawnAbilityInstance :: proc(pool: ^AbilityPool, ability: AbilityInstance) {
-	append(&pool.active, ability)
-}
-
-spawnMeleInstance :: proc(pool: ^AbilityPool, pos: vec3, damage: f32, crit: f32) {
-	ability := newMeleInstance(pos, damage, crit)
-	append(&pool.active, ability)
-}
-
-spawnRangeInstance :: proc(pool: ^AbilityPool, pos: vec3, rot: f32, damage: f32, crit: f32) {
-	ability := newRangeInstance(pos, rot, damage, crit)
-	append(&pool.active, ability)
-}
+// spawnRangeInstance :: proc(pool: ^AbilityPool, pos: vec3, rot: f32, damage: f32, crit: f32) {
+// 	ability := newRangeInstance(pos, rot, damage, crit)
+// 	append(&pool.active, ability)
+// }
 
 // Enemy spawning
 spawnInstanceFrontOfLocation :: proc(pool: ^AbilityPool, loc: ^Spacial) {
@@ -132,37 +123,84 @@ removeAllAbilities :: proc(pool: ^AbilityPool) {
 
 // ---- Update
 
-updateEnemyHitCollisions :: proc(
-	pool: ^AbilityPool,
-	enemies: ^EnemyPool,
-	spawners: ^EnemySpanwerPool,
-	impact: ^Flipbook,
-) {
+updateEnemyHitCollisions :: proc(pool: ^AbilityPool, enemies: ^EnemyPool, impact: ^Flipbook) {
 	// Check collision
 	#reverse for &obj, index in pool.active {
 		switch &v in obj.type {
-		case mele:
-			updateAbilityMele(&obj, enemies, spawners, impact)
+		case Mele:
+			hurtEnemies(&obj, enemies, impact)
 			unordered_remove(&pool.active, index)
-		case range:
+		case Range:
+			// Damage
+			hit := hurtEnemies(&obj, enemies, impact)
+			// Remove
 			v.duration -= getDelta()
-			obj.spacial.pos += getForwardPoint(obj) * getDelta() * v.speed
-			hit := updateAbilityRange(&obj, enemies, spawners, impact)
 			if v.duration <= 0 || hit {
 				unordered_remove(&pool.active, index)
 			}
+			// Move
+			obj.spacial.pos += getForwardPoint(obj) * getDelta() * v.speed
+
+			// Particle Emit
+			if tickTimer(&v.tick) {
+				append(&v.trail, obj.pos)
+			}
+			if len(v.trail) >= 20 {
+				ordered_remove(&v.trail, 0)
+			}
+		// Particle Update
+		case Aoe_Tick:
+			// remove when expire
+			v.duration -= getDelta()
+			if v.duration <= 0 do unordered_remove(&pool.active, index)
+
+			if tickTimer(&v.tick) {
+				hurtEnemies(&obj, enemies, impact)
+			}
+		case Beam:
+			// Update
+			size := obj.spacial.shape.(Sphere)
+			mouse := mouseInWorld(v.camera)
+			dist := distance_to(v.startPos, mouse)
+			dist = min(dist, v.maxDistance)
+			target := normalize(mouse - v.startPos)
+
+			// For each chunck in beam
+			for xx in 1 ..= v.maxDistance {
+				obj.pos = v.startPos + target * xx
+				hit := false
+				for &enemy in v.enemies.active {
+					hit = checkCollision(obj, enemy)
+					if hit do break
+				}
+				v.endPos = obj.pos
+				if hit do break
+			}
+
+			if tickTimer(&v.tick) {
+				hurtEnemies(&obj, enemies, impact)
+			}
+		// fmt.println("b:", distance_to({}, mouse))
+		// hitUnit := false
+		// for &enemy in enemies.active {
+		// 	hit := checkCollision(obj, enemy)
+		// }
+		// update poss based mouse and enemies in front of player
+		// loop over enemies
+		// get points of enemies damage closest one
+		// On tick -> do damage at tip
+		// 1. draw from player to mouse
+		// 2. do damage at mouse
+		// 3. loop over enemies -> update mouse
+		// 4. add player state
+		// 5. check player state
 		case:
 			panic("Ability has no type")
 		}
 	}
 }
 
-updateAbilityRange :: proc(
-	obj: ^AbilityInstance,
-	enemies: ^EnemyPool,
-	spawners: ^EnemySpanwerPool,
-	impact: ^Flipbook,
-) -> bool {
+hurtEnemies :: proc(obj: ^AbilityInstance, enemies: ^EnemyPool, impact: ^Flipbook) -> bool {
 	hitUnit := false
 	for &enemy in enemies.active {
 		hit := checkCollision(obj, enemy)
@@ -205,83 +243,7 @@ updateAbilityRange :: proc(
 		// Push back
 		// Particle
 	}
-	for &enemy in spawners.active {
-		hit := checkCollision(obj, enemy)
-		if !hit do continue
-		// on hit
-		{
-			hurt(&enemy, obj.power)
-			// At hitflash -> move out of hurt
-			startHitStop() // TODO: only apply from some abilities, like mele - else it feels off. IE a dot would be bad
-			addTrauma(.large)
-			playSoundPunch()
-			spawnFlipbook(impact, enemy.pos, 0)
-		}
-		hitUnit = true
-	}
 	return hitUnit
-}
-
-updateAbilityMele :: proc(
-	obj: ^AbilityInstance,
-	enemies: ^EnemyPool,
-	spawners: ^EnemySpanwerPool,
-	impact: ^Flipbook,
-) {
-	for &enemy in enemies.active {
-		hit := checkCollision(obj, enemy)
-		if !hit do continue
-		// on hit
-		{
-
-			hurt(&enemy, obj.power)
-			spawnDamangeNumber(enemy.pos + enemy.dmgIndicatorOffset, obj.power, .Default)
-			// At hitflash -> move out of hurt
-			startHitStop() // TODO: only apply from some abilities, like mele - else it feels off. IE a dot would be bad
-			addTrauma(.large)
-			playSoundPunch()
-			spawnFlipbook(impact, enemy.pos, 0)
-
-			if obj.effect == .NONE do continue
-
-			// TODO : add to the ability? as enum or full struct
-			state := EnemyPushback {
-				animation = ENEMY.hurt,
-				animSpeed = 1,
-			}
-
-			switch v in enemy.type {
-			case DummyEnemy:
-				enterEnemyDummyState(&enemy, state)
-			case MeleEnemy:
-				enterEnemyMeleState(&enemy, state)
-			case RangeEnemy:
-				enterEnemyRangeState(&enemy, state)
-			case GiantEnemy:
-				enterEnemyGiantState(&enemy, state)
-			case ThornEnemy:
-			// Do nothing no enemy
-			case MonolithEnemy:
-			// Do nothing no enemy
-			}
-		}
-		// enterEnemyState
-		// Push back
-		// Particle
-	}
-	for &enemy in spawners.active {
-		hit := checkCollision(obj, enemy)
-		if !hit do continue
-		// on hit
-		{
-			hurt(&enemy, obj.power)
-			// At hitflash -> move out of hurt
-			startHitStop() // TODO: only apply from some abilities, like mele - else it feels off. IE a dot would be bad
-			addTrauma(.large)
-			playSoundPunch()
-			spawnFlipbook(impact, enemy.pos, 0)
-		}
-	}
 }
 
 // Abilities that hurt player
@@ -289,7 +251,7 @@ updatePlayerHitCollisions :: proc(pool: ^AbilityPool, player: ^Player) {
 	// Check collision
 	for &obj, index in pool.active {
 		switch &v in obj.type {
-		case mele:
+		case Mele:
 			defer removeAbility(pool, index)
 			hit := checkCollision(obj, player)
 			if !hit do continue
@@ -304,7 +266,7 @@ updatePlayerHitCollisions :: proc(pool: ^AbilityPool, player: ^Player) {
 			}
 		// startHitStop()
 		// addTrauma(.large)
-		case range:
+		case Range:
 			v.duration -= getDelta()
 			if v.duration <= 0 {
 				removeAbility(pool, index)
@@ -322,6 +284,16 @@ updatePlayerHitCollisions :: proc(pool: ^AbilityPool, player: ^Player) {
 			}
 
 			removeAbility(pool, index) // swap later
+		case Aoe_Tick:
+			// remove when expire
+			v.duration -= getDelta()
+			if v.duration <= 0 do unordered_remove(&pool.active, index)
+			// Ticket damage 
+			updateTimer(&v.tick)
+			if !isTimerReady(v.tick) do continue
+			// hurtEnemies(&obj, enemies, impact) -> change for player
+			startTimer(&v.tick)
+		case Beam:
 		case:
 			panic("Ability has no type")
 		}
@@ -330,16 +302,17 @@ updatePlayerHitCollisions :: proc(pool: ^AbilityPool, player: ^Player) {
 
 // ---- Draw
 drawAbilityInstances :: proc(pool: ^AbilityPool, color: rl.Color, camera: ^rl.Camera) {
-	for obj in pool.active {
+	for &obj in pool.active {
 		switch &v in obj.type {
-		case mele:
+		case Mele:
 		// rl.DrawSphereWires(obj.spacial.pos, obj.spacial.shape.(Sphere), 8, 8, color)
-		case range:
+		case Range:
+			// Projectile
 			// rl.DrawSphereWires(obj.spacial.pos, obj.spacial.shape.(Sphere), 8, 8, color)
 			size := obj.spacial.shape.(Sphere)
 			red := colorToVec4(color27)
 			green := colorToVec4(color9)
-			// color := obj.canParry ? green : red
+
 			color := red
 			ss := obj.spacial
 			ss.pos += {0, 1, 0}
@@ -347,6 +320,47 @@ drawAbilityInstances :: proc(pool: ^AbilityPool, color: rl.Color, camera: ^rl.Ca
 			drawOutline(pool.orb, ss, size, camera, color)
 			drawShadow(pool.orb, obj.spacial, size, camera)
 			rl.DrawModel(pool.orb, ss.pos, size * .9, white_3) //black_3
+			// Trail
+			ll := len(v.trail)
+			for pp, index in v.trail {
+				// if index == 0 do continue
+				// rl.DrawCapsule(
+				// 	v.trail[index] + {0, 1, 0},
+				// 	v.trail[index - 1] + {0, 1, 0},
+				// 	f32(index) / f32(ll) * .5,
+				// 	3,
+				// 	3,
+				// 	rl.BLACK,
+				// )
+				rl.DrawSphere(pp + {0, 1, 0}, .1, rl.WHITE)
+			}
+		case Aoe_Tick:
+			size := obj.spacial.shape.(Sphere)
+			rl.DrawSphereWires(obj.pos, size, 8, 8, rl.BLACK)
+		// rl.DrawCircle3D(obj.pos, size, {0, 0, 1}, 0, rl.WHITE)
+		case Beam:
+			// Draw
+			size := obj.spacial.shape.(Sphere)
+			// startPoint := p.pos
+			// mouse := mouseInWorld(v.camera)
+			// dist := distance_to(startPoint, mouse)
+			// dist = min(dist, v.maxDistance)
+			// target := normalize(mouse - {})
+			// endPoint := target * dist
+			// // For each chunck
+			// for xx in 1 ..= v.maxDistance {
+			// 	obj.pos = target * xx
+			// 	hit := false
+			// 	for &enemy in v.enemies.active {
+			// 		hit = checkCollision(obj, enemy)
+			// 		if hit do break
+			// 	}
+			// 	rl.DrawSphereWires(obj.pos, size, 8, 8, rl.WHITE)
+			// 	endPoint = target * xx
+			// 	if hit do break
+			// }
+
+			rl.DrawCapsuleWires(v.startPos, v.endPos, size, 8, 8, rl.BLACK)
 		case:
 			panic("Ability has no type")
 		}
@@ -452,10 +466,12 @@ parryAbility :: proc(p1_index: int, p1: ^AbilityPool, p2: ^AbilityPool) {
 	aa := p1.active[p1_index]
 	aa.rot += rl.PI
 	switch &v in aa.type {
-	case range:
+	case Range:
 		// make it go faster?
 		v.speed *= 2
-	case mele:
+	case Mele:
+	case Aoe_Tick:
+	case Beam:
 	}
 	aa.effect = .pushback
 	append(&p2.active, aa)
@@ -464,4 +480,64 @@ parryAbility :: proc(p1_index: int, p1: ^AbilityPool, p2: ^AbilityPool) {
 	// extend duration
 	// screen shake or time snow
 	// particle
+}
+
+// ------------------------------------- AOE Tick Ability --------------------------
+
+Aoe_Tick :: struct {
+	// Damage
+	duration: f32,
+	tick:     Timer,
+	// Visual :: Particles
+}
+
+newAoEInstance :: proc(pos: vec3, damage: f32, crit: f32) -> AbilityInstance {
+	return AbilityInstance {
+		power = damage,
+		crit = crit,
+		spacial = Spacial{pos = pos, shape = 3},
+		type = Aoe_Tick{3, {.5, 0}},
+		canParry = true,
+		effect = .NONE,
+		dmgType = .Magic,
+	}
+}
+
+
+// Add range limit for mouse -> Add 
+Beam :: struct {
+	maxDistance: f32,
+	camera:      ^rl.Camera, // For mouse
+	enemies:     ^EnemyPool,
+	tick:        Timer,
+	player:      ^Player,
+	// onUpdate
+	startPos:    vec3,
+	endPos:      vec3,
+}
+
+newBeamInstance :: proc(
+	player: ^Player,
+	damage: f32,
+	crit: f32,
+	camera: ^rl.Camera,
+	enemies: ^EnemyPool,
+) -> AbilityInstance {
+	return AbilityInstance {
+		power = damage,
+		crit = crit,
+		spacial = Spacial{pos = player.pos, shape = 1},
+		type = Beam {
+			maxDistance = 10,
+			camera = camera,
+			enemies = enemies,
+			tick = {.2, 0},
+			player = player,
+			startPos = player.pos,
+			endPos = {},
+		},
+		canParry = true,
+		effect = .NONE,
+		dmgType = .Magic,
+	}
 }

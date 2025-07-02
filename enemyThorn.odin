@@ -8,13 +8,7 @@ import rl "vendor:raylib"
 
 ThornEnemy :: struct {}
 
-updateEnemyThorn :: proc(
-	enemy: ^Enemy,
-	player: Player,
-	enemies: ^EnemyPool,
-	objs: ^[dynamic]EnvObj,
-	pool: ^AbilityPool,
-) {
+updateEnemyThorn :: proc(enemy: ^Enemy, pool: ^AbilityPool) {
 	updateTimer(&enemy.attackCD)
 	canAttack := isTimerReady(enemy.attackCD)
 	// canAttack := enemy.attackCD.left <= 0
@@ -24,5 +18,8 @@ updateEnemyThorn :: proc(
 		return
 	}
 	startTimer(&enemy.attackCD)
-	spawnMeleInstance(pool, enemy.pos, 1, 0)
+
+	// Spawn damage
+	ability := newMeleInstance(enemy.pos, 1, 0)
+	append(&pool.active, ability)
 }
