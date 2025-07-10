@@ -40,6 +40,13 @@ updatePlayerInput :: proc(game: ^Game) {
 			useMana(&player.mana, hand[.Special].cost)
 			enterPlayerState(player, hand[.Special].state, camera, &enemies)
 		}
+		if isActionPressed(.Four) {
+			if !isActiveSlot(hand, .Ult) do break
+			if !hasEnoughMana(&player.mana, hand[.Ult].cost) do break
+			// Check CD
+			useMana(&player.mana, hand[.Ult].cost)
+			enterPlayerState(player, hand[.Ult].state, camera, &enemies)
+		}
 
 		if isActionPressed(.Block) {
 			enterPlayerState(player, playerStateBlocking{}, camera, &enemies)

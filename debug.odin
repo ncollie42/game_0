@@ -40,6 +40,10 @@ debugInit :: proc(game: ^Game) {
 	// model.materials[model.materialCount - 1].maps[rl.MaterialMapIndex.NORMAL].texture = text2
 	// model.materials[model.materialCount - 1].maps[rl.MaterialMapIndex.HEIGHT].texture = text3
 	// model.materials[model.materialCount - 1].maps[rl.MaterialMapIndex.EMISSION].texture = text4
+	//
+	// for xx in 1 ..= 30 {
+	// 	fmt.println(getXPforLevel(f32(xx)))
+	// }
 }
 
 debugUpdateGame :: proc(game: ^Game) {
@@ -115,11 +119,6 @@ debugDrawGame :: proc(game: ^Game) {
 	// Flat tile
 	// rl.DrawModel(model, {0, 0, 0}, 1, rl.WHITE)
 
-	drawPreviewCircle(camera, 4)
-	drawPreviewCircleWithMaxDistance(player, camera, 4, 10)
-	// drawPreviewline(player, camera)
-	// drawPreviewCapsule(player, camera)
-	drawPreviewRec(player, camera)
 	// Heightmap
 	// rl.DrawModel(hmap2, {-50, 0, -50}, 1, rl.WHITE)
 }
@@ -163,7 +162,10 @@ debugDrawGame :: proc(game: ^Game) {
 // What is the MVP?
 // [X] Ability + mana cost
 // [ ] Ability + mana cost + charges ->
-//    What is the deck building like?
+// [ ] Deck + Auto loot card on timer | Disard pile
+//    What happens on disard.
+//    What is loot timer + Mana timer
+// 
 // [ Optional ] Add CD if we feel like it's needed to limit play.
 //
 // [ Content ] Steps to develop - Conent
@@ -174,11 +176,6 @@ debugDrawGame :: proc(game: ^Game) {
 //
 // [ Audio ] -> Out source or spend a week or 2? Starting when.
 // 
-// [p0][ Env ] -> [ Floor shader | grass / Debre ]
-//     - How to do shadows with a new floor -> If we project solid color -> bad?
-// 
-// [p0][ VFX ] -> Outline visual req for abilities 
-// 
 // [ Menu ] -> Visual?
 //    [ Settings ] [ Keybindings | Audio | ]
 //
@@ -186,9 +183,39 @@ debugDrawGame :: proc(game: ^Game) {
 //
 //
 //
-//
-//
-//
-//
-//
 //-----------------------------------------------------
+// Animation
+//   | Ability Preview
+//   | Spawn ability
+//   | Cancel Frame
+//
+// Ability
+//   | { Some Basic Damage + Some interesting resource } Particle {Stone | Fire | Gems | Mana | Hand | Tree | Grass | Void | Turrets | wind}
+//
+// 1. Parry | Anim
+//    - Duration
+//    - Show duration over head
+//    - If hit while parry -> Spawn ability
+// 2. Beam |
+//    - Preview always | Rec
+//    - On tick do damage
+//    - Connect beam to player - Cancel if state is broken. TODO:
+// 3. Range |
+//    - Preview | Rec
+//
+// ------------------- TODO:
+// New Animations:
+// - Parry
+// - Beam
+// - Range + State
+// ------------------- TODO:
+// P0
+// - [ ] Gems give XP
+// - [ ] Hud With Mana | Card draw on timer
+// - [ ] Ability planning | ~9 per resource
+// P1
+// - New Animations + Abilitys
+// p2
+// - New Models + Color pallets
+// - New Env floor
+// - New Shader for bounds

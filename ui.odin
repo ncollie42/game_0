@@ -36,6 +36,7 @@ light_65 := RaylibColorToClayColor(tmp5)
 light_100 := RaylibColorToClayColor(tmp6)
 
 COLOR_RED := RaylibColorToClayColor(rl.RED)
+COLOR_XP_GREEN := RaylibColorToClayColor(rl.LIME)
 
 COLOR_LIGHT :: clay.Color{244, 235, 230, 255}
 COLOR_SELECTED :: clay.Color{244, 35, 230, 255}
@@ -64,7 +65,7 @@ debugPannel := clay.RectangleElementConfig {
 }
 
 testPannel := clay.RectangleElementConfig {
-	// color = {90, 90, 90, 180},
+	color = {90, 90, 90, 180},
 }
 
 

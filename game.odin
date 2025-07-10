@@ -6,6 +6,8 @@ import "core:reflect"
 import rl "vendor:raylib"
 import gl "vendor:raylib/rlgl"
 
+/* Deck Building 3D Arena Rogue-like */
+
 Game :: struct {
 	camera:          ^rl.Camera,
 	player:          ^Player,
@@ -16,6 +18,8 @@ Game :: struct {
 	enemyAbilities:  ^AbilityPool,
 	gpoints:         ^[dynamic]GravityPoint, // For boids
 	hand:            [HandAction]AbilityConfig, // Not using all actions, just the ones in hand
+	deck:            Deck,
+	xp:              Xp,
 	dash:            State,
 	screen:          rl.RenderTexture2D,
 	ui:              rl.RenderTexture2D, // test
@@ -23,11 +27,13 @@ Game :: struct {
 	impact:          Flipbook,
 	gems:            Gems,
 	pickups:         Pickup,
-	state:           enum {
-		PLAYING,
-		UPGRADE,
-		PAUSE,
-	},
+	state:           PlayState,
+}
+
+PlayState :: enum {
+	PLAYING,
+	UPGRADE,
+	PAUSE,
 }
 
 initGame :: proc() -> Game {
@@ -75,6 +81,7 @@ initGame :: proc() -> Game {
 
 	game.hand = {}
 	game.hand[.Attack] = MeleAttackConfig
+	game.deck = {{}, {}, Timer{1, 0}}
 
 	game.dash = newPlayerDashAbility(game.player, game.camera)
 
@@ -165,8 +172,11 @@ resetGame :: proc(game: ^Game) {
 	initStamina()
 
 	ManaRechargeSpeed = .25
+	xp = newXp()
 	initWarnings()
 	initWaves()
+	// TODO: Reset Abilitie
+	// TODO: Reset Upgrades
 	initDamageNumbers()
 	clearGravityPoints(gpoints)
 	// TODO: Reset spawners
@@ -183,6 +193,7 @@ updateGame :: proc(game: ^Game) {
 
 	// :: Player Actions
 	updatePlayerInput(game)
+	updateDeck(&game.deck, &game.hand)
 
 	// Update player states
 	switch &s in player.state {
@@ -209,7 +220,8 @@ updateGame :: proc(game: ^Game) {
 	updateStamina(player)
 	updateMana(&player.mana)
 	updateGems(&gems, player)
-	updatePickup(&pickups, player)
+	updatePickup(&pickups, player, &xp)
+	updateXPbar(&xp, &state)
 
 	updateGravityPoints(gpoints)
 
@@ -249,7 +261,7 @@ drawGame :: proc(game: ^Game) {
 	drawAbilityInstances(playerAbilities, blue_1, camera)
 	drawAbilityInstances(enemyAbilities, blue_5, camera)
 
-	drawPlayer(player^, camera)
+	drawPlayer(player, camera)
 	drawEnemies(&enemies, camera)
 	drawSelectedEnemy(&enemies, camera)
 	drawGems(&gems, camera)
@@ -268,7 +280,6 @@ drawGame :: proc(game: ^Game) {
 	drawWarnings(camera^)
 	drawHealthbars(camera, &enemies)
 
-	drawCamera(camera)
 	// -------------------------------------------------
 	rl.EndMode3D()
 	rl.EndTextureMode()
@@ -313,9 +324,10 @@ drawGameUI :: proc(game: ^Game) {
 			padding = {0, 0, 0, 0},
 			childGap = childGap,
 			childAlignment = {.CENTER, .TOP},
-			layoutDirection = .LEFT_TO_RIGHT,
+			layoutDirection = .TOP_TO_BOTTOM,
 		}
 		if clay.UI(clay.ID("top"), clay.Layout(layout), clay.Rectangle(testPannel)) {
+			drawXPbarUI(xp)
 			timer := fmt.tprintf("%.1f", Waves.duration)
 			uiText(timer, .large)
 		}
@@ -377,7 +389,10 @@ drawGameUI :: proc(game: ^Game) {
 			}
 
 			// Player Abilities 
-			playerHand(&hand, player)
+			if clay.UI(clay.ID("HP_XP"), clay.Layout(layout), clay.Rectangle(testPannel)) {
+				drawDeckUI(&deck)
+				playerHand(&hand, player)
+			}
 			// Right Bottom 
 			if clay.UI(
 				clay.ID("??"),
@@ -569,7 +584,25 @@ drawUpgradeUIItem :: proc(game: ^Game, upgrade: Upgrade) -> bool {
 	clicked := hovered && rl.IsMouseButtonPressed(.LEFT)
 	if clicked do doUpgrade(game, upgrade.name)
 
-
 	// imageData = &Textures[config.img],
 	return clicked
 }
+/*
+ Every Action is a card
+ - Card cost 0 - 10
+ - Cards should idealy interact with another system besides doing damage
+ - Mana, Card draw, Gems / Xp, charges, {Fire, Stone} Ext..
+    - First fiew focus on Mana, Card draw, Gems
+
+*/
+
+/*
+
+ - [ ] Add draw deck ( Proto type view frist)
+ - [ ] Add on deck empty -> Move to hand.
+ - Design 8ish cards
+ - Add an upgrade selection / Not fixed any more.
+ - Add a Debug System
+    - Some sort of Global? 
+ 
+*/

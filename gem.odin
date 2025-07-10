@@ -94,7 +94,7 @@ spawnPickup :: proc(pickup: ^Pickup, pos: vec3, dir: vec3) { 	// Dir
 }
 
 pickupSpawn: f32 = .75 // spawn durration
-updatePickup :: proc(pickup: ^Pickup, player: ^Player) {
+updatePickup :: proc(pickup: ^Pickup, player: ^Player, xp: ^Xp) {
 	#reverse for &item, index in pickup.items {
 		item.expire -= getDelta()
 		switch item.state {
@@ -127,6 +127,7 @@ updatePickup :: proc(pickup: ^Pickup, player: ^Player) {
 				// ACTION
 				// player.mana.current += 1
 				// player.xp.current += 1
+				xp.current += 1
 			}
 		}
 	}

@@ -230,7 +230,6 @@ Timer :: struct {
 	max:  f32, //MAX
 	left: f32, //Left
 	//onShot: bool,
-	//ready: bool, 
 }
 
 tickTimer :: proc(tick: ^Timer) -> bool {
@@ -240,6 +239,10 @@ tickTimer :: proc(tick: ^Timer) -> bool {
 	}
 	updateTimer(tick)
 	return false
+}
+
+timerPercent :: proc(tt: Timer) -> f32 {
+	return tt.left / tt.max
 }
 
 updateTimer :: proc(timer: ^Timer) {

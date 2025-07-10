@@ -3,6 +3,9 @@ package main
 import "core:fmt"
 import rl "vendor:raylib"
 
+// Your abilities should compound (not just add) -> helps lead to the fantacy power at the end of the round.
+// Don't fight the power fantasy in minutes 15-25. Let players feel broken. The dopamine hit of "I'm unstoppable" is exactly what you want before the match ends.
+// 
 // MeleInstance 
 AbilityInstance :: struct {
 	// Can parry: bool, -> move to player list? if range swap Dir
@@ -27,7 +30,8 @@ AbilityInstance :: struct {
 	},
 }
 
-Mele :: struct {}
+Mele :: struct {
+}
 
 Range :: struct {
 	speed:    f32,

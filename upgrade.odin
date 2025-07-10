@@ -1,6 +1,8 @@
 package main
 
+import clay "/clay-odin"
 import "core:fmt"
+import "core:math"
 import rl "vendor:raylib"
 // used := [UpgradeName]bool
 // img := [UpgradeName]rl.Texture2D
@@ -78,29 +80,11 @@ doUpgrade :: proc(game: ^Game, name: UpgradeName) {
 	fmt.println("[Upgrade] ", name)
 	switch name {
 	case .RangeUnlock:
-		slot := getFreeSlot(game.hand)
-		fmt.println("Adding, ", slot)
-		if slot == .Nil {
-			// Do we want to panic? should not give this option of we can't select? or we allow to overwride?
-			panic("Don't know how to handle not option yet")
-		}
-		game.hand[slot] = RangeAttackConfig
+		append(&deck.free, RangeAttackConfig)
 	case .AoeUnlock:
-		slot := getFreeSlot(game.hand)
-		fmt.println("Adding, ", slot)
-		if slot == .Nil {
-			// Do we want to panic? should not give this option of we can't select? or we allow to overwride?
-			panic("Don't know how to handle not option yet")
-		}
-		game.hand[slot] = AoeAttackConfig
+		append(&deck.free, AoeAttackConfig)
 	case .GravityUnlock:
-		slot := getFreeSlot(game.hand)
-		fmt.println("Adding, ", slot)
-		if slot == .Nil {
-			// Do we want to panic? should not give this option of we can't select? or we allow to overwride?
-			panic("Don't know how to handle not option yet")
-		}
-		game.hand[slot] = GravityAttackConfig
+		append(&deck.free, GravityAttackConfig)
 	case .AttackSpeed:
 		attack := MeleAttackConfig.state.(playerStateAttack)
 		attack.cancel_frame = 10
@@ -193,4 +177,74 @@ a3 := Upgrade {
 	img    = .Mark1,
 	type   = .Ability,
 	rarity = .Common,
+}
+
+// ----------------- XP -----------------------------
+// Player wants consistent dopamine hits through steady level-up frequency (~60 seconds)
+// while feeling increasingly overpowered toward the end of 20-30 minute matches.
+// Using 1 kill = 1 XP system with instant first level-up, then scaling requirements.
+// Goal is player power growth outpacing enemy power growth for power fantasy finale
+
+Xp :: struct {
+	showing: f32,
+	current: f32,
+	max:     f32,
+	level:   i32,
+}
+
+newXp :: proc() -> Xp {
+	return Xp{0, 0, getXPforLevel(1), 1}
+}
+
+getXPforLevel :: proc(level: i32) -> f32 {
+	lvl := f32(level)
+	if lvl == 1 do return 1
+	return 2 + (lvl - 2.0) * 1.2 + math.pow(f32(lvl) - 2.0, 2) * 0.15
+}
+
+updateXPbar :: proc(xp: ^Xp, state: ^PlayState) {
+	current := min(xp.current, xp.max)
+	xp.showing = rl.Lerp(xp.showing, current, .02) // move 2% closer to current
+
+	if !closeEnough(xp.current, xp.showing, .02) do return // Wait until showing XP is pretty close before leveling up
+	if xp.current < xp.max do return // Return when 
+
+	xp.current = xp.max - xp.current // Carry over on surplus
+	xp.showing = 0
+	xp.level += 1 // Capout at 30?
+	xp.max = getXPforLevel(xp.level)
+	// TODO: Show DING effect on level up + sound? or is upgrade section good enough
+	state^ = PlayState.UPGRADE
+}
+
+closeEnough :: proc(aa: f32, target: f32, amount: f32) -> bool {
+	if aa > target do return true
+	return math.abs(aa - target) <= amount
+}
+
+drawXPbarUI :: proc(xp: Xp) {
+	amount := xp.showing / xp.max
+	layout := clay.LayoutConfig {
+		sizing = {width = clay.SizingGrow({}), height = clay.SizingFixed(10)},
+		padding = {0, 0, 0, 0},
+		childGap = childGap,
+		childAlignment = {.LEFT, .CENTER},
+		layoutDirection = .LEFT_TO_RIGHT,
+	}
+	rec := clay.RectangleElementConfig {
+		color        = {90, 90, 90, 180},
+		cornerRadius = {10, 10, 10, 10},
+	}
+
+	if clay.UI(clay.ID("xp bar"), clay.Layout(layout), clay.Rectangle(rec)) {
+		// Fill
+		if clay.UI(
+			clay.Layout(
+				{sizing = {width = clay.SizingPercent(amount), height = clay.SizingGrow({})}},
+			),
+			clay.Rectangle(
+				{color = COLOR_XP_GREEN, cornerRadius = clay.CornerRadiusAll(uiCorners)},
+			),
+		) {}
+	}
 }

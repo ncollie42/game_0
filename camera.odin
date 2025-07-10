@@ -119,9 +119,3 @@ updateCameraPos :: proc(camera: ^rl.Camera3D, player: Player) {
 		zoomIn(camera)
 	}
 }
-
-drawCamera :: proc(camera: ^rl.Camera3D) {
-	pos := mouseInWorld(camera)
-	rl.DrawCubeWires(pos, .25, .25, .25, rl.RED)
-	rl.DrawCube(pos, .1, .1, .1, rl.GREEN)
-}

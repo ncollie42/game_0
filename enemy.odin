@@ -55,8 +55,10 @@ EnemyState :: union {
 	EnemyAttack,
 }
 
-EnemyStateBase :: struct {}
-EnemyDead :: struct {}
+EnemyStateBase :: struct {
+}
+EnemyDead :: struct {
+}
 EnemyAttack :: struct {
 	animation:    ANIMATION_NAMES,
 	animSpeed:    f32,
@@ -197,7 +199,7 @@ initEnemyPools :: proc(pool: ^EnemyPool) {
 	// -------- Mele -------- 
 
 	mele := Enemy {
-		health = {max = 6},
+		health = {max = 4},
 		attackCD = {left = 5.0, max = 10.0},
 		shape = .8, // TODO: change, but also add attack range
 		type = MeleEnemy{},

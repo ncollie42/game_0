@@ -64,7 +64,7 @@ main :: proc() {
 				app = .PLAYING
 				// game.state = .UPGRADE
 			}
-			drawMainMemu(&app, &game)
+			drawMainMenu(&app, &game)
 		case .PLAYING:
 			rl.DrawFPS(10, 10)
 			switch game.state {
@@ -73,15 +73,12 @@ main :: proc() {
 					app = .STATS
 				}
 				if rl.IsKeyPressed(.ESCAPE) {
-					game.state = .UPGRADE
+					game.state = .PAUSE
 				}
 				updateGame(&game)
 				drawGame(&game)
 				drawGameUI(&game)
 			case .UPGRADE:
-				if rl.IsKeyPressed(.ESCAPE) {
-					game.state = .PAUSE
-				}
 				drawGame(&game)
 				drawUpgradeUI(&game)
 			case .PAUSE:

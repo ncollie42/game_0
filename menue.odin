@@ -13,7 +13,7 @@ layoutRoot2 := clay.LayoutConfig {
 	childAlignment  = {.CENTER, .CENTER},
 }
 
-drawMainMemu :: proc(app: ^App, game: ^Game) {
+drawMainMenu :: proc(app: ^App, game: ^Game) {
 	// TODO: Pass in closures for button actions?
 
 	clayFrameSetup()

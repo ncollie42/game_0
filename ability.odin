@@ -2,7 +2,8 @@ package main
 import "core:fmt"
 import rl "vendor:raylib"
 
-Infinate :: struct {}
+Infinate :: struct {
+}
 Limited :: struct {
 	max:     u8,
 	current: u8,
@@ -44,7 +45,6 @@ ClosureName :: enum {
 Closures := [ClosureName]Closure{} // Global
 
 doAction :: proc(name: ClosureName) {
-	fmt.println(name)
 	switch &a in Closures[name] {
 	case ActionSpawnMeleAtPlayer:
 		dmg := a.percent * a.player.power.Physical

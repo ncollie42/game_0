@@ -299,6 +299,9 @@ updatePlayerStateAttackLeft :: proc(
 
 	frame := i32(math.floor(player.animState.duration * FPS_30))
 
+	// Preview
+	if frame <= attack.action_frame do drawPreviewCircleWithMaxDist(player, camera, 1, 1)
+
 	// Action
 	if frame >= attack.action_frame && !attack.hasTriggered {
 		attack.hasTriggered = true
@@ -448,7 +451,8 @@ State :: union {
 	//	AbiltiyPreviewState
 }
 
-playerStateBase :: struct {}
+playerStateBase :: struct {
+}
 
 playerStateBlocking :: struct {
 	// TODO: maybe add Actions or other fields
@@ -505,7 +509,7 @@ playerStateAttackLeft :: struct {
 }
 
 // Draw
-drawPlayer :: proc(player: Player, camera: ^rl.Camera3D) {
+drawPlayer :: proc(player: ^Player, camera: ^rl.Camera3D) {
 	drawHitFlash(player.model, player.health)
 
 	hudPos := player.pos + {0, 3.4, 0}
@@ -532,18 +536,18 @@ drawPlayer :: proc(player: Player, camera: ^rl.Camera3D) {
 
 	r := lookAtVec3(mouseInWorld(camera), player.spacial.pos) + rl.PI
 	rl.DrawModelEx(player.viewCircle, player.pos + {0, .1, 0}, UP, rl.RAD2DEG * r, 2, rl.WHITE)
-	if isBlocking(player) {
+	if isBlocking(player^) {
 		// box := rl.GetModelBoundingBox(player.model)
 		// modelMatrix := getSpacialMatrixNoRot(player.spacial, player.scale * 1.1)
 		// box.min = rl.Vector3Transform(box.min, modelMatrix)
 		// box.max = rl.Vector3Transform(box.max, modelMatrix)
 		mesh := rl.GenMeshCube(1.5, 3, .1) // TODO: swap with a model on gen based on block angle?
 		shield := rl.LoadModelFromMesh(mesh)
-		parrying := isParrying(player)
+		parrying := isParrying(player^)
 		color := parrying ? rl.WHITE : rl.GRAY
 		rl.DrawModelEx(
 			shield,
-			player.spacial.pos + getForwardPoint(player) + {0, 1.5, 0},
+			player.spacial.pos + getForwardPoint(player^) + {0, 1.5, 0},
 			UP,
 			rl.RAD2DEG * player.spacial.rot,
 			1,
@@ -552,5 +556,18 @@ drawPlayer :: proc(player: Player, camera: ^rl.Camera3D) {
 		// rl.DrawBoundingBox(box, rl.WHITE)
 		// rl.DrawSphere(player.pos, 2, rl.WHITE)
 		// rl.DrawSphereWires(player.pos, 2.5, 8, 8, rl.WHITE)
+	}
+
+	// Draw preview
+	#partial switch &s in player.state {
+	case playerStateBase:
+		drawPreviewCircle(camera, .25)
+	case playerStateBeam:
+	case playerStateAttack:
+		frame := i32(math.floor(player.animState.duration * FPS_30))
+		if frame < s.action_frame do drawPreviewCircleWithDist(player, camera, 1, 1)
+	case playerStateAttackLeft:
+		frame := i32(math.floor(player.animState.duration * FPS_30))
+		if frame < s.action_frame do drawPreviewCircleWithDist(player, camera, 1, 1)
 	}
 }

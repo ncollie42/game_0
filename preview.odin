@@ -16,14 +16,25 @@ drawPreviewCircle :: proc(camera: ^rl.Camera, rad: f32) {
 	rl.DrawCircle3D(mouse + {0, .1, 0}, rad, {1, 0, 0}, 90, rl.WHITE)
 }
 
-drawPreviewCircleWithMaxDistance :: proc(
+// Up to max dist
+drawPreviewCircleWithMaxDist :: proc(
 	player: ^Player,
 	camera: ^rl.Camera,
 	rad: f32,
 	maxDistance: f32,
 ) {
 	mouse := mouseInWorld(camera)
-	target := normalize(mouse - player.pos) * maxDistance
+	dist := min(distance_to(mouse, player.pos), maxDistance)
+	target := normalize(mouse - player.pos) * dist
+	finalPos := player.pos + target + {0, .1, 0}
+
+	rl.DrawCircle3D(finalPos, rad, {1, 0, 0}, 90, rl.WHITE)
+}
+
+// Fixed size
+drawPreviewCircleWithDist :: proc(player: ^Player, camera: ^rl.Camera, rad: f32, dist: f32) {
+	mouse := mouseInWorld(camera)
+	target := normalize(mouse - player.pos) * dist
 	finalPos := player.pos + target + {0, .1, 0}
 
 	rl.DrawCircle3D(finalPos, rad, {1, 0, 0}, 90, rl.WHITE)
@@ -35,12 +46,7 @@ drawPreviewline :: proc(player: ^Player, camera: ^rl.Camera) {
 	rl.DrawLine3D(player.pos + {0, .1, 0}, mouse + {0, .1, 0}, rl.WHITE)
 }
 
-drawPreviewCapsule :: proc(player: ^Player, camera: ^rl.Camera) {
-	mouse := mouseInWorld(camera)
-
-	rl.DrawCapsule(player.pos, mouse, 1, 8, 8, rl.WHITE)
-}
-
+// Up to mouse
 drawPreviewRec :: proc(player: ^Player, camera: ^rl.Camera) {
 	mouse := mouseInWorld(camera)
 	r := lookAtVec3(mouseInWorld(camera), player.spacial.pos) + rl.PI
@@ -65,25 +71,31 @@ drawPreviewRec :: proc(player: ^Player, camera: ^rl.Camera) {
 		rl.DrawLine3D(p1, p2, rl.WHITE)
 	}
 }
-// drawPreviewRec :: proc(player: ^Player, camera: ^rl.Camera) {
-// 	mouse := mouseInWorld(camera)
-// 	r := lookAtVec3(mouseInWorld(camera), player.spacial.pos) + rl.PI
-// 	// get point left
-// 	{
-// 		mat := rl.MatrixRotateY(r)
-// 		point := rl.Vector3Transform({1, 0, 0}, mat) // left
-// 		point = normalize(point)
-// 		point += player.pos
 
-// 		rl.DrawLine3D(point + {0, .1, 0}, mouse + {0, .1, 0}, rl.WHITE)
-// 	}
-// 	// get point right
-// 	{
-// 		mat := rl.MatrixRotateY(r)
-// 		point := rl.Vector3Transform({-1, 0, 0}, mat) // left
-// 		point = normalize(point)
-// 		point += player.pos
+// Fixed sized
+drawPreviewRecWithDist :: proc(player: ^Player, camera: ^rl.Camera, dist: f32) {
+	mouse := mouseInWorld(camera)
+	target := normalize(mouse - player.pos) * dist + player.pos
 
-// 		rl.DrawLine3D(point + {0, .1, 0}, mouse + {0, .1, 0}, rl.WHITE)
-// 	}
-// }
+	r := lookAtVec3(mouseInWorld(camera), player.spacial.pos) + rl.PI
+	// get point left
+	{
+		mat := rl.MatrixRotateY(r)
+		point := rl.Vector3Transform({1, 0, 0}, mat) // left
+		point = normalize(point)
+		p1 := player.pos + point + {0, .1, 0}
+		p2 := target + point + {0, .1, 0}
+
+		rl.DrawLine3D(p1, p2, rl.WHITE)
+	}
+	// get point right
+	{
+		mat := rl.MatrixRotateY(r)
+		point := rl.Vector3Transform({-1, 0, 0}, mat) // left
+		point = normalize(point)
+		p1 := player.pos + point + {0, .1, 0}
+		p2 := target + point + {0, .1, 0}
+
+		rl.DrawLine3D(p1, p2, rl.WHITE)
+	}
+}
