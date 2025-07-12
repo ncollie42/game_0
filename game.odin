@@ -81,7 +81,8 @@ initGame :: proc() -> Game {
 
 	game.hand = {}
 	game.hand[.Attack] = MeleAttackConfig
-	game.deck = {{}, {}, Timer{1, 0}}
+	game.deck = {{}, {}, Timer{4, 0}}
+
 
 	game.dash = newPlayerDashAbility(game.player, game.camera)
 
@@ -183,6 +184,11 @@ resetGame :: proc(game: ^Game) {
 	// TODO: Reset Signs
 	// 
 	// spawnXDummyEnemies(game, 10)
+
+	// for deck.free -> TOOD: clear Deck free + discard
+	append(&game.deck.free, RangeAttackConfig)
+	append(&game.deck.free, RangeAttackConfig)
+	append(&game.deck.free, RangeAttackConfig)
 }
 
 updateGame :: proc(game: ^Game) {
@@ -379,19 +385,27 @@ drawGameUI :: proc(game: ^Game) {
 		if clay.UI(clay.ID("bottom"), clay.Layout(layout)) {
 			layout = clay.LayoutConfig {
 				sizing          = expand,
-				padding         = {0, 0, 0, 0},
+				padding         = {8, 8, 8, 8},
 				childGap        = childGap,
 				childAlignment  = {.LEFT, .BOTTOM},
-				layoutDirection = .TOP_TO_BOTTOM,
+				layoutDirection = .LEFT_TO_RIGHT,
 			}
 			if clay.UI(clay.ID("HP_XP"), clay.Layout(layout), clay.Rectangle(testPannel)) {
 				playerHPBar(player)
 			}
 
+			layout = clay.LayoutConfig {
+				sizing          = expand,
+				padding         = {8, 8, 8, 8},
+				childGap        = childGap,
+				childAlignment  = {.CENTER, .BOTTOM}, // Center
+				layoutDirection = .LEFT_TO_RIGHT,
+			}
 			// Player Abilities 
-			if clay.UI(clay.ID("HP_XP"), clay.Layout(layout), clay.Rectangle(testPannel)) {
-				drawDeckUI(&deck)
+			if clay.UI(clay.ID("Abilities"), clay.Layout(layout), clay.Rectangle(testPannel)) {
+				drawDeckUIFree(&deck)
 				playerHand(&hand, player)
+				drawDeckUIDiscard(&deck)
 			}
 			// Right Bottom 
 			if clay.UI(

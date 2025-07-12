@@ -32,6 +32,8 @@ TextureName :: enum {
 	White,
 	Mark1,
 	Mark2,
+	Fire,
+	Fist,
 }
 loadShaders :: proc() {
 	Shaders[.Flash] = rl.LoadShader(nil, "shaders/flash.fs")
@@ -45,6 +47,8 @@ loadShaders :: proc() {
 
 	Textures[.Mark1] = rl.LoadTexture("resources/mark_1.png")
 	Textures[.Mark2] = rl.LoadTexture("resources/mark_2.png")
+	Textures[.Fire] = rl.LoadTexture("resources/fire.png")
+	Textures[.Fist] = rl.LoadTexture("resources/fist.png")
 	whiteImage := rl.GenImageColor(1, 1, rl.WHITE)
 	Textures[.White] = rl.LoadTextureFromImage(whiteImage)
 	rl.UnloadImage(whiteImage)

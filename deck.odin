@@ -14,10 +14,15 @@ Deck :: struct {
 updateDeck :: proc(deck: ^Deck, hand: ^[HandAction]AbilityConfig) {
 	if !tickTimer(&deck.tick) do return
 
-	if len(deck.free) == 0 do return
-	config := pop(&deck.free)
+	if len(deck.free) == 0 {
+		// TODO: Suffle
+		#reverse for _ in deck.discard {
+			fmt.println(len(deck.discard))
+			append(&deck.free, pop(&deck.discard))
+		}
+		return
+	}
 
-	fmt.println("Deck Tick", len(deck.free), len(deck.discard))
 	// On Tick
 	//  -> new ability to the hand if available
 	// If len(Free) == 0
@@ -25,6 +30,9 @@ updateDeck :: proc(deck: ^Deck, hand: ^[HandAction]AbilityConfig) {
 	// How do we want to Show and make it satisfying? We can't deplay game play
 	// 
 	if !hasFreeSlot(hand^) do return
+	config := pop(&deck.free)
+
+	fmt.println("Deck Tick", len(deck.free), len(deck.discard))
 	slot := getFreeSlot(hand^)
 	fmt.println("Adding, ", slot)
 	if slot == .Nil {
@@ -34,24 +42,12 @@ updateDeck :: proc(deck: ^Deck, hand: ^[HandAction]AbilityConfig) {
 	hand[slot] = config
 }
 
-drawDeckUI :: proc(deck: ^Deck) {
-	// Rec With a card number And a Number and a CD for card draw
-	layoutOuter := clay.LayoutConfig {
-		sizing          = expand,
-		padding         = {0, 0, 0, 0},
-		childGap        = childGap,
-		childAlignment  = {.CENTER, .BOTTOM},
-		layoutDirection = .LEFT_TO_RIGHT,
-	}
-
+drawDeckUIFree :: proc(deck: ^Deck) {
 	// TODO: move to constants -> used in hand too 
 	size: f32 = 64 * .75
 	layout := clay.LayoutConfig {
 		sizing = {width = clay.SizingFixed(size), height = clay.SizingFixed(size)},
-		padding = {0, 0, 0, 0},
-		childGap = 0,
-		childAlignment = {.CENTER, .CENTER},
-		layoutDirection = .TOP_TO_BOTTOM,
+		childAlignment = {.CENTER, .BOTTOM},
 	}
 	// Deck Free
 	if clay.UI(
@@ -61,31 +57,61 @@ drawDeckUI :: proc(deck: ^Deck) {
 		clay.Rectangle(testPannel),
 	) {
 		percent := timerPercent(deck.tick)
+		if percent <= 0 do return
+		percent = 1 - percent // Flip for now, make it move up instead of down
+		// Show CD
 		coverLayout := clay.LayoutConfig {
 			sizing = {width = clay.SizingFixed(size), height = clay.SizingPercent(percent)},
-			padding = {8, 8, 8, 8},
-			childGap = 8,
 		}
 		cover := clay.RectangleElementConfig {
 			color = {0, 0, 0, 255 * .8},
 		}
-		if percent > 0 {
-			if clay.UI(
-				clay.Layout(coverLayout),
-				clay.Rectangle(cover),
-				clay.BorderBottomOnly({width = borderThick, color = light_100}),
-			) {
-			}
-			floating := clay.FloatingElementConfig {
-				attachment = clay.FloatingAttachPoints {
-					element = .CENTER_CENTER,
-					parent = .CENTER_CENTER,
-				},
-				pointerCaptureMode = .PASSTHROUGH,
-			}
-			if clay.UI(clay.Floating(floating)) {
-				uiText("TEST", .large)
-			}
+		if clay.UI(
+			clay.Layout(coverLayout),
+			clay.Rectangle(cover),
+			clay.BorderBottomOnly({width = borderThick, color = light_100}),
+		) {}
+
+		// Text
+		floating := clay.FloatingElementConfig {
+			attachment = clay.FloatingAttachPoints {
+				element = .CENTER_CENTER,
+				parent = .CENTER_CENTER,
+			},
+			pointerCaptureMode = .PASSTHROUGH,
+		}
+		if clay.UI(clay.Floating(floating)) {
+			count := fmt.tprintf("%d", len(deck.free))
+			uiText(count, .large)
+		}
+	}
+}
+
+drawDeckUIDiscard :: proc(deck: ^Deck) {
+	// TODO: move to constants -> used in hand too 
+	size: f32 = 64 * .75
+	layout := clay.LayoutConfig {
+		sizing = {width = clay.SizingFixed(size), height = clay.SizingFixed(size)},
+		childAlignment = {.CENTER, .TOP},
+	}
+	// Deck Free
+	if clay.UI(
+		clay.ID("deck_discard"),
+		clay.Layout(layout),
+		clay.BorderAll({width = borderThick, color = light_100}),
+		clay.Rectangle(testPannel),
+	) {
+		// Text
+		floating := clay.FloatingElementConfig {
+			attachment = clay.FloatingAttachPoints {
+				element = .CENTER_CENTER,
+				parent = .CENTER_CENTER,
+			},
+			pointerCaptureMode = .PASSTHROUGH,
+		}
+		if clay.UI(clay.Floating(floating)) {
+			count := fmt.tprintf("%d", len(deck.discard))
+			uiText(count, .large)
 		}
 	}
 }

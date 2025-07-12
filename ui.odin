@@ -29,6 +29,7 @@ tmp4 := rl.ColorBrightness(tmp, rl.Remap(.25, 0, 1, -1, 1)) // [-1,1]
 tmp5 := rl.ColorBrightness(tmp, rl.Remap(.65, 0, 1, -1, 1)) // [-1,1] // Text
 tmp6 := rl.ColorBrightness(tmp, rl.Remap(1, 0, 1, -1, 1)) // [-1,1]
 
+BLUE := RaylibColorToClayColor(rl.BLUE)
 light_05 := RaylibColorToClayColor(tmp2)
 light_15 := RaylibColorToClayColor(tmp3)
 light_25 := RaylibColorToClayColor(tmp4)
@@ -65,7 +66,7 @@ debugPannel := clay.RectangleElementConfig {
 }
 
 testPannel := clay.RectangleElementConfig {
-	color = {90, 90, 90, 180},
+	// color = {90, 90, 90, 180},
 }
 
 
@@ -181,10 +182,11 @@ playerHand :: proc(hand: ^[HandAction]AbilityConfig, player: ^Player) {
 	empty := AbilityConfig{}
 
 	layoutOuter := clay.LayoutConfig {
-		sizing          = expand,
-		padding         = {0, 0, 0, 0},
-		childGap        = childGap,
-		childAlignment  = {.CENTER, .BOTTOM},
+		// sizing          = expand,
+		sizing = {width = clay.SizingFit({}), height = clay.SizingFixed(size)},
+		padding = {0, 0, 0, 0},
+		childGap = childGap,
+		childAlignment = {.CENTER, .BOTTOM},
 		layoutDirection = .LEFT_TO_RIGHT,
 	}
 
@@ -250,7 +252,7 @@ playerHand :: proc(hand: ^[HandAction]AbilityConfig, player: ^Player) {
 				}
 				// Cost
 				rec := clay.RectangleElementConfig {
-					color        = light_05,
+					color        = BLUE,
 					cornerRadius = {size / 6, size / 6, size / 6, size / 6},
 				}
 				layout := clay.LayoutConfig {
@@ -298,6 +300,11 @@ playerHand :: proc(hand: ^[HandAction]AbilityConfig, player: ^Player) {
 				// 		uiText(str, .large)
 				// 	}
 				// }
+
+				rec = clay.RectangleElementConfig {
+					color        = light_05,
+					cornerRadius = {size / 6, size / 6, size / 6, size / 6},
+				}
 
 				// Key
 				floating := clay.FloatingElementConfig {

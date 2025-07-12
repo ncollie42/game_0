@@ -25,6 +25,11 @@ updatePlayerInput :: proc(game: ^Game) {
 			// Check CD
 			useMana(&player.mana, hand[.Attack].cost)
 			enterPlayerState(player, hand[.Attack].state, camera, &enemies)
+
+			useAbilityCharge(&hand[.Attack]) // UsageLimit
+			if !hasAbilityCharge(&hand[.Attack]) {
+				discard(&deck, &hand, .Attack)
+			}
 		}
 		if isActionPressed(.Two) {
 			if !isActiveSlot(hand, .Power) do break
@@ -32,6 +37,11 @@ updatePlayerInput :: proc(game: ^Game) {
 			// Check CD
 			useMana(&player.mana, hand[.Power].cost)
 			enterPlayerState(player, hand[.Power].state, camera, &enemies)
+
+			useAbilityCharge(&hand[.Power]) // UsageLimit
+			if !hasAbilityCharge(&hand[.Power]) {
+				discard(&deck, &hand, .Power)
+			}
 		}
 		if isActionPressed(.Three) {
 			if !isActiveSlot(hand, .Special) do break
@@ -39,6 +49,11 @@ updatePlayerInput :: proc(game: ^Game) {
 			// Check CD
 			useMana(&player.mana, hand[.Special].cost)
 			enterPlayerState(player, hand[.Special].state, camera, &enemies)
+
+			useAbilityCharge(&hand[.Special]) // UsageLimit
+			if !hasAbilityCharge(&hand[.Special]) {
+				discard(&deck, &hand, .Special)
+			}
 		}
 		if isActionPressed(.Four) {
 			if !isActiveSlot(hand, .Ult) do break
@@ -46,6 +61,11 @@ updatePlayerInput :: proc(game: ^Game) {
 			// Check CD
 			useMana(&player.mana, hand[.Ult].cost)
 			enterPlayerState(player, hand[.Ult].state, camera, &enemies)
+
+			useAbilityCharge(&hand[.Ult]) // UsageLimit
+			if !hasAbilityCharge(&hand[.Ult]) {
+				discard(&deck, &hand, .Ult)
+			}
 		}
 
 		if isActionPressed(.Block) {

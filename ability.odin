@@ -2,8 +2,7 @@ package main
 import "core:fmt"
 import rl "vendor:raylib"
 
-Infinate :: struct {
-}
+Infinate :: struct {}
 Limited :: struct {
 	max:     u8,
 	current: u8,
@@ -135,7 +134,7 @@ MeleAttackConfig := AbilityConfig {
 	cost = 0,
 	cd = Timer{max = 5},
 	usageLimit = Infinate{},
-	img = .Mark1,
+	img = .Fist,
 	closureName = .Mele,
 	state = playerStateAttack {
 		cancellable  = true,
@@ -151,8 +150,8 @@ MeleAttackConfig := AbilityConfig {
 RangeAttackConfig := AbilityConfig {
 	cost = 1,
 	cd = Timer{max = 5},
-	usageLimit = Limited{2, 2},
-	img = .Mark2,
+	usageLimit = Limited{1, 1},
+	img = .Fire,
 	closureName = ClosureName.Range,
 	state = playerStateAttack {
 		cancellable = true,
@@ -167,7 +166,7 @@ RangeAttackConfig := AbilityConfig {
 AoeAttackConfig := AbilityConfig {
 	cost = 1,
 	cd = Timer{max = 5},
-	usageLimit = Limited{2, 2},
+	usageLimit = Limited{1, 1},
 	img = .Mark2,
 	closureName = ClosureName.Aoe,
 	state = playerStateAttack {
@@ -183,7 +182,7 @@ AoeAttackConfig := AbilityConfig {
 GravityAttackConfig := AbilityConfig {
 	cost = 1,
 	cd = Timer{max = 5},
-	usageLimit = Limited{2, 2},
+	usageLimit = Limited{1, 1},
 	img = .Mark2,
 	closureName = ClosureName.Gravity,
 	state = playerStateAttack {
@@ -217,4 +216,38 @@ getFreeSlot :: proc(hand: [HandAction]AbilityConfig) -> HandAction {
 		if config == empty do return slot
 	}
 	return .Nil
+}
+
+discard :: proc(deck: ^Deck, hand: ^[HandAction]AbilityConfig, slot: HandAction) {
+	config := hand[slot]
+	hand[slot] = {}
+
+	// Reset the charges
+	switch &ab in config.usageLimit {
+	case Limited:
+		ab.current = ab.max
+	case Infinate:
+	}
+
+	append(&deck.discard, config)
+}
+
+useAbilityCharge :: proc(ability: ^AbilityConfig) {
+	switch &ab in ability.usageLimit {
+	case Limited:
+		ab.current -= 1
+	case Infinate:
+		return
+	}
+}
+
+hasAbilityCharge :: proc(ability: ^AbilityConfig) -> bool {
+	ret := false
+	switch &ab in ability.usageLimit {
+	case Limited:
+		ret = ab.current > 0
+	case Infinate:
+		ret = true
+	}
+	return ret
 }
