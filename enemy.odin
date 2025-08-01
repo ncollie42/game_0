@@ -55,10 +55,8 @@ EnemyState :: union {
 	EnemyAttack,
 }
 
-EnemyStateBase :: struct {
-}
-EnemyDead :: struct {
-}
+EnemyStateBase :: struct {}
+EnemyDead :: struct {}
 EnemyAttack :: struct {
 	animation:    ANIMATION_NAMES,
 	animSpeed:    f32,
@@ -125,32 +123,32 @@ newEnemyPools :: proc() -> EnemyPool {
 	loadEnemies(
 		pool.freeDummy,
 		&pool.animSetDummy,
-		"resources/golem_large/base.m3d",
-		"resources/golem_large/base.png",
+		"resources/enemy_giant/base.m3d",
+		"resources/base.png",
 	)
 
 	// -------- Mele -------- 
 	loadEnemies(
 		pool.freeMele,
 		&pool.animSetMele,
-		"resources/golem_small_mele/base.m3d",
-		"resources/golem_small_mele/base.png",
+		"resources/enemy_mele/base.m3d",
+		"resources/base.png",
 	)
 
 	// -------- Range -------- 
 	loadEnemies(
 		pool.freeRange,
 		&pool.animSetRange,
-		"resources/golem_small_range/base.m3d",
-		"resources/golem_small_range/base.png",
+		"resources/enemy_range/base.m3d",
+		"resources/base.png",
 	)
 
 	// -------- Giant -------- 
 	loadEnemies(
 		pool.freeGiant,
 		&pool.animSetGiant,
-		"resources/golem_large/base.m3d",
-		"resources/golem_large/base.png",
+		"resources/enemy_giant/base.m3d",
+		"resources/base.png",
 	)
 
 	// -------- Thorn -------- 
@@ -204,9 +202,9 @@ initEnemyPools :: proc(pool: ^EnemyPool) {
 		shape = .8, // TODO: change, but also add attack range
 		type = MeleEnemy{},
 		animState = {speed = 1, current = ENEMY.idle},
-		size = 4,
+		size = 3,
 		box = rl.BoundingBox{{-.2, 0, -.2}, {.2, .4, .2}},
-		dmgIndicatorOffset = {0, 2, 0},
+		dmgIndicatorOffset = {0, 3.5, 0},
 	}
 	initFreePool(mele, pool.freeMele)
 
@@ -218,9 +216,9 @@ initEnemyPools :: proc(pool: ^EnemyPool) {
 		shape = .8, // TODO: change, but also add attack range
 		type = RangeEnemy{},
 		animState = {speed = 1, current = ENEMY.idle},
-		size = 4,
+		size = 3,
 		box = rl.BoundingBox{{-.2, 0, -.2}, {.2, .5, .2}},
-		dmgIndicatorOffset = {0, 2.5, 0},
+		dmgIndicatorOffset = {0, 3.5, 0},
 	}
 	initFreePool(range, pool.freeRange)
 
@@ -231,9 +229,9 @@ initEnemyPools :: proc(pool: ^EnemyPool) {
 		attackCD = {left = 5.0, max = 10.0},
 		shape = .8, // TODO: change, but also add attack range
 		type = GiantEnemy{},
-		size = 3,
+		size = 4,
 		box = rl.BoundingBox{{-.3, 0, -.3}, {.3, .7, .3}},
-		dmgIndicatorOffset = {0, 2, 0},
+		dmgIndicatorOffset = {0, 3, 0},
 	}
 	initFreePool(giant, pool.freeGiant)
 

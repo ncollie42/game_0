@@ -30,8 +30,7 @@ AbilityInstance :: struct {
 	},
 }
 
-Mele :: struct {
-}
+Mele :: struct {}
 
 Range :: struct {
 	speed:    f32,
@@ -463,7 +462,7 @@ get_box_normal :: proc(box: rl.BoundingBox, collision_point: rl.Vector3) -> rl.V
 
 // ------------------------------------------ Parry
 
-PARRY_WINDOW :: .4
+PARRY_WINDOW :: .6
 PARRY_DIST :: 2.0
 parryAbility :: proc(p1_index: int, p1: ^AbilityPool, p2: ^AbilityPool) {
 	// swap ability from p1 to p2

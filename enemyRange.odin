@@ -54,7 +54,8 @@ updateEnemyRange :: proc(
 			enemy.attackCD.left = enemy.attackCD.max // Start timer again
 			enterEnemyRangeState(
 				enemy,
-				EnemyAttack{action_frame = 49, animation = ENEMY.attack, animSpeed = 1},
+				// EnemyAttack{action_frame = 49, animation = ENEMY.attack, animSpeed = 1},
+				EnemyAttack{action_frame = 12, animation = ENEMY.attack, animSpeed = 1},
 			)
 		}
 

@@ -32,16 +32,13 @@ TURN_SPEED :: 10.0
 newPlayer :: proc() -> ^Player {
 	player := new(Player)
 
-	modelPath: cstring = "resources/warrior/base.m3d"
-	texturePath: cstring = "resources/warrior/base.png"
+	modelPath: cstring = "resources/player/base.m3d"
 
 	player.model = loadModel(modelPath)
 	player.animSet = loadM3DAnimationsWithRootMotion(modelPath)
 
-	texture := loadTexture(texturePath)
-	player.model.materials[player.model.materialCount - 1].maps[rl.MaterialMapIndex.ALBEDO].texture =
-		texture
-
+	count := player.model.materialCount - 1
+	player.model.materials[count].maps[rl.MaterialMapIndex.ALBEDO].texture = Textures[.Synty_01_A]
 	player.model.materials[player.model.materialCount - 1].shader = Shaders[.Flash]
 
 	path: cstring = "resources/trail_1.png"
@@ -54,8 +51,8 @@ newPlayer :: proc() -> ^Player {
 	// Camera half circle :: TODO: maybe replace with a billboardPro on {0,0,1}
 	mesh := rl.GenMeshPlane(1, 1, 1, 1)
 	player.viewCircle = rl.LoadModelFromMesh(mesh)
-	texturePath = "resources/half_circle.png"
-	texture = rl.LoadTexture(texturePath)
+	texturePath: cstring = "resources/half_circle.png"
+	texture := rl.LoadTexture(texturePath)
 	player.viewCircle.materials[0].maps[rl.MaterialMapIndex.ALBEDO].texture = texture
 	player.viewCircle.materials[0].shader = Shaders[.Discard]
 
@@ -80,7 +77,8 @@ initPlayer :: proc(player: ^Player) {
 		shape = .8, //radius
 	}
 
-	player.scale = 5
+	// player.scale = 5
+	player.scale = 6
 }
 
 moveAndSlide :: proc(player: ^Player, velocity: vec3, objs: [dynamic]EnvObj, enemies: ^EnemyPool) {
@@ -207,9 +205,9 @@ updatePlayerStateBase :: proc(player: ^Player, objs: [dynamic]EnvObj, enemies: ^
 		player.spacial.rot = lerpRAD(player.spacial.rot, r, getDelta() * TURN_SPEED)
 	}
 
-	// speed := getRootMotionSpeed(&player.animState, player.animSet, player.scale)
-	speed := player.animState.speed
-	moveAndSlide(player, dir * MOVE_SPEED * speed, objs, enemies)
+	// speed := getRootMotionSpeed(&player.animState, player.animSet, player.scale) // ~7
+	speed := player.animState.speed * MOVE_SPEED
+	moveAndSlide(player, dir * speed, objs, enemies)
 
 	if dir == {} {
 		transitionAnimBlend(&player.animState, PLAYER.idle)
@@ -334,6 +332,12 @@ updatePlayerStateBlocking :: proc(
 	playerAbilities: ^AbilityPool,
 ) {
 	blocking.durration += getDelta()
+	// if player.animState.finished {
+	// 	enterPlayerState(player, playerStateBase{}, camera, enemies)
+	// }
+	if blocking.durration > PARRY_WINDOW {
+		enterPlayerState(player, playerStateBase{}, camera, enemies)
+	}
 
 	parry: {
 		if blocking.durration > PARRY_WINDOW do break parry
@@ -451,8 +455,7 @@ State :: union {
 	//	AbiltiyPreviewState
 }
 
-playerStateBase :: struct {
-}
+playerStateBase :: struct {}
 
 playerStateBlocking :: struct {
 	// TODO: maybe add Actions or other fields

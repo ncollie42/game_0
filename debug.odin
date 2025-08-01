@@ -5,45 +5,23 @@ import "core:math"
 import rl "vendor:raylib"
 
 model: rl.Model
-text: rl.Texture2D
+// text: rl.Texture2D
 // animState: AnimationState = {
-// 	current = ENEMY.hurt,
+// 	current = ENEMY.run,
 // 	speed   = 1,
 // }
 // animSet: AnimationSet
-img: rl.Texture2D
-hmap2: rl.Model
 debugInit :: proc(game: ^Game) {
 	using game
 
-	mesh := rl.GenMeshPlane(100, 100, 5, 5)
+	// model = rl.LoadModel("/home/nico/Godot/test2/grid_map.gltf")
+	// model = rl.LoadModel("/home/nico/Downloads/ground.m3d")
+
+	mesh := rl.GenMeshPlane(10, 10, 5, 5)
 	model = rl.LoadModelFromMesh(mesh)
 
-	text = rl.LoadTexture("resources/floor/g3_albedo.png")
-
-	rl.SetTextureWrap(text, .REPEAT)
-	tileScaleLocation := rl.GetShaderLocation(Shaders[.Tiling], "tileScale")
-	tileScale := f32(10.0)
-	rl.SetShaderValue(Shaders[.Tiling], tileScaleLocation, &tileScale, .FLOAT)
-
-	model.materials[model.materialCount - 1].maps[rl.MaterialMapIndex.ALBEDO].texture = text
-	model.materials[model.materialCount - 1].shader = Shaders[.Tiling]
-	// text2 := rl.LoadTexture("resources/floor/g3_normal.png")
-	// hmap := rl.LoadTexture("resources/floor/g3_heightmap.png")
-	hmap := rl.LoadImage("resources/floor/g3_heightmap.png")
-	mesh2 := rl.GenMeshHeightmap(hmap, {100, 1, 100})
-	hmap2 = rl.LoadModelFromMesh(mesh2)
-	hmap2.materials[hmap2.materialCount - 1].maps[rl.MaterialMapIndex.ALBEDO].texture = text
-	// hmap2.materials[hmap2.materialCount - 1].shader = Shaders[.Tiling]
-	// 
-	// text4 := rl.LoadTexture("resources/floor/g3_emission.png")
-	// model.materials[model.materialCount - 1].maps[rl.MaterialMapIndex.NORMAL].texture = text2
-	// model.materials[model.materialCount - 1].maps[rl.MaterialMapIndex.HEIGHT].texture = text3
-	// model.materials[model.materialCount - 1].maps[rl.MaterialMapIndex.EMISSION].texture = text4
-	//
-	// for xx in 1 ..= 30 {
-	// 	fmt.println(getXPforLevel(f32(xx)))
-	// }
+	count := model.materialCount - 1
+	model.materials[count].maps[rl.MaterialMapIndex.ALBEDO].texture = Textures[.Synty_01_A]
 }
 
 debugUpdateGame :: proc(game: ^Game) {
@@ -53,7 +31,6 @@ debugUpdateGame :: proc(game: ^Game) {
 	mouse := mouseInWorld(camera)
 	random := getRandomPoint()
 
-	img = loadTexture("resources/mark_4.png")
 	if rl.IsKeyPressed(.N) {
 		// doUpgrade(game, .RangeUnlock)
 		doUpgrade(game, .GravityUnlock)
@@ -61,7 +38,6 @@ debugUpdateGame :: proc(game: ^Game) {
 	if rl.IsKeyPressed(.F) {
 		ability := newBeamInstance(player, 1, 0, camera, &enemies)
 		append(&playerAbilities.active, ability)
-		fmt.println("Beam->")
 		// spawnGravityPoint(&gpoints, mouse)
 		// uiStrech = !uiStrech
 		// spawnEnemy(&enemies, grid, .Range, true)
@@ -97,8 +73,6 @@ debugUpdateGame :: proc(game: ^Game) {
 	}
 
 	updateEnemySpanwers(&spawners, &enemies, &objs)
-
-
 }
 
 // Z coordinate is compared to the appropriate entry in the depth buffer, if that pixel has already been drawn with a closer depth buffer value, then our new pixel isn't rendered at all, it's behind something that is already on the screen.
@@ -109,18 +83,7 @@ debug := false
 debugDrawGame :: proc(game: ^Game) {
 	using game
 
-
-	// if debug do getEnemyHitResult(&enemies, camera)
-	// When drawing with DrawTexturePro, you can tile by using source rectangles larger than the texture
-	// source := rl.Rectangle{0, 0, text.width * 4, text.height * 4} // Tile 4x4
-	// dest := rl.Rectangle{0, 0, 800, 600}
-	// rl.DrawTexturePro(text, source, dest, {0, 0}, 0, rl.WHITE)
-
-	// Flat tile
-	// rl.DrawModel(model, {0, 0, 0}, 1, rl.WHITE)
-
-	// Heightmap
-	// rl.DrawModel(hmap2, {-50, 0, -50}, 1, rl.WHITE)
+	rl.DrawModel(model, {}, 1, rl.WHITE)
 }
 
 // Preflight
@@ -219,3 +182,64 @@ debugDrawGame :: proc(game: ^Game) {
 // - New Models + Color pallets
 // - New Env floor
 // - New Shader for bounds
+//
+//
+//
+// ------------------ Bro's load file call back --------------------
+// package assets
+
+// import runtime "base:runtime"
+// import fmt "core:fmt"
+// import rl "vendor:raylib"
+
+// import genmesh "../genmesh"
+// import types "../types"
+
+// init :: proc() {
+// 	genmesh.init()
+// 	init_asset_path_to_id_map()
+// 	rl.SetLoadFileDataCallback(rl_load_file_data_callback)
+// }
+
+// quit :: proc() {
+// 	genmesh.quit()
+// 	delete(asset_path_to_id)
+// }
+
+
+// // for file loading
+// asset_path_to_id: map[cstring]types.AssetName
+// @(private)
+// init_asset_path_to_id_map :: proc() {
+// 	asset_path_to_id = make_map(map[cstring]types.AssetName)
+// 	reserve(&asset_path_to_id, cast(int)types.AssetName.Generated - 1)
+// 	for asset_info, key in assets {
+// 		if key != types.AssetName.Generated && key != types.AssetName.None {
+// 			asset_path_to_id[asset_info.path] = key
+// 		}
+// 	}
+// 	fmt.println("Asset map: ", asset_path_to_id)
+// }
+
+// @(private)
+// rl_load_file_data_callback :: proc "c" (fileName: cstring, dataSize: ^i32) -> [^]u8 {
+// 	if asset_path_to_id == nil || fileName == nil || dataSize == nil {
+// 		return nil
+// 	}
+// 	asset_id, ok := asset_path_to_id[fileName]
+// 	if !ok {
+// 		return nil
+// 	}
+// 	assets := assets
+// 	asset_info := assets[asset_id]
+// 	dataSize^ = cast(i32)len(asset_info.file)
+
+// 	// data unallocated by raylib with UnloadModelAnimation and UnloadModel
+// 	data: [^]u8 = ([^]u8)(rl.MemAlloc(cast(u32)dataSize^))
+// 	if data == nil {
+// 		return nil
+// 	}
+
+// 	runtime.mem_copy(data, raw_data(asset_info.file), len(asset_info.file))
+// 	return data
+// }

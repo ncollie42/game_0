@@ -104,6 +104,8 @@ KeyBinding :: union {
 	rl.KeyboardKey,
 }
 
+Hand :: [HandAction]AbilityConfig // Not using all actions, just the ones in hand
+
 HandAction :: enum {
 	Nil,
 	Attack, // Basic
@@ -311,7 +313,7 @@ loadModel :: proc(path: cstring) -> rl.Model {
 	// Only glb, obj, m3d work.
 	//     No FBX.
 	model := rl.LoadModel(path)
-
+	// fmt.println(path, model.boneCount)
 	assert(model.meshCount != 0, fmt.tprintf("[loadModel] Invalid Mesh %s", path))
 	return model
 }
@@ -328,8 +330,8 @@ loadModelAnimations :: proc(path: cstring) -> AnimationSet {
 loadTexture :: proc(path: cstring) -> rl.Texture2D {
 	texture := rl.LoadTexture(path)
 
-	assert(rl.IsTextureValid(texture), fmt.tprint(path))
-	assert(rl.IsTextureReady(texture), fmt.tprint(path))
+	assert(rl.IsTextureValid(texture), fmt.tprint("[loadTexture]", path))
+	assert(rl.IsTextureReady(texture), fmt.tprint("[loadTexture]", path))
 	return texture
 }
 
@@ -400,3 +402,10 @@ drawOutline :: proc(
 	model.materials[count].shader = prevShader
 	gl.SetCullFace(.BACK)
 }
+
+
+// -------------------- Tiling
+// rl.SetTextureWrap(text, .REPEAT)
+// tileScaleLocation := rl.GetShaderLocation(Shaders[.Tiling], "tileScale")
+// tileScale := f32(10.0)
+// rl.SetShaderValue(Shaders[.Tiling], tileScaleLocation, &tileScale, .FLOAT)

@@ -14,14 +14,6 @@ Deck :: struct {
 updateDeck :: proc(deck: ^Deck, hand: ^[HandAction]AbilityConfig) {
 	if !tickTimer(&deck.tick) do return
 
-	if len(deck.free) == 0 {
-		// TODO: Suffle
-		#reverse for _ in deck.discard {
-			fmt.println(len(deck.discard))
-			append(&deck.free, pop(&deck.discard))
-		}
-		return
-	}
 
 	// On Tick
 	//  -> new ability to the hand if available
@@ -29,17 +21,30 @@ updateDeck :: proc(deck: ^Deck, hand: ^[HandAction]AbilityConfig) {
 	//  -> Move all Discard to free
 	// How do we want to Show and make it satisfying? We can't deplay game play
 	// 
+
+	drawCard(deck, hand)
+}
+
+drawCard :: proc(deck: ^Deck, hand: ^[HandAction]AbilityConfig) {
+	// If empty -> Shuffle discard to free
+	if len(deck.free) == 0 {
+		// TODO: Suffle
+		#reverse for _ in deck.discard {
+			append(&deck.free, pop(&deck.discard))
+		}
+		return
+	}
+
 	if !hasFreeSlot(hand^) do return
 	config := pop(&deck.free)
 
-	fmt.println("Deck Tick", len(deck.free), len(deck.discard))
 	slot := getFreeSlot(hand^)
-	fmt.println("Adding, ", slot)
 	if slot == .Nil {
 		// Do we want to panic? should not give this option of we can't select? or we allow to overwride?
 		panic("Don't know how to handle not option yet")
 	}
 	hand[slot] = config
+
 }
 
 drawDeckUIFree :: proc(deck: ^Deck) {

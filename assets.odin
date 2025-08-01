@@ -34,6 +34,7 @@ TextureName :: enum {
 	Mark2,
 	Fire,
 	Fist,
+	Synty_01_A,
 }
 loadShaders :: proc() {
 	Shaders[.Flash] = rl.LoadShader(nil, "shaders/flash.fs")
@@ -52,6 +53,8 @@ loadShaders :: proc() {
 	whiteImage := rl.GenImageColor(1, 1, rl.WHITE)
 	Textures[.White] = rl.LoadTextureFromImage(whiteImage)
 	rl.UnloadImage(whiteImage)
+	// Textures[.Synty_01_A] = rl.LoadTexture("resources/textures/01_A.png")
+	Textures[.Synty_01_A] = rl.LoadTexture("resources/base.png")
 	// rl.LoadFontFromMemory()
 	// rl.LoadImageFromMemory()
 	// rl.LoadWaveFromMemory()

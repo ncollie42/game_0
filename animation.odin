@@ -11,13 +11,22 @@ import "core:time"
 import m3d "m3d-odin"
 import rl "vendor:raylib"
 
+// PLAYER :: enum {
+// 	dash,
+// 	idle,
+// 	punch,
+// 	punch2,
+// 	run,
+// 	block,
+// }
+
 PLAYER :: enum {
-	dash,
-	idle,
 	punch,
-	punch2,
-	run,
+	idle,
+	dash,
 	block,
+	run,
+	punch2,
 }
 
 // enum is 1 shifted down from what they are in the file
@@ -88,7 +97,7 @@ updateAnimation :: proc(model: rl.Model, state: ^AnimationState, set: AnimationS
 
 	assert(
 		anim.boneCount == model.boneCount,
-		fmt.tprint("bone count", anim.boneCount, model.boneCount),
+		fmt.tprint("[UpdateAnimation] bone count", anim.boneCount, model.boneCount),
 	)
 
 	frame := i32(math.floor(state.duration * FPS_30))
@@ -643,8 +652,6 @@ loadM3DAnimationsWithRootMotion :: proc(path: cstring) -> AnimationSet {
 		strings.has_suffix(string(path), ".m3d"),
 		fmt.tprint("[loadM3DAnimation] Not an .m3d file :", path),
 	)
-	// fmt.println("Animation: ", path)
-
 	anim := AnimationSet{}
 	animations: [^]rl.ModelAnimation = nil
 	m3d_t: ^m3d.m3d_t = nil
@@ -663,7 +670,8 @@ loadM3DAnimationsWithRootMotion :: proc(path: cstring) -> AnimationSet {
 	// No animation or bone+skin?
 	assert(m3d_t.numaction > 0, "No animations in this m3d")
 	assert(m3d_t.numbone > 0, "No bones in this m3d")
-	assert(m3d_t.numskin > 0, "No skin in this m3d")
+	fmt.println("[loadAnim]", path, m3d_t.numbone)
+	// assert(m3d_t.numskin > 0, "No skin in this m3d")
 
 	// Allocate animations array
 	anim.total = i32(m3d_t.numaction)

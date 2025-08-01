@@ -6,7 +6,7 @@ import "core:reflect"
 import rl "vendor:raylib"
 import gl "vendor:raylib/rlgl"
 
-/* Deck Building 3D Arena Rogue-like */
+/* Deck Building 3D Action Arena Rogue-like */
 
 Game :: struct {
 	camera:          ^rl.Camera,
@@ -17,8 +17,8 @@ Game :: struct {
 	playerAbilities: ^AbilityPool,
 	enemyAbilities:  ^AbilityPool,
 	gpoints:         ^[dynamic]GravityPoint, // For boids
-	hand:            [HandAction]AbilityConfig, // Not using all actions, just the ones in hand
-	deck:            Deck,
+	hand:            ^Hand,
+	deck:            ^Deck,
 	xp:              Xp,
 	dash:            State,
 	screen:          rl.RenderTexture2D,
@@ -54,6 +54,10 @@ initGame :: proc() -> Game {
 		gems            = initGems(),
 		pickups         = initPickup(),
 	}
+	game.deck = new(Deck)
+	game.deck^ = {{}, {}, Timer{4, 0}}
+	game.hand = new(Hand)
+	game.hand[.Attack] = MeleAttackConfig
 
 	Closures[.Mele] = ActionSpawnMeleAtPlayer {
 		percent = 1, // 100% - Damage
@@ -67,6 +71,14 @@ initGame :: proc() -> Game {
 		pool    = game.playerAbilities,
 	}
 
+	Closures[.RangeNDraw] = ActionSpawnRangeAtPlayerNDraw {
+		percent = .5, // 50% - Damage
+		player  = game.player,
+		pool    = game.playerAbilities,
+		deck    = game.deck,
+		hand    = game.hand,
+	}
+
 	Closures[.Aoe] = ActionSpawnAoEAtPlayer {
 		percent = .5, // 50% - Damage
 		player  = game.player,
@@ -77,11 +89,12 @@ initGame :: proc() -> Game {
 		camera = game.camera,
 		pool   = game.gpoints,
 	}
-	fmt.println("Pool", game.gpoints, Closures[.Gravity])
 
-	game.hand = {}
-	game.hand[.Attack] = MeleAttackConfig
-	game.deck = {{}, {}, Timer{4, 0}}
+	Closures[.Draw] = ActionDrawCard {
+		deck = game.deck,
+		hand = game.hand,
+	}
+	fmt.println("Pool", game.gpoints, Closures[.Gravity])
 
 
 	game.dash = newPlayerDashAbility(game.player, game.camera)
@@ -189,6 +202,8 @@ resetGame :: proc(game: ^Game) {
 	append(&game.deck.free, RangeAttackConfig)
 	append(&game.deck.free, RangeAttackConfig)
 	append(&game.deck.free, RangeAttackConfig)
+
+	game.state = .PLAYING
 }
 
 updateGame :: proc(game: ^Game) {
@@ -199,7 +214,7 @@ updateGame :: proc(game: ^Game) {
 
 	// :: Player Actions
 	updatePlayerInput(game)
-	updateDeck(&game.deck, &game.hand)
+	updateDeck(game.deck, game.hand)
 
 	// Update player states
 	switch &s in player.state {
@@ -261,7 +276,6 @@ drawGame :: proc(game: ^Game) {
 	rl.BeginMode3D(camera^)
 
 	// Draw Env first
-	rl.DrawModel(model, {0, 0, 0}, 1, rl.WHITE)
 	drawEnv(&objs)
 
 	drawAbilityInstances(playerAbilities, blue_1, camera)
@@ -403,9 +417,9 @@ drawGameUI :: proc(game: ^Game) {
 			}
 			// Player Abilities 
 			if clay.UI(clay.ID("Abilities"), clay.Layout(layout), clay.Rectangle(testPannel)) {
-				drawDeckUIFree(&deck)
-				playerHand(&hand, player)
-				drawDeckUIDiscard(&deck)
+				drawDeckUIFree(deck)
+				playerHand(hand, player)
+				drawDeckUIDiscard(deck)
 			}
 			// Right Bottom 
 			if clay.UI(
@@ -471,6 +485,10 @@ drawPauseUI :: proc(game: ^Game, app: ^App) {
 			}
 			if buttonText("Main Menu") {
 				app^ = .HOME
+			}
+			if buttonText("Restart") {
+				resetGame(game)
+				app^ = .PLAYING
 			}
 			if buttonText("QUIT") {
 				rl.CloseWindow() // Close more gracefully

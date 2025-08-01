@@ -26,19 +26,24 @@ AbilityConfig :: struct {
 	// Audio function?
 }
 
+// Do we allow for an array of closures - OR combine: ie: mele + draw card
 Closure :: union {
 	ActionSpawnMeleAtPlayer,
 	ActionSpawnRangeAtPlayer,
+	ActionSpawnRangeAtPlayerNDraw,
 	ActionSpawnAoEAtPlayer,
 	ActionSpawnGPointAtMouse,
+	ActionDrawCard,
 }
 
 ClosureName :: enum {
 	Nil,
 	Mele,
 	Range,
+	RangeNDraw,
 	Aoe,
 	Gravity,
+	Draw,
 }
 
 Closures := [ClosureName]Closure{} // Global
@@ -59,6 +64,15 @@ doAction :: proc(name: ClosureName) {
 		forward := getForwardPoint(a.player)
 		ability := newRangeInstance(a.player.pos + forward, a.player.rot, dmg, crit)
 		append(&a.pool.active, ability)
+	case ActionSpawnRangeAtPlayerNDraw:
+		crit := a.player.power.M_Crit
+		dmg := a.percent * a.player.power.Magic
+
+		forward := getForwardPoint(a.player)
+		ability := newRangeInstance(a.player.pos + forward, a.player.rot, dmg, crit)
+		append(&a.pool.active, ability)
+		// Draw
+		drawCard(a.deck, a.hand)
 	case ActionSpawnAoEAtPlayer:
 		crit := a.player.power.M_Crit
 		dmg := a.percent * a.player.power.Magic
@@ -69,6 +83,8 @@ doAction :: proc(name: ClosureName) {
 	case ActionSpawnGPointAtMouse:
 		mouse := mouseInWorld(a.camera)
 		spawnGravityPoint(a.pool, mouse)
+	case ActionDrawCard:
+		drawCard(a.deck, a.hand)
 	}
 }
 
@@ -79,10 +95,17 @@ actionDescription :: proc(name: ClosureName) -> string {
 		description = fmt.tprintf("Type: Physical\nPower: %.0f%%\nMele Attack", a.percent * 100)
 	case ActionSpawnRangeAtPlayer:
 		description = fmt.tprintf("Type: Magic\nPower: %.0f%%\nRange attack", a.percent * 100)
+	case ActionSpawnRangeAtPlayerNDraw:
+		description = fmt.tprintf(
+			"Type: Magic\nPower: %.0f%%\nRange attack\nDraw 1 card",
+			a.percent * 100,
+		)
 	case ActionSpawnAoEAtPlayer:
 		description = fmt.tprintf("Type: Magic\nPower: %.0f%%\nRange attack", a.percent * 100)
 	case ActionSpawnGPointAtMouse:
 		description = fmt.tprintf("Gravity point")
+	case ActionDrawCard:
+		description = fmt.tprintf("Draw 1 card")
 	}
 	return description
 }
@@ -118,6 +141,15 @@ ActionSpawnRangeAtPlayer :: struct {
 	pool:    ^AbilityPool,
 }
 
+ActionSpawnRangeAtPlayerNDraw :: struct {
+	percent: f32, //[0,1] % of damage of given power
+	player:  ^Player,
+	pool:    ^AbilityPool,
+	// Draw
+	deck:    ^Deck,
+	hand:    ^[HandAction]AbilityConfig,
+}
+
 ActionSpawnAoEAtPlayer :: struct {
 	percent: f32, //[0,1] % of damage of given power
 	player:  ^Player,
@@ -127,6 +159,11 @@ ActionSpawnAoEAtPlayer :: struct {
 ActionSpawnGPointAtMouse :: struct {
 	camera: ^rl.Camera,
 	pool:   ^[dynamic]GravityPoint,
+}
+
+ActionDrawCard :: struct {
+	deck: ^Deck,
+	hand: ^[HandAction]AbilityConfig,
 }
 
 // Global
@@ -143,7 +180,7 @@ MeleAttackConfig := AbilityConfig {
 		// TODO: add a transition_frame? different than cancel_frame
 		cancel_frame = 16, //10 - attack quicker with lower transition frame [10,16]
 		speed        = 1,
-		closure      = .Mele,
+		closure      = ClosureName.Mele,
 	},
 }
 
@@ -152,14 +189,14 @@ RangeAttackConfig := AbilityConfig {
 	cd = Timer{max = 5},
 	usageLimit = Limited{1, 1},
 	img = .Fire,
-	closureName = ClosureName.Range,
+	closureName = ClosureName.RangeNDraw,
 	state = playerStateAttack {
 		cancellable = true,
 		animation = PLAYER.punch,
 		action_frame = 10,
 		cancel_frame = 16,
 		speed = 1,
-		closure = ClosureName.Range,
+		closure = ClosureName.RangeNDraw,
 	},
 }
 
@@ -204,7 +241,7 @@ hasFreeSlot :: proc(hand: [HandAction]AbilityConfig) -> bool {
 	return false
 }
 
-isActiveSlot :: proc(hand: [HandAction]AbilityConfig, slot: HandAction) -> bool {
+isActiveSlot :: proc(hand: ^Hand, slot: HandAction) -> bool {
 	empty := AbilityConfig{}
 	return hand[slot] != empty
 }

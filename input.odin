@@ -28,7 +28,7 @@ updatePlayerInput :: proc(game: ^Game) {
 
 			useAbilityCharge(&hand[.Attack]) // UsageLimit
 			if !hasAbilityCharge(&hand[.Attack]) {
-				discard(&deck, &hand, .Attack)
+				discard(deck, hand, .Attack)
 			}
 		}
 		if isActionPressed(.Two) {
@@ -40,7 +40,7 @@ updatePlayerInput :: proc(game: ^Game) {
 
 			useAbilityCharge(&hand[.Power]) // UsageLimit
 			if !hasAbilityCharge(&hand[.Power]) {
-				discard(&deck, &hand, .Power)
+				discard(deck, hand, .Power)
 			}
 		}
 		if isActionPressed(.Three) {
@@ -52,7 +52,7 @@ updatePlayerInput :: proc(game: ^Game) {
 
 			useAbilityCharge(&hand[.Special]) // UsageLimit
 			if !hasAbilityCharge(&hand[.Special]) {
-				discard(&deck, &hand, .Special)
+				discard(deck, hand, .Special)
 			}
 		}
 		if isActionPressed(.Four) {
@@ -64,38 +64,38 @@ updatePlayerInput :: proc(game: ^Game) {
 
 			useAbilityCharge(&hand[.Ult]) // UsageLimit
 			if !hasAbilityCharge(&hand[.Ult]) {
-				discard(&deck, &hand, .Ult)
+				discard(deck, hand, .Ult)
 			}
 		}
 
 		if isActionPressed(.Block) {
+			// has enough stamina
+			// CD?
 			enterPlayerState(player, playerStateBlocking{}, camera, &enemies)
 		}
 	case playerStateDashing:
 	case playerStateAttack:
 		if isActionPressed(.Block) do enterPlayerState(player, playerStateBlocking{}, camera, &enemies)
 		if !isActionPressed(.One) do break
-		frame := i32(math.floor(player.animState.duration * FPS_30))
-		if frame < s.cancel_frame do break
-		if !hasEnoughMana(&player.mana, 1) do break // TOOD: replace with actual cost
-		if s.comboInput == true do break // already triggered
 
-		useMana(&player.mana, hand[.Attack].cost)
+		frame := i32(math.floor(player.animState.duration * FPS_30))
+		fmt.println("Combing", frame, s.cancel_frame)
+		if frame < (s.cancel_frame - 5) do break // hard code a few frames before cancle for chaining
+
 		s.comboInput = true
 	case playerStateAttackLeft:
 		if isActionPressed(.Block) do enterPlayerState(player, playerStateBlocking{}, camera, &enemies)
 		if !isActionPressed(.One) do break
-		frame := i32(math.floor(player.animState.duration * FPS_30))
-		if frame < s.cancel_frame do break
-		if !hasEnoughMana(&player.mana, 1) do break // TOOD: replace with actual cost
-		if s.comboInput == true do break // already triggered
 
-		useMana(&player.mana, hand[.Attack].cost)
+		frame := i32(math.floor(player.animState.duration * FPS_30))
+		if frame < (s.cancel_frame - 5) do break // hard code a few frames before cancle for chaining TODO: put into anim
+
 		s.comboInput = true
 	case playerStateBlocking:
-		if !isActionDown(.Block) {
-			enterPlayerState(player, playerStateBase{}, camera, &enemies)
-		}
+	// break only from dash?
+	// if !isActionDown(.Block) {
+	// 	enterPlayerState(player, playerStateBase{}, camera, &enemies)
+	// }
 	case playerStateBeam:
 	}
 }
