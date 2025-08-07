@@ -59,16 +59,30 @@ drawHealthbar :: proc(hp: Health, camera: ^rl.Camera, pos: vec3) {
 	// TODO: - set width based on hp max
 	width: f32 = healthBarWidth
 	height: f32 = healthBareHeight
-	rl.DrawBillboardRec(camera^, whiteTexture, {}, pos, {width * 1.2, height * 1.8}, rl.BLACK)
+	rl.DrawBillboardRec(camera^, Textures[.White], {}, pos, {width * 1.2, height * 1.8}, rl.BLACK)
 	percent := hp.showing / hp.max
 	whitePos := pos + {0, 0, -.003} // Bring forward from black
 	whitePos += {(-percent / 2) * width + width / 2, 0, 0} // Center left
-	rl.DrawBillboardRec(camera^, whiteTexture, {}, whitePos, {width * percent, height}, rl.WHITE)
+	rl.DrawBillboardRec(
+		camera^,
+		Textures[.White],
+		{},
+		whitePos,
+		{width * percent, height},
+		rl.WHITE,
+	)
 	percent = hp.current / hp.max
 	redPos := pos + {0, 0, -.006} // Bring forward from white
 	redPos += {(-percent / 2) * width + width / 2, 0, 0} // Center left
 	// redPos += {-(percent / 2 + width / 2), 0, 0} // Center left
 	//Make 1.1 bigger, to prevent forground issues with white and black
-	rl.DrawBillboardRec(camera^, whiteTexture, {}, redPos, {width * percent, height} * 1.1, rl.RED)
+	rl.DrawBillboardRec(
+		camera^,
+		Textures[.White],
+		{},
+		redPos,
+		{width * percent, height} * 1.1,
+		rl.RED,
+	)
 	// We're using 3 billboards, maybe we can use a single billboard with a shader in the future?
 }

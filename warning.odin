@@ -13,13 +13,10 @@ Warning :: struct {
 }
 
 Warnings: [dynamic]Warning
-WarningTexture: rl.Texture2D
 
 // TODO: Repalce the ! with an actual model?
 // warningModel: rl.Model
-initWarnings :: proc() {
-	WarningTexture = loadTexture("resources/mark_4.png")
-}
+initWarnings :: proc() {}
 
 spawnWarning :: proc(pos: vec3) {
 	append(&Warnings, Warning{pos, .35})
@@ -37,7 +34,7 @@ updateWarning :: proc() {
 
 drawWarnings :: proc(camera: rl.Camera) {
 	for warning in Warnings {
-		rl.DrawBillboard(camera, WarningTexture, warning.pos, 1.25, rl.WHITE)
+		rl.DrawBillboard(camera, Textures[.Warning], warning.pos, 1.25, rl.WHITE)
 		// // |
 		// rl.DrawCube(warning.pos + {0, .5, 0}, .1, .5, .1, rl.RED)
 		// // .

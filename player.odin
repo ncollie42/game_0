@@ -32,28 +32,21 @@ TURN_SPEED :: 10.0
 newPlayer :: proc() -> ^Player {
 	player := new(Player)
 
-	modelPath: cstring = "resources/player/base.m3d"
-
-	player.model = loadModel(modelPath)
-	player.animSet = loadM3DAnimationsWithRootMotion(modelPath)
+	player.model = memLoadModel(.Player)
+	player.animSet = memLoadAnim(.Player)
 
 	count := player.model.materialCount - 1
 	player.model.materials[count].maps[rl.MaterialMapIndex.ALBEDO].texture = Textures[.Synty_01_A]
 	player.model.materials[player.model.materialCount - 1].shader = Shaders[.Flash]
 
-	path: cstring = "resources/trail_1.png"
-	player.trailLeft = initFlipbookPool(path, 32, 32, 8)
-	path = "resources/trail_2.png"
-	player.trailRight = initFlipbookPool(path, 32, 32, 8)
-	// path: cstring = "/home/nico/Downloads/smear.png"
-	// player.trail = initFlipbookPool(path, 240 / 5, 48, 5)
+	player.trailLeft = initFlipbookPool(.Trail_1, 32, 32, 8)
+	player.trailRight = initFlipbookPool(.Trail_2, 32, 32, 8)
 
 	// Camera half circle :: TODO: maybe replace with a billboardPro on {0,0,1}
 	mesh := rl.GenMeshPlane(1, 1, 1, 1)
 	player.viewCircle = rl.LoadModelFromMesh(mesh)
-	texturePath: cstring = "resources/half_circle.png"
-	texture := rl.LoadTexture(texturePath)
-	player.viewCircle.materials[0].maps[rl.MaterialMapIndex.ALBEDO].texture = texture
+
+	player.viewCircle.materials[0].maps[rl.MaterialMapIndex.ALBEDO].texture = Textures[.HalfCircle]
 	player.viewCircle.materials[0].shader = Shaders[.Discard]
 
 	initPlayer(player)

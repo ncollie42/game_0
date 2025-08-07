@@ -72,8 +72,8 @@ testPannel := clay.RectangleElementConfig {
 
 debugModeEnabled: bool = false
 
-loadFont :: proc(fontId: u16, fontSize: u16, path: cstring) {
-	font := rl.LoadFontEx(path, cast(i32)fontSize * 2, nil, 0)
+loadClayFont :: proc(fontId: u16, fontSize: i32) {
+	font := loadFontEmb(.Default, fontSize)
 	assert(font.glyphCount != 0, "Font loaded doesn't work or exsist")
 	assert(font.texture.format != .UNKNOWN, "Font loaded doesn't work or exsist")
 
@@ -91,9 +91,9 @@ initClay :: proc() {
 	arena: clay.Arena = clay.CreateArenaWithCapacityAndMemory(minMemorySize, memory)
 	clay.Initialize(arena, {cast(f32)rl.GetScreenWidth(), cast(f32)rl.GetScreenHeight()}, {})
 	// fonts :: TODO: load Bold
-	loadFont(FONT_ID_BODY_14, 14, "resources/fonts/Calistoga-Regular.ttf")
-	loadFont(FONT_ID_BODY_16, 16, "resources/fonts/Calistoga-Regular.ttf")
-	loadFont(FONT_ID_BODY_20, 20, "resources/fonts/Calistoga-Regular.ttf")
+	loadClayFont(FONT_ID_BODY_14, 14)
+	loadClayFont(FONT_ID_BODY_16, 16)
+	loadClayFont(FONT_ID_BODY_20, 20)
 	clay.SetMeasureTextFunction(measureText)
 }
 

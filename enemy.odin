@@ -76,18 +76,11 @@ EnemyFreeze :: struct {
 }
 
 
-SpawningTexture: rl.Texture2D
-TargetCircleTexture: rl.Texture2D
-TargetCrossTexture: rl.Texture2D
-
 // ---- ---- ---- ---- Init ---- ---- ---- ---- 
 enemyPoolSize := 100
 ENEMY_CD_ATTACK_VARIANT: f32 = 1
 
 newEnemyPools :: proc() -> EnemyPool {
-	SpawningTexture = loadTexture("resources/mark_2.png")
-	// TargetCircleTexture = loadTexture("resources/png/target_circle.png")
-	// TargetCrossTexture = loadTexture("resources/png/target_lock.png")
 
 	pool := EnemyPool {
 		spawning     = make([dynamic]Spawning, 0, 0),
@@ -103,64 +96,41 @@ newEnemyPools :: proc() -> EnemyPool {
 	loadEnemies :: proc(
 		pool: [dynamic]Enemy,
 		set: ^AnimationSet,
-		modelPath: cstring,
-		texturePath: cstring,
+		modelName: ModelName,
+		textureName: TextureName,
 	) {
 		if set != nil {
-			set^ = loadM3DAnimationsWithRootMotion(modelPath)
+			set^ = memLoadAnim(modelName) // Note: Animations could be a global -> kinda like textures. AnimationSet[.Player]
 		}
-		texture := loadTexture(texturePath)
+		texture := Textures[textureName]
+		// texture := loadTexture(textureName)
 
 		for &enemy in pool {
 			// Note: is loadModel slow? can I load once and dup memory for every model after?
-			enemy.model = loadModel(modelPath)
+			enemy.model = memLoadModel(modelName)
+			// enemy.model = loadModel(modelName)
 			count := enemy.model.materialCount - 1
 			enemy.model.materials[count].maps[rl.MaterialMapIndex.ALBEDO].texture = texture
 			enemy.model.materials[count].shader = Shaders[.Flash]
 		}
 	}
 	// -------- Dummy -------- 
-	loadEnemies(
-		pool.freeDummy,
-		&pool.animSetDummy,
-		"resources/enemy_giant/base.m3d",
-		"resources/base.png",
-	)
+	loadEnemies(pool.freeDummy, &pool.animSetDummy, .Enemy_Dummy, .Synty_01_A)
 
 	// -------- Mele -------- 
-	loadEnemies(
-		pool.freeMele,
-		&pool.animSetMele,
-		"resources/enemy_mele/base.m3d",
-		"resources/base.png",
-	)
+	loadEnemies(pool.freeMele, &pool.animSetMele, .Enemy_Mele, .Synty_01_A)
 
 	// -------- Range -------- 
-	loadEnemies(
-		pool.freeRange,
-		&pool.animSetRange,
-		"resources/enemy_range/base.m3d",
-		"resources/base.png",
-	)
+	loadEnemies(pool.freeRange, &pool.animSetRange, .Enemy_Range, .Synty_01_A)
 
 	// -------- Giant -------- 
-	loadEnemies(
-		pool.freeGiant,
-		&pool.animSetGiant,
-		"resources/enemy_giant/base.m3d",
-		"resources/base.png",
-	)
+	loadEnemies(pool.freeGiant, &pool.animSetGiant, .Enemy_Giant, .Synty_01_A)
 
 	// -------- Thorn -------- 
-	loadEnemies(pool.freeThorn, nil, "resources/thorn/base.m3d", "resources/thorn/base.png")
+	loadEnemies(pool.freeThorn, nil, .Enemy_Thorn, .Thorn)
 
 	// -------- Monolith -------- 
-	loadEnemies(
-		pool.freeMonolith,
-		nil,
-		"resources/monolith/base.m3d",
-		"resources/monolith/base2.png",
-	)
+	loadEnemies(pool.freeMonolith, nil, .Enemy_Monolith, .Monolith)
 
 	initEnemyPools(&pool)
 	return pool
@@ -475,7 +445,7 @@ drawEnemies :: proc(enemies: ^EnemyPool, camera: ^rl.Camera) {
 		// Flat on ground
 		rl.DrawBillboardPro(
 			camera^,
-			SpawningTexture,
+			Textures[.Spawning],
 			rl.Rectangle{0, 0, 64, 64},
 			spawn.pos + {.5, .05, -.5} * scale, //Center and scale 
 			{0, 0, 1},

@@ -37,10 +37,13 @@ spawnFlipbook :: proc(pool: ^Flipbook, pos: vec3, rot: f32) {
 	append(&pool.active, impact)
 }
 
-initFlipbookPool :: proc(path: cstring, width: i32, height: i32, frames: i32) -> Flipbook {
-	texture := rl.LoadTexture(path)
-	assert(rl.IsTextureValid(texture), "Not able to load texture")
-
+initFlipbookPool :: proc(
+	textureName: TextureName,
+	width: i32,
+	height: i32,
+	frames: i32,
+) -> Flipbook {
+	texture := memLoadTexture(.Impact)
 	pool := Flipbook {
 		active  = make([dynamic]Particle, 0, 15),
 		texture = texture,

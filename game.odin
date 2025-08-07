@@ -50,12 +50,12 @@ initGame :: proc() -> Game {
 		gpoints         = new([dynamic]GravityPoint),
 		screen          = rl.LoadRenderTexture(P_W, P_H),
 		ui              = rl.LoadRenderTexture(P_W, P_H),
-		impact          = initFlipbookPool("resources/impact.png", 305, 383, 27),
+		impact          = initFlipbookPool(.Impact, 305, 383, 27),
 		gems            = initGems(),
 		pickups         = initPickup(),
 	}
 	game.deck = new(Deck)
-	game.deck^ = {{}, {}, Timer{4, 0}}
+	game.deck^ = {{}, {}, Timer{10, 0}}
 	game.hand = new(Hand)
 	game.hand[.Attack] = MeleAttackConfig
 
@@ -102,11 +102,6 @@ initGame :: proc() -> Game {
 	// For pixel look
 	rl.SetTextureFilter(game.screen.texture, rl.TextureFilter.POINT)
 	rl.SetTextureFilter(game.ui.texture, rl.TextureFilter.BILINEAR)
-
-	// TODO: remove from asset - Textures[]
-	whiteImage := rl.GenImageColor(1, 1, rl.WHITE)
-	whiteTexture = rl.LoadTextureFromImage(whiteImage)
-	rl.UnloadImage(whiteImage)
 
 	gl.EnableBackfaceCulling()
 	debugInit(&game)

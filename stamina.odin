@@ -83,7 +83,7 @@ drawStamina :: proc(camera: ^rl.Camera, pos: vec3) {
 			color := rl.BLACK
 			if amount == 1 do color = rl.WHITE
 
-			rl.DrawBillboardRec(camera^, whiteTexture, {}, pos3, {height, height}, color)
+			rl.DrawBillboardRec(camera^, Textures[.White], {}, pos3, {height, height}, color)
 		}
 	}
 }

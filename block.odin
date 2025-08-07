@@ -10,6 +10,7 @@ isBlocking :: proc(player: Player) -> bool {
 	_, blocking := player.state.(playerStateBlocking)
 	return blocking
 }
+
 isParrying :: proc(player: Player) -> bool {
 	blocking, isBlocking := player.state.(playerStateBlocking)
 	if !isBlocking do return false
@@ -17,8 +18,6 @@ isParrying :: proc(player: Player) -> bool {
 	return blocking.durration < PARRY_WINDOW
 }
 
-
-// Change to Mana?
 Mana :: struct {
 	current: f32, // showing
 	max:     f32,
@@ -32,11 +31,11 @@ useMana :: proc(attack: ^Mana, cost: int) {
 	attack.current -= f32(cost)
 }
 
-ManaRechargeSpeed: f32 = .25
-updateMana :: proc(attack: ^Mana) {
-	attack.current += getDelta() * ManaRechargeSpeed // very slow
+ManaRechargeSpeed: f32 = .15
+updateMana :: proc(mana: ^Mana) {
+	mana.current += getDelta() * ManaRechargeSpeed // very slow
 
-	attack.current = clamp(attack.current, 0, attack.max)
+	mana.current = clamp(mana.current, 0, mana.max)
 }
 
 // showing, max, pos, barwidth, height, 
@@ -56,6 +55,6 @@ drawAttackbar :: proc(attack: Mana, camera: ^rl.Camera, pos: vec3) {
 		color := rl.BLACK
 		if amount == 1 do color = rl.BLUE
 
-		rl.DrawBillboardRec(camera^, whiteTexture, {}, pos3, {height, height}, color)
+		rl.DrawBillboardRec(camera^, Textures[.White], {}, pos3, {height, height}, color)
 	}
 }

@@ -83,7 +83,7 @@ debug := false
 debugDrawGame :: proc(game: ^Game) {
 	using game
 
-	rl.DrawModel(model, {}, 1, rl.WHITE)
+	rl.DrawModel(model, {20, 0, 0}, 1, rl.WHITE)
 }
 
 // Preflight

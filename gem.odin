@@ -14,9 +14,7 @@ Gems :: struct {
 }
 
 initGems :: proc() -> Gems {
-	modelPath: cstring = "resources/gems/base.m3d"
-	texturePath: cstring = "resources/gems/base.png"
-	model := loadModelWithTexture(modelPath, texturePath)
+	model := memLoadModelWithTexture(.Gem, .Gem)
 
 	return Gems{range = 10, model = model, gems = make([dynamic]Spacial, 0, 0)}
 }
@@ -81,9 +79,7 @@ Pickup :: struct {
 }
 
 initPickup :: proc() -> Pickup {
-	modelPath: cstring = "resources/gems/base.m3d"
-	texturePath: cstring = "resources/gems/base.png"
-	model := loadModelWithTexture(modelPath, texturePath)
+	model := memLoadModelWithTexture(.Gem, .Gem)
 
 	return Pickup{range = 10, model = model, items = make([dynamic]Item, 0, 0)}
 }

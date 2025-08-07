@@ -231,6 +231,7 @@ lerpRAD :: proc(current, target, amount: f32) -> f32 {
 Timer :: struct {
 	max:  f32, //MAX
 	left: f32, //Left
+	// speed: f32, // delta * speed
 	//onShot: bool,
 }
 
@@ -304,7 +305,7 @@ normalize :: proc(vec: vec3) -> vec3 {
 }
 
 loadModel :: proc(path: cstring) -> rl.Model {
-	assert(rl.IsPathFile(path))
+	assert(rl.IsPathFile(path), string(path))
 	assert(
 		!strings.has_suffix(string(path), ".fbx"),
 		fmt.tprint("[loadModel] does not support FBX files :", path),

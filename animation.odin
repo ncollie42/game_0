@@ -1,6 +1,7 @@
 package main
 
 import "base:intrinsics"
+import "base:runtime"
 import "core:fmt"
 import "core:math"
 import "core:math/linalg"
@@ -476,7 +477,7 @@ animEnumToInt :: proc(current: ANIMATION_NAMES) -> i32 {
 
 getRootMotion :: proc(state: ^AnimationState, set: AnimationSet) -> vec3 {
 	assert(set.total != 0, "empty set")
-	assert(state.speed != 0, fmt.tprint("Animation speed is Zero, do we want that?"))
+	assert(state.speed != 0, "Animation speed is Zero, do we want that?")
 
 	frame := i32(math.floor(state.duration * FPS_30))
 	current: i32 = animEnumToInt(state.current)
@@ -501,7 +502,7 @@ getRootMotion :: proc(state: ^AnimationState, set: AnimationSet) -> vec3 {
 getRootMotionSpeed :: proc(state: ^AnimationState, set: AnimationSet, scale: f32) -> f32 {
 	// Only using the forward axis
 	assert(set.total != 0, "empty set")
-	assert(state.speed != 0, fmt.tprint("Animation speed is Zero, do we want that?"))
+	assert(state.speed != 0, "Animation speed is Zero, do we want that?")
 
 	frame := i32(math.floor(state.duration * FPS_30))
 	current: i32 = animEnumToInt(state.current)
@@ -672,6 +673,142 @@ loadM3DAnimationsWithRootMotion :: proc(path: cstring) -> AnimationSet {
 	assert(m3d_t.numbone > 0, "No bones in this m3d")
 	fmt.println("[loadAnim]", path, m3d_t.numbone)
 	// assert(m3d_t.numskin > 0, "No skin in this m3d")
+
+	// Allocate animations array
+	anim.total = i32(m3d_t.numaction)
+	animations = raw_data(make([]rl.ModelAnimation, m3d_t.numaction))
+
+	for a in 0 ..< int(m3d_t.numaction) {
+		// fmt.println(m3d_t.action[a].name, "Frames:", m3d_t.action[a].durationmsec / M3D_ANIMDELAY)
+		animations[a].frameCount = i32(m3d_t.action[a].durationmsec / M3D_ANIMDELAY)
+		animations[a].boneCount = i32(m3d_t.numbone + 1)
+
+		// Allocate bones and framePoses
+		animations[a].bones = raw_data(make([]rl.BoneInfo, m3d_t.numbone + 1))
+		animations[a].framePoses = raw_data(make([][^]rl.Transform, animations[a].frameCount))
+
+		copy_string(animations[a].name[:], m3d_t.action[a].name)
+
+		// Copy bone information
+		for i in 0 ..< int(m3d_t.numbone) {
+			animations[a].bones[i].parent = i32(m3d_t.bone[i].parent)
+			copy_string(animations[a].bones[i].name[:], m3d_t.bone[i].name)
+		}
+		// Set up "no bone" bone
+		animations[a].bones[m3d_t.numbone].parent = -1
+		copy_string(animations[a].bones[m3d_t.numbone].name[:], "NO BONE")
+
+		// Process animation frames
+		for i in 0 ..< int(animations[a].frameCount) {
+			animations[a].framePoses[i] = raw_data(make([]rl.Transform, m3d_t.numbone + 1))
+			pose := transmute([^]m3d.b_t)m3d.pose(m3d_t, u32(a), u32(i) * M3D_ANIMDELAY)
+			assert(pose != nil, "Pose is nill??")
+			// defer free(transmute(^m3d.b_t)pose) // TODO free this pose some how -> THIS WILL SEGFUALT
+
+			for j in 0 ..< int(m3d_t.numbone) {
+				// Set translation
+				animations[a].framePoses[i][j].translation = {
+					m3d_t.vertex[pose[j].pos].x * m3d_t.scale,
+					m3d_t.vertex[pose[j].pos].y * m3d_t.scale,
+					m3d_t.vertex[pose[j].pos].z * m3d_t.scale,
+				}
+
+
+				// Set rotation
+				animations[a].framePoses[i][j].rotation.x = m3d_t.vertex[pose[j].ori].x
+				animations[a].framePoses[i][j].rotation.y = m3d_t.vertex[pose[j].ori].y
+				animations[a].framePoses[i][j].rotation.z = m3d_t.vertex[pose[j].ori].z
+				animations[a].framePoses[i][j].rotation.w = m3d_t.vertex[pose[j].ori].w
+				animations[a].framePoses[i][j].rotation = rl.QuaternionNormalize(
+					animations[a].framePoses[i][j].rotation,
+				)
+
+				// Set scale
+				animations[a].framePoses[i][j].scale = {1, 1, 1}
+
+				// If has root motion, hip bone starts at 1
+				if animations[a].bones[j].parent < 1 {
+					continue
+				}
+				// Convert child bones to model space
+				parent_id := animations[a].bones[j].parent
+				parent := &animations[a].framePoses[i][parent_id]
+
+				animations[a].framePoses[i][j].rotation =
+					parent.rotation * animations[a].framePoses[i][j].rotation
+
+				animations[a].framePoses[i][j].translation = rl.Vector3RotateByQuaternion(
+					animations[a].framePoses[i][j].translation,
+					parent.rotation,
+				)
+
+				animations[a].framePoses[i][j].translation =
+					animations[a].framePoses[i][j].translation + parent.translation
+
+				animations[a].framePoses[i][j].scale =
+					animations[a].framePoses[i][j].scale * parent.scale
+
+			}
+			// Set;"no bone";bone;default;transform
+			animations[a].framePoses[i][m3d_t.numbone].translation = {0, 0, 0}
+			animations[a].framePoses[i][m3d_t.numbone].rotation.w = 1 // {0, 0 ,0, 1}
+			animations[a].framePoses[i][m3d_t.numbone].scale = {1, 1, 1}
+		}
+
+		bakeRootMotion: {
+			delta: [dynamic]vec3
+			// For [0, len-1]
+			for i in 0 ..< int(animations[a].frameCount - 1) {
+				append(
+					&delta,
+					animations[a].framePoses[i + 1][0].translation -
+					animations[a].framePoses[i][0].translation,
+				)
+			}
+			// Copy the prev to the last frame
+			if len(delta) > 0 {
+				prevDelta := delta[len(delta) - 1]
+				append(&delta, prevDelta)
+			}
+			append(&anim.RMs, delta)
+		}
+	}
+
+	anim.anims = animations
+	return anim
+}
+
+
+memLoadAnim :: proc(name: ModelName) -> AnimationSet {
+	assert(name != .None, "No Asset for animation")
+
+	anim := AnimationSet{}
+	animations: [^]rl.ModelAnimation = nil
+	m3d_t: ^m3d.m3d_t = nil
+
+	loadEmbeddedData :: proc(name: ModelName) -> [^]byte {
+		embedded_data := AssetModel[name]
+		data := ([^]byte)(rl.MemAlloc(u32(len(embedded_data))))
+		assert(data != nil, "Failed to allocate memory")
+
+		runtime.mem_copy(data, raw_data(embedded_data), len(embedded_data))
+		return data
+	}
+
+	file_data := loadEmbeddedData(name)
+	msg := fmt.tprint("File data is nil, could not load m3d animations", name)
+	assert(file_data != nil, msg)
+	defer rl.UnloadFileData(file_data)
+
+	m3d_t = m3d._load(file_data, nil, nil, nil) // TODO: Add in loader/free callbacks 
+	assert(m3d_t != nil, "m3d_t failed to load")
+	assert(!(m3d_t.errcode > -65 && m3d_t.errcode < 0), "m3d_t failed to load, fatal error.")
+	defer m3d.free(m3d_t)
+
+	// No animation or bone+skin?
+	assert(m3d_t.numaction > 0, "No animations in this m3d")
+	assert(m3d_t.numbone > 0, "No bones in this m3d")
+	assert(m3d_t.numskin > 0, "No skin in this m3d")
 
 	// Allocate animations array
 	anim.total = i32(m3d_t.numaction)

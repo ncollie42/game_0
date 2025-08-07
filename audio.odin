@@ -32,28 +32,37 @@ initAudio :: proc() {
 	rl.InitAudioDevice()
 	rl.SetMasterVolume(.2)
 
-	grunts := []cstring {
-		"resources/audio/grunt_01.wav",
-		"resources/audio/grunt_02.wav",
-		"resources/audio/jump_03.wav",
-	}
-	for path, ii in grunts {
-		grunt.sounds[ii] = loadSound(path)
-	}
+	// grunts := []cstring {
+	// 	"resources/audio/grunt_01.wav",
+	// 	"resources/audio/grunt_02.wav",
+	// 	"resources/audio/jump_03.wav",
+	// }
+	// for path, ii in grunts {
+	// 	grunt.sounds[ii] = loadSound(path)
+	// }
+	// punchs := []cstring{"resources/audio/Punch_1.wav", "resources/audio/Punch_2.wav"}
+	// for path, ii in punchs {
+	// 	punch.sounds[ii] = loadSound(path)
+	// }
 
-	punchs := []cstring{"resources/audio/Punch_1.wav", "resources/audio/Punch_2.wav"}
-	for path, ii in punchs {
-		punch.sounds[ii] = loadSound(path)
-	}
+	// whooshs := []cstring {
+	// 	"resources/audio/Axe_Whoosh_01.wav",
+	// 	"resources/audio/Axe_Whoosh_02.wav",
+	// 	"resources/audio/Axe_Whoosh_03.wav",
+	// }
+	// for path, ii in whooshs {
+	// 	whoosh.sounds[ii] = loadSound(path)
+	// }
+	grunt.sounds[0] = loadSoundEmb(.Grunt_1)
+	grunt.sounds[1] = loadSoundEmb(.Grunt_2)
+	grunt.sounds[2] = loadSoundEmb(.Grunt_3)
 
-	whooshs := []cstring {
-		"resources/audio/Axe_Whoosh_01.wav",
-		"resources/audio/Axe_Whoosh_02.wav",
-		"resources/audio/Axe_Whoosh_03.wav",
-	}
-	for path, ii in whooshs {
-		whoosh.sounds[ii] = loadSound(path)
-	}
+	punch.sounds[0] = loadSoundEmb(.Punch_1)
+	punch.sounds[1] = loadSoundEmb(.Punch_2)
+
+	whoosh.sounds[0] = loadSoundEmb(.Whoosh_1)
+	whoosh.sounds[1] = loadSoundEmb(.Whoosh_2)
+	whoosh.sounds[2] = loadSoundEmb(.Whoosh_3)
 }
 
 updateAudio :: proc() {
